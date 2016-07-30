@@ -22,6 +22,15 @@ class handler(http.server.SimpleHTTPRequestHandler):
         path = re.sub('^/*', '', self.path)
         path_base = re.sub(r'(\..*)/.*', r'\1', path)
 
+        if path == "reload":
+            global config
+            config = rssit.config.get("rssit")
+            self.send_response(200, "OK")
+            self.end_headers()
+
+            self.wfile.write(bytes("Configuration reloaded", "UTF-8"))
+            return
+
         if path == "core" or not path_base in config:
             self.send_response(404, "Not found")
             self.end_headers()

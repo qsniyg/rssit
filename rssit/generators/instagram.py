@@ -4,6 +4,7 @@
 import re
 import urllib.request
 import json
+import demjson
 import datetime
 from dateutil.tz import *
 from feedgen.feed import FeedGenerator
@@ -38,11 +39,11 @@ def fix_surrogates(string):
 
 
 def check(url):
-    return re.match(r"^https?://www\.instagram\.com/(?P<user>[^/]*)", url) != None
+    return re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url) != None
 
 
 def generate(config, webpath):
-    match = re.match(r"^https?://www\.instagram\.com/(?P<user>[^/]*)", config["url"])
+    match = re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", config["url"])
 
     if match == None:
         return None
@@ -69,7 +70,8 @@ def generate(config, webpath):
     if jsondatare == None:
         return None
     jsondata = jsondatare.group("json")
-    decoded = json.loads(jsondata)
+    #decoded = json.loads(jsondata)
+    decoded = demjson.decode(jsondata)
 
     nodes = decoded["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
     for node in reversed(nodes):
