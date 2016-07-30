@@ -8,6 +8,7 @@ import rssit.generate
 
 
 config = {}
+port = 0
 
 
 class handler(http.server.SimpleHTTPRequestHandler):
@@ -19,15 +20,19 @@ class handler(http.server.SimpleHTTPRequestHandler):
         self.protocol_version = "HTTP/1.1"
 
         path = re.sub('^/*', '', self.path)
+        path_base = re.sub(r'(\..*)/.*', r'\1', path)
 
-        if path == "core" or not path in config:
+        if path == "core" or not path_base in config:
             self.send_response(404, "Not found")
             self.end_headers()
 
             self.wfile.write(bytes("404", "UTF-8"))
             return
 
-        text = rssit.generate.process(config[path])
+        if path != path_base:
+            return rssit.generate.http(config[path_base], path, self)
+
+        text = rssit.generate.process(config[path], "http://localhost:%i/%s" % (port, path))
         if text == None:
             self.send_response(500, "URL error")
             self.end_headers()
@@ -52,9 +57,11 @@ class handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(text)
 
 
-def serve(port, app_config):
-    global config
+def serve(wanted_port, app_config):
+    global config, port
+
     config = app_config
+    port = wanted_port
 
     while True:
         try:

@@ -4,9 +4,9 @@
 import rssit.generators.all
 
 
-def process(config):
+def process(config, path):
     for generator in rssit.generators.all.all_generators:
-        result = generator.generate(config)
+        result = generator.generate(config, path)
 
         if result == None:
             continue
@@ -17,3 +17,11 @@ def process(config):
             return result.rss_str(encoding="ascii")
         else:
             return None
+
+
+def http(config, path, get):
+    for generator in rssit.generators.all.all_generators:
+        result = generator.http(config, path, get)
+
+        if result == None:
+            continue

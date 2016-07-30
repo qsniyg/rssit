@@ -3,7 +3,6 @@
 
 import rssit.config
 import rssit.http
-#import rssit.generators.all
 
 
 appname = "rssit"
