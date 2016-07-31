@@ -2,40 +2,12 @@
 
 
 import re
-import urllib.request
+import rssit.util
 import json
 import demjson
 import datetime
 from dateutil.tz import *
 from feedgen.feed import FeedGenerator
-
-
-def convert_surrogate_pair(x, y):
-    n = (((ord(x) - 0xd800 << 10) + (ord(y) - 0xdc00)) + 0x10000)
-    s = "\\U%08x" % n
-    return s.encode('utf-8').decode("unicode-escape")
-
-
-def fix_surrogates(string):
-    new_string = ""
-
-    last_surrogate = False
-
-    for i in range(len(string)):
-        ch = string[i]
-        cho = ord(ch)
-
-        if last_surrogate:
-            last_surrogate = False
-            continue
-
-        if (cho >= 0xd800 and cho <= 0xdbff) or (cho >= 0xdc00 and cho <= 0xdfff):
-            new_string += convert_surrogate_pair(ch, string[i + 1])
-            last_surrogate = True
-        else:
-            new_string += ch
-
-    return new_string
 
 
 def check(url):
@@ -57,14 +29,7 @@ def generate(config, webpath):
 
     url = config["url"]
 
-    request = urllib.request.Request(url)
-    request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
-    request.add_header('Pragma', 'no-cache')
-    request.add_header('Cache-Control', 'max-age=0')
-    request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
-
-    with urllib.request.urlopen(request) as response:
-           data = response.read()
+    data = rssit.util.download(url)
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare == None:
@@ -77,7 +42,7 @@ def generate(config, webpath):
     for node in reversed(nodes):
         if "caption" in node:
             captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
-            caption = fix_surrogates(captionjs).replace("\n","<br />\n")
+            caption = rssit.util.fix_surrogates(captionjs).replace("\n","<br />\n")
         else:
             caption = ""
 
@@ -114,14 +79,7 @@ def http(config, path, get):
 
     url = "https://www.instagram.com/p/%s/" % id
 
-    request = urllib.request.Request(url)
-    request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
-    request.add_header('Pragma', 'no-cache')
-    request.add_header('Cache-Control', 'max-age=0')
-    request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
-
-    with urllib.request.urlopen(request) as response:
-           data = response.read()
+    data = rssit.util.download(url)
 
     match = re.search(r"\"og:video\".*?content=\"(?P<video>.*?)\"", str(data))
 
