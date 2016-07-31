@@ -35,7 +35,7 @@ def generate(config, path):
         link = tweet["data-permalink-path"]
 
         title = "@%s: " % username
-        tweet_text = "<p><i>@%s</i></p><p>" % username
+        tweet_text = "<p><em>@%s</em></p><p>" % username
 
         for text in tweet.select("p.tweet-text"):
             for i in text.children:
@@ -60,6 +60,17 @@ def generate(config, path):
         if len(image_holder) > 0:
             image_url = image_holder[0]["data-image-url"]
             tweet_text += "<p><img src='%s' /></p>" % image_url
+
+        is_video_el = tweet.select(".AdaptiveMedia-video")
+        if len(is_video_el) > 0:
+            tweet_id = tweet["data-tweet-id"]
+            video_url = "https://twitter.com/i/videos/%s" % tweet_id
+            pmp = tweet.select(".PlayableMedia-player")[0]
+            preview_url = re.search(r"background-image: *url.'(?P<url>.*?)'",
+                                   pmp["style"]).group("url")
+
+            tweet_text += "<p><em>Click to watch video</em></p>"
+            tweet_text += "<a href='%s'><img src='%s'/></a>" % (video_url, preview_url)
 
         title = title.replace("\n", " ")
         tweet_text = tweet_text.replace("\n", "<br />\n")
