@@ -2,6 +2,7 @@
 
 
 import urllib.request
+from dateutil.tz import *
 
 
 def download(url):
@@ -41,3 +42,7 @@ def fix_surrogates(string):
             new_string += ch
 
     return new_string
+
+
+def localize_datetime(dt):
+    return dt.replace(tzinfo=tzlocal())

@@ -25,6 +25,7 @@ def generate(config, webpath):
     fg = FeedGenerator()
     fg.title("[Instagram] %s" % user)
     fg.description("[Instagram] %s" % user)
+    fg.id(config["url"])
     fg.link(href=config["url"], rel="alternate")
 
     url = config["url"]
@@ -42,23 +43,23 @@ def generate(config, webpath):
     for node in reversed(nodes):
         if "caption" in node:
             captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
-            caption = rssit.util.fix_surrogates(captionjs).replace("\n","<br />\n")
+            caption = rssit.util.fix_surrogates(captionjs)
         else:
-            caption = ""
+            caption = "(n/a)"
 
-
+        title = caption.replace("\n", " ")
 
         date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
 
         fe = fg.add_entry()
         fe.id("https://www.instagram.com/p/%s/" % node["code"])
         fe.link(href="https://www.instagram.com/p/%s/" % node["code"], rel="alternate")
-        fe.title(caption)
-        fe.description(caption)
+        fe.title(title)
+        fe.description(title)
         fe.author(name=user)
         fe.published(date)
 
-        content = "<p>%s</p>" % caption
+        content = "<p>%s</p>" % (caption.replace("\n", "<br />\n"))
 
         if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
             content += "<p><em>Click to watch video</em></p>"
@@ -69,7 +70,7 @@ def generate(config, webpath):
         else:
             content += "<img src='%s'/>" % node["display_src"]
 
-        fe.content(content)
+        fe.content(content, type="html")
 
     return fg
 
