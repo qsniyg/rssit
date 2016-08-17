@@ -186,10 +186,24 @@ def generate(config, webpath):
 
     now = rssit.util.localize_datetime(datetime.datetime.now())
 
+    if "new_entry" in config:
+        new_entry = True
+    else:
+        new_entry = False
+
     fe = fg.add_entry()
-    fe.id(config["url"] + "/" + str(int(now.timestamp())))
     fe.link(href=config["url"], rel="alternate")
-    title = "%s - Updated: %s" % (decoded["bracket"]["subtitle"], str(now))
+
+    if new_entry:
+        fe.id(config["url"] + "/" + str(int(now.timestamp())))
+        title = "%s - %s (Updated: %s)" % (decoded["bracket"]["title"],
+                                           decoded["bracket"]["subtitle"],
+                                           str(now))
+    else:
+        fe.id(config["url"])
+        title = "%s - %s" % (decoded["bracket"]["title"],
+                             decoded["bracket"]["subtitle"])
+
     fe.title(title)
     fe.description(title)
     fe.author(name="Brackify")
