@@ -107,7 +107,7 @@ def generate(config, webpath):
     out_str = ""
     out_str += "<table><tr><td><h1 style='text-align:center'>Rankings:</h1></td></tr>"
 
-    has_champion = decoded["bracket"]["currentRound"] == "R1"
+    has_champion = "A1" in decoded["bracket"]["initialItems"]
 
     items = decoded["items"]
     votes = {}
