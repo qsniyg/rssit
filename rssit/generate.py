@@ -2,6 +2,7 @@
 
 
 import rssit.generators.all
+import importlib
 
 
 def process(config, path):
@@ -25,3 +26,8 @@ def http(config, path, get):
 
         if result == None:
             continue
+
+
+def update():
+    importlib.reload(rssit.generators.all)
+    rssit.generators.all.update()

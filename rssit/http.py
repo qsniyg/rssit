@@ -5,6 +5,7 @@ import http.server
 import socketserver
 import re
 import rssit.generate
+import importlib
 
 
 config = {}
@@ -29,6 +30,16 @@ class handler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
             self.wfile.write(bytes("Configuration reloaded", "UTF-8"))
+            return
+
+        if path == "update":
+            importlib.reload(rssit.generate)
+            rssit.generate.update()
+
+            self.send_response(200, "OK")
+            self.end_headers()
+
+            self.wfile.write(bytes("Updated code", "UTF-8"))
             return
 
         if path == "core" or not path_base in config:
