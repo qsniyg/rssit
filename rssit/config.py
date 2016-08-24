@@ -21,7 +21,7 @@ default_config = {
 
 
 def is_builtin(key):
-    if key == "core" or key == ("default") or key.startswith("default/"):
+    if key == "core" or key == "default" or key.startswith("default/"):
         return True
     else:
         return False
