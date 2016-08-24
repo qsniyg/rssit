@@ -6,6 +6,7 @@ import importlib
 import rssit.generate
 import rssit.config
 import rssit.util
+import rssit.http
 
 
 def update():
@@ -14,3 +15,4 @@ def update():
 
     importlib.reload(rssit.config)
     importlib.reload(rssit.util)
+    importlib.reload(rssit.http)
