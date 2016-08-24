@@ -7,6 +7,12 @@ import rssit.util
 import bs4
 
 
+info = {
+    "name": "Twitter",
+    "codename": "twitter"
+}
+
+
 def generate(config, path):
     match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", config["url"])
 
@@ -20,7 +26,7 @@ def generate(config, path):
     soup = bs4.BeautifulSoup(data, 'lxml')
 
     feed = {
-        "title": "[Twitter] %s" % user,
+        "title": user,
         "entries": []
     }
 

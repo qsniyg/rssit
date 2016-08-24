@@ -14,7 +14,8 @@ default_config = {
 
     "default": {
         "type": "rss",
-        "count": 10
+        "count": 10,
+        "brackets": True
     }
 }
 
@@ -22,6 +23,17 @@ default_config = {
 def parse_file(path):
     config = configparser.ConfigParser()
     config.read(path + "/config")
+
+    for section_key in config._sections:
+        section = config._sections[section_key]
+        for key in section:
+            if section[key] == "true":
+                section[key] = True
+            elif section[key] == "false":
+                section[key] = False
+            elif section[key].isdigit():
+                section[key] = int(section[key])
+
     return config._sections
 
 

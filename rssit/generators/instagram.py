@@ -9,6 +9,12 @@ import datetime
 from dateutil.tz import *
 
 
+info = {
+    "name": "Instagram",
+    "codename": "instagram"
+}
+
+
 def check(url):
     return re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url) != None
 
@@ -22,7 +28,7 @@ def generate(config, webpath):
     user = match.group("user")
 
     feed = {
-        "title": "[Instagram] %s" % user,
+        "title": user,
         "entries": []
     }
 

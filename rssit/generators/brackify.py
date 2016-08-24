@@ -9,6 +9,12 @@ import datetime
 from dateutil.tz import *
 
 
+info = {
+    "name": "Brackify",
+    "codename": "brackify"
+}
+
+
 def check(url):
     return re.match(r"^https?://(?:\w+\.)?brackify\.com/bracket/[0-9]*", url) != None
 
@@ -179,7 +185,7 @@ def generate(config, webpath):
 
 
     feed = {
-        "title": "[Brackify] %s" % decoded["bracket"]["title"],
+        "title": decoded["bracket"]["title"],
         "description": decoded["bracket"]["subtitle"],
         "entries": []
     }

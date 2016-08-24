@@ -63,6 +63,10 @@ def process(config, path):
         if result == None:
             continue
 
+        if config["brackets"]:
+            result["title"] = "[%s] %s" % (generator.info["name"],
+                                           result["title"])
+
         if config["type"] == "atom" or config["type"] == "rss":
             return process_feed(result, config)
         else:
