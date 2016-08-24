@@ -7,6 +7,14 @@ import importlib
 from feedgen.feed import FeedGenerator
 
 
+def find_generator(url):
+    for generator in rssit.generators.all.all_generators:
+        result = generator.check(url)
+
+        if result:
+            return generator
+
+
 def process_feed(result, config):
     fg = FeedGenerator()
 
@@ -57,20 +65,24 @@ def process_feed(result, config):
 
 
 def process(config, path):
-    for generator in rssit.generators.all.all_generators:
-        result = generator.generate(config, path)
+    generator = config["generator"]
 
-        if result == None:
-            continue
+    if not generator:
+        return
 
-        if config["brackets"]:
-            result["title"] = "[%s] %s" % (generator.info["name"],
-                                           result["title"])
+    result = generator.generate(config, path)
 
-        if config["type"] == "atom" or config["type"] == "rss":
-            return process_feed(result, config)
-        else:
-            return None
+    if result == None:
+        return
+
+    if config["brackets"]:
+        result["title"] = "[%s] %s" % (generator.info["name"],
+                                       result["title"])
+
+    if config["type"] == "atom" or config["type"] == "rss":
+        return process_feed(result, config)
+    else:
+        return
 
 
 def http(config, path, get):

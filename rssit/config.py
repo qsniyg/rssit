@@ -5,6 +5,7 @@ import copy
 import configparser
 import xdg.BaseDirectory
 import os
+import rssit.generate
 
 
 default_config = {
@@ -33,6 +34,7 @@ def parse_file(path):
 
     for section_key in config._sections:
         section = config._sections[section_key]
+
         for key in section:
             if section[key] == "true":
                 section[key] = True
@@ -40,6 +42,14 @@ def parse_file(path):
                 section[key] = False
             elif section[key].isdigit():
                 section[key] = int(section[key])
+
+        if (not is_builtin(section_key)) and "url" in section:
+            generator = rssit.generate.find_generator(section["url"])
+
+            if generator:
+                section["generator"] = generator
+            else:
+                section["generator"] = None
 
     return config._sections
 

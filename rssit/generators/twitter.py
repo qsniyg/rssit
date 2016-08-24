@@ -13,6 +13,10 @@ info = {
 }
 
 
+def check(url):
+    return re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", url) != None
+
+
 def generate(config, path):
     match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", config["url"])
 
