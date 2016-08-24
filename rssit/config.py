@@ -20,6 +20,13 @@ default_config = {
 }
 
 
+def is_builtin(key):
+    if key == "core" or key == ("default") or key.startswith("default/"):
+        return True
+    else:
+        return False
+
+
 def parse_file(path):
     config = configparser.ConfigParser()
     config.read(path + "/config")

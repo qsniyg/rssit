@@ -5,6 +5,7 @@ import http.server
 import socketserver
 import re
 import rssit.generate
+import rssit.config
 import rssit.update
 import importlib
 import types
@@ -42,7 +43,7 @@ def do_GET_real(self):
            self.wfile.write(bytes("Updated code", "UTF-8"))
            return
 
-    if path == "core" or not path_base in config:
+    if rssit.config.is_builtin(path) or not path_base in config:
            self.send_response(404, "Not found")
            self.end_headers()
 
