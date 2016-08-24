@@ -43,11 +43,28 @@ def parse_file(path):
             elif section[key].isdigit():
                 section[key] = int(section[key])
 
+    for section_key in config._sections:
+        section = config._sections[section_key]
+
         if (not is_builtin(section_key)) and "url" in section:
             generator = rssit.generate.find_generator(section["url"])
 
             if generator:
                 section["generator"] = generator
+
+                gdefault_key = "default/" + generator.info["codename"]
+
+                if gdefault_key in config._sections:
+                    gdefault = config._sections[gdefault_key]
+
+                    for dkey in gdefault:
+                        if not dkey in section:
+                            section[dkey] = gdefault[dkey]
+
+                for gkey in generator.info["config"]:
+                    if not gkey in section:
+                        section[gkey] = generator.info["config"][gkey]
+
             else:
                 section["generator"] = None
 

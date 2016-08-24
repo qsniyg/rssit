@@ -11,7 +11,10 @@ from dateutil.tz import *
 
 info = {
     "name": "Brackify",
-    "codename": "brackify"
+    "codename": "brackify",
+    "config": {
+        "ranks": 4
+    }
 }
 
 
@@ -93,10 +96,7 @@ def generate(config, webpath):
 
     url = config["url"]
 
-    if "ranks" in config:
-        ranks = config["ranks"]
-    else:
-        ranks = 4
+    ranks = config["ranks"]
 
     data = rssit.util.download(url)
 

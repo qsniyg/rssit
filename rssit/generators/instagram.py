@@ -11,7 +11,8 @@ from dateutil.tz import *
 
 info = {
     "name": "Instagram",
-    "codename": "instagram"
+    "codename": "instagram",
+    "config": {}
 }
 
 

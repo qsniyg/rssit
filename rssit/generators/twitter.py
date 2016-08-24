@@ -9,7 +9,8 @@ import bs4
 
 info = {
     "name": "Twitter",
-    "codename": "twitter"
+    "codename": "twitter",
+    "config": {}
 }
 
 
