@@ -5,12 +5,15 @@ import datetime
 import re
 import rssit.util
 import bs4
+import demjson
 
 
 info = {
     "name": "Twitter",
     "codename": "twitter",
-    "config": {}
+    "config": {
+        "author_username": True
+    }
 }
 
 
@@ -30,8 +33,27 @@ def generate(config, path):
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
+    author = "@" + user
+    description = "%s's twitter" % author
+
+    init_data = soup.select("#init-data")
+
+    if len(init_data) > 0:
+        init_data = init_data[0]
+
+        if "value" in init_data.attrs:
+            init_json = demjson.decode(init_data.attrs["value"])
+
+            if not config["author_username"]:
+                if len(init_json["profile_user"]["name"]) > 0:
+                    author = init_json["profile_user"]["name"]
+
+            if len(init_json["profile_user"]["description"]) > 0:
+                description = init_json["profile_user"]["description"]
+
     feed = {
-        "title": user,
+        "title": author,
+        "description": description,
         "entries": []
     }
 
