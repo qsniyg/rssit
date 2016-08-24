@@ -7,7 +7,6 @@ import json
 import demjson
 import datetime
 from dateutil.tz import *
-from feedgen.feed import FeedGenerator
 
 
 def check(url):
@@ -22,11 +21,10 @@ def generate(config, webpath):
 
     user = match.group("user")
 
-    fg = FeedGenerator()
-    fg.title("[Instagram] %s" % user)
-    fg.description("[Instagram] %s" % user)
-    fg.id(config["url"])
-    fg.link(href=config["url"], rel="alternate")
+    feed = {
+        "title": "[Instagram] %s" % user,
+        "entries": []
+    }
 
     url = config["url"]
 
@@ -51,14 +49,6 @@ def generate(config, webpath):
 
         date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
 
-        fe = fg.add_entry()
-        fe.id("https://www.instagram.com/p/%s/" % node["code"])
-        fe.link(href="https://www.instagram.com/p/%s/" % node["code"], rel="alternate")
-        fe.title(title)
-        fe.description(title)
-        fe.author(name=user)
-        fe.published(date)
-
         content = "<p>%s</p>" % (caption.replace("\n", "<br />\n"))
 
         if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
@@ -70,9 +60,15 @@ def generate(config, webpath):
         else:
             content += "<img src='%s'/>" % node["display_src"]
 
-        fe.content(content, type="html")
+        feed["entries"].append({
+            "url": "https://www.instagram.com/p/%s/" % node["code"],
+            "title": title,
+            "author": user,
+            "date": date,
+            "content": content
+        })
 
-    return fg
+    return feed
 
 
 def http(config, path, get):

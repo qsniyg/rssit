@@ -7,7 +7,6 @@ import json
 import demjson
 import datetime
 from dateutil.tz import *
-from feedgen.feed import FeedGenerator
 
 
 def check(url):
@@ -178,11 +177,13 @@ def generate(config, webpath):
         f.close()
         return
 
-    fg = FeedGenerator()
-    fg.title("[Brackify] %s" % decoded["bracket"]["title"])
-    fg.description(decoded["bracket"]["subtitle"])
-    fg.id(config["url"])
-    fg.link(href=config["url"], rel="alternate")
+
+    feed = {
+        "title": "[Brackify] %s" % decoded["bracket"]["title"],
+        "description": decoded["bracket"]["subtitle"],
+        "entries": []
+    }
+
 
     now = rssit.util.localize_datetime(datetime.datetime.now())
 
@@ -191,23 +192,24 @@ def generate(config, webpath):
     else:
         new_entry = False
 
-    fe = fg.add_entry()
-    fe.link(href=config["url"], rel="alternate")
-
     if new_entry:
-        fe.id(config["url"] + "/" + str(int(now.timestamp())))
+        id = config["url"] + "/" + str(int(now.timestamp()))
         title = "%s - %s (Updated: %s)" % (decoded["bracket"]["title"],
                                            decoded["bracket"]["subtitle"],
                                            str(now))
     else:
-        fe.id(config["url"])
+        id = config["url"]
         title = "%s - %s" % (decoded["bracket"]["title"],
                              decoded["bracket"]["subtitle"])
 
-    fe.title(title)
-    fe.description(title)
-    fe.author(name="Brackify")
-    fe.published(now)
-    fe.content(out_str, type="html")
+    feed["entries"].append({
+        "url": config["url"],
+        "id": id,
+        "title": title,
+        "author": "Brackify",
+        "date": now,
+        "content": out_str
+    })
 
-    return fg
+
+    return feed

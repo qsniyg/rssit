@@ -5,7 +5,6 @@ import datetime
 import re
 import rssit.util
 import bs4
-from feedgen.feed import FeedGenerator
 
 
 def generate(config, path):
@@ -20,11 +19,10 @@ def generate(config, path):
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
-    fg = FeedGenerator()
-    fg.title("[Twitter] %s" % user)
-    fg.description("[Twitter] %s" % user)
-    fg.id(config["url"])
-    fg.link(href=config["url"], rel="alternate")
+    feed = {
+        "title": "[Twitter] %s" % user,
+        "entries": []
+    }
 
     for tweet in soup.find_all(attrs={"data-tweet-id": True}):
         timestamp = int(tweet.find_all(attrs={"data-time": True})[0]["data-time"])
@@ -75,13 +73,12 @@ def generate(config, path):
         title = title.replace("\n", " ")
         tweet_text = tweet_text.replace("\n", "<br />\n")
 
-        fe = fg.add_entry()
-        fe.id(link)
-        fe.link(href=link, rel="alternate")
-        fe.title(title)
-        fe.description(title)
-        fe.author(name=username)
-        fe.published(date)
-        fe.content(tweet_text, type="html")
+        feed["entries"].append({
+            "url": link,
+            "title": title,
+            "author": username,
+            "date": date,
+            "content": tweet_text
+        })
 
-    return fg
+    return feed
