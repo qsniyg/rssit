@@ -5,6 +5,7 @@ import http.server
 import socketserver
 import re
 import rssit.generate
+import rssit.update
 import importlib
 
 
@@ -33,8 +34,8 @@ class handler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path == "update":
-            importlib.reload(rssit.generate)
-            rssit.generate.update()
+            importlib.reload(rssit.update)
+            rssit.update.update()
 
             self.send_response(200, "OK")
             self.end_headers()

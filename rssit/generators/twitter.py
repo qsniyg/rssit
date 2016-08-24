@@ -9,6 +9,8 @@ from feedgen.feed import FeedGenerator
 
 
 def generate(config, path):
+    print("hi")
+
     match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", config["url"])
 
     if match == None:
