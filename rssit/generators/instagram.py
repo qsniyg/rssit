@@ -12,7 +12,9 @@ from dateutil.tz import *
 info = {
     "name": "Instagram",
     "codename": "instagram",
-    "config": {}
+    "config": {
+        "author_username": False
+    }
 }
 
 
@@ -28,11 +30,6 @@ def generate(config, webpath):
 
     user = match.group("user")
 
-    feed = {
-        "title": user,
-        "entries": []
-    }
-
     url = config["url"]
 
     data = rssit.util.download(url)
@@ -44,7 +41,21 @@ def generate(config, webpath):
     #decoded = json.loads(jsondata)
     decoded = demjson.decode(jsondata)
 
-    nodes = decoded["entry_data"]["ProfilePage"][0]["user"]["media"]["nodes"]
+    decoded_user =  decoded["entry_data"]["ProfilePage"][0]["user"]
+
+    author = "@" + user
+
+    if not config["author_username"]:
+        if len(decoded_user["full_name"]) > 0:
+            author = decoded_user["full_name"]
+
+    feed = {
+        "title": author,
+        "description": "%s's instagram" % user,
+        "entries": []
+    }
+
+    nodes = decoded_user["media"]["nodes"]
     for node in reversed(nodes):
         if "caption" in node:
             captionjs = node["caption"].encode('utf-8').decode('unicode-escape')

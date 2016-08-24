@@ -12,7 +12,7 @@ info = {
     "name": "Twitter",
     "codename": "twitter",
     "config": {
-        "author_username": True
+        "author_username": False
     }
 }
 
