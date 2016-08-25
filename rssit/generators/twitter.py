@@ -88,8 +88,8 @@ def generate(config, path):
         tweet_text += "</p>"
 
         image_holder = tweet.find_all(attrs={"data-image-url": True})
-        if len(image_holder) > 0:
-            image_url = image_holder[0]["data-image-url"]
+        for image in image_holder:
+            image_url = image["data-image-url"]
             tweet_text += "<p><img src='%s' /></p>" % image_url
 
         is_video_el = tweet.select(".AdaptiveMedia-video")
