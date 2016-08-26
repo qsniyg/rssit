@@ -47,7 +47,7 @@ def generate(config, webpath):
 
     if not config["author_username"]:
         if len(decoded_user["full_name"]) > 0:
-            author = decoded_user["full_name"]
+            author = decoded_user["full_name"].encode('utf-8').decode('unicode-escape')
 
     feed = {
         "title": author,
