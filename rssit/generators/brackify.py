@@ -112,10 +112,16 @@ def generate(config, webpath):
 
     now = rssit.util.localize_datetime(datetime.datetime.now())
 
-    endtimere = re.search(r'data-end-time="(?P<endtime>.*?)">', str(data))
-    endtime = endtimere.group("endtime")
-    endtimedatetime = dateutil.parser.parse(endtime)
-    seconds = (endtimedatetime - now).total_seconds()
+    has_champion = "A1" in decoded["bracket"]["initialItems"]
+
+    if has_champion:
+        seconds = 0
+    else:
+        endtimere = re.search(r'data-end-time="(?P<endtime>.*?)">', str(data))
+        endtime = endtimere.group("endtime")
+        endtimedatetime = dateutil.parser.parse(endtime)
+        seconds = (endtimedatetime - now).total_seconds()
+
     countdownstr = "%i days, %i hours, %i minutes, %i seconds" % ((seconds / 86400),
                                                                   ((seconds / 3600) % 24),
                                                                   ((seconds / 60) % 60),
@@ -125,8 +131,6 @@ def generate(config, webpath):
     out_str += "<table>"
     out_str += "<tr><td><h1 style='text-align:center'>Countdown: %s</h1></td></tr>" % countdownstr
     out_str += "<tr><td><h1 style='text-align:center'>Rankings:</h1></td></tr>"
-
-    has_champion = "A1" in decoded["bracket"]["initialItems"]
 
     items = decoded["items"]
     votes = {}
