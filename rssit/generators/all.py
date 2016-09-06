@@ -5,12 +5,14 @@ import importlib
 
 import rssit.generators.instagram
 import rssit.generators.twitter
+import rssit.generators.vine
 import rssit.generators.brackify
 
 
 all_generators = [
     rssit.generators.instagram,
     rssit.generators.twitter,
+    rssit.generators.vine,
     rssit.generators.brackify
 ]
 
