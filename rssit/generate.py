@@ -3,6 +3,9 @@
 
 import rssit.generators.all
 import importlib
+import copy
+import json
+import subprocess
 
 from feedgen.feed import FeedGenerator
 
@@ -58,6 +61,22 @@ def social_to_regular(result, config):
     return entries
 
 
+def social_download(result, config):
+    newresult = copy.deepcopy(result)
+    newresult["config"] = copy.copy(config)
+    newresult["config"]["generator"] = None
+
+    for entry in newresult["entries"]:
+        entry["date"] = int(entry["date"].timestamp())
+
+    myjson = json.dumps(newresult)
+
+    if "download" in config:
+        p = subprocess.Popen(config["download"], stdin=subprocess.PIPE,
+                             shell=True)
+        p.communicate(input=bytes(myjson, "utf-8"))
+
+
 def process_feed(result, config):
     fg = FeedGenerator()
 
@@ -83,6 +102,7 @@ def process_feed(result, config):
 
     if "social" in result and result["social"]:
         entries = social_to_regular(result, config)
+        social_download(result, config)
 
 
     for entry in entries:
