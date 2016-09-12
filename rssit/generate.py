@@ -45,7 +45,7 @@ def social_to_regular(result, config):
 
         if entry["images"]:
             for image in entry["images"]:
-                content += "<img src='%s'/>" % image
+                content += "<p><img src='%s'/></p>" % image
 
         entries.append({
             "url": entry["url"],

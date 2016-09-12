@@ -54,6 +54,7 @@ def generate(config, path):
     feed = {
         "title": author,
         "description": description,
+        "social": True,
         "entries": []
     }
 
@@ -65,32 +66,32 @@ def generate(config, path):
 
         link = tweet["data-permalink-path"]
 
-        title = "@%s: " % username
-        tweet_text = "<p><em>@%s</em></p><p>" % username
+        caption = ""
 
         for text in tweet.select("p.tweet-text"):
             for i in text.children:
                 if type(i) is bs4.element.NavigableString:
-                    tweet_text += str(i.string)
-                    title += str(i.string)
+                    caption += str(i.string)
                 else:
                     if i.name == "img":
-                        tweet_text += i["alt"]
-                        title += i["alt"]
+                        caption += i["alt"]
                     elif i.name == "a":
                         if "data-expanded-url" in i.attrs:
                             a_url = i["data-expanded-url"]
-                            tweet_text += "<a href='%s'>%s</a>" % (a_url, a_url)
+                            caption += a_url
                         elif "twitter-hashtag" in i["class"]:
-                            tweet_text += "#" + i.b.string
-                            title += "#" + i.b.string
-
-        tweet_text += "</p>"
+                            caption += "#" + i.b.string
 
         image_holder = tweet.find_all(attrs={"data-image-url": True})
-        for image in image_holder:
-            image_url = image["data-image-url"]
-            tweet_text += "<p><img src='%s' /></p>" % image_url
+
+        if len(image_holder) > 0:
+            images = []
+
+            for image in image_holder:
+                image_url = image["data-image-url"]
+                images.append(image_url)
+        else:
+            images = None
 
         is_video_el = tweet.select(".AdaptiveMedia-video")
         if len(is_video_el) > 0:
@@ -100,18 +101,20 @@ def generate(config, path):
             preview_url = re.search(r"background-image: *url.'(?P<url>.*?)'",
                                    pmp["style"]).group("url")
 
-            tweet_text += "<p><em>Click to watch video</em></p>"
-            tweet_text += "<a href='%s'><img src='%s'/></a>" % (video_url, preview_url)
-
-        title = title.replace("\n", " ")
-        tweet_text = tweet_text.replace("\n", "<br />\n")
+            videos = [{
+                "image": preview_url,
+                "video": video_url
+            }]
+        else:
+            videos = None
 
         feed["entries"].append({
             "url": link,
-            "title": title,
+            "caption": caption,
             "author": username,
             "date": date,
-            "content": tweet_text
+            "images": images,
+            "videos": videos
         })
 
     return feed
