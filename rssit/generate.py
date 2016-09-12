@@ -15,6 +15,49 @@ def find_generator(url):
             return generator
 
 
+def social_to_regular(result, config):
+    entries = []
+
+    for entry in result["entries"]:
+        caption = entry["caption"]
+
+        if not caption:
+            caption = "(n/a)"
+
+        content = "<p><em>%s</em></p><p>%s</p>" % (
+            entry["author"],
+            caption.replace("\n", "<br />\n")
+        )
+
+        title = "%s: %s" % (
+            entry["author"],
+            caption.replace("\n", " ")
+        )
+
+        if entry["videos"]:
+            for video in entry["videos"]:
+                content += "<p><em>Click to watch video</em></p>"
+
+                content += "<a href='%s'><img src='%s'/></a>" % (
+                    video["video"],
+                    video["image"]
+                )
+
+        if entry["images"]:
+            for image in entry["images"]:
+                content += "<img src='%s'/>" % image
+
+        entries.append({
+            "url": entry["url"],
+            "title": title,
+            "author": entry["author"],
+            "date": entry["date"],
+            "content": content
+        })
+
+    return entries
+
+
 def process_feed(result, config):
     fg = FeedGenerator()
 
@@ -36,7 +79,13 @@ def process_feed(result, config):
         fg.link(href=config["url"], rel="alternate")
 
 
-    for entry in result["entries"]:
+    entries = result["entries"]
+
+    if "social" in result and result["social"]:
+        entries = social_to_regular(result, config)
+
+
+    for entry in entries:
         fe = fg.add_entry()
 
         fe.link(href=entry["url"], rel="alternate")
@@ -55,6 +104,7 @@ def process_feed(result, config):
 
         fe.author(name=entry["author"])
         fe.published(entry["date"])
+        #fe.updated(entry["date"])
         fe.content(entry["content"], type="html")
 
 

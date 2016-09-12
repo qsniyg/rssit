@@ -53,6 +53,7 @@ def generate(config, webpath):
     feed = {
         "title": author,
         "description": "%s's instagram" % user,
+        "social": True,
         "entries": []
     }
 
@@ -62,29 +63,28 @@ def generate(config, webpath):
             captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
             caption = rssit.util.fix_surrogates(captionjs)
         else:
-            caption = "(n/a)"
-
-        title = caption.replace("\n", " ")
+            caption = None
 
         date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
 
-        content = "<p>%s</p>" % (caption.replace("\n", "<br />\n"))
+        images = None
+        videos = None
 
         if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
-            content += "<p><em>Click to watch video</em></p>"
-            content += "<a href='%s/%s'><img src='%s'/></a>" % (
-                webpath, node["code"],
-                node["display_src"]
-            )
+            videos = [{
+                "image": node["display_src"],
+                "video": "%s/%s" % (webpath, node["code"])
+            }]
         else:
-            content += "<img src='%s'/>" % node["display_src"]
+            images = [node["display_src"]]
 
         feed["entries"].append({
             "url": "https://www.instagram.com/p/%s/" % node["code"],
-            "title": title,
+            "caption": caption,
             "author": user,
             "date": date,
-            "content": content
+            "images": images,
+            "videos": videos
         })
 
     return feed
