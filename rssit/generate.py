@@ -6,6 +6,7 @@ import importlib
 import copy
 import json
 import subprocess
+import threading
 
 from feedgen.feed import FeedGenerator
 
@@ -61,20 +62,33 @@ def social_to_regular(result, config):
     return entries
 
 
+class waitthread(threading.Thread):
+    def __init__(self, p, data):
+        threading.Thread.__init__(self)
+        self.p = p
+        self.data = data
+
+    def run(self):
+        self.p.communicate(input=self.data)
+        self.p.wait()
+
+
 def social_download(result, config):
     newresult = copy.deepcopy(result)
     newresult["config"] = copy.copy(config)
-    newresult["config"]["generator"] = None
+    newresult["config"]["generator"] = config["generator"].info["codename"]
 
     for entry in newresult["entries"]:
         entry["date"] = int(entry["date"].timestamp())
 
     myjson = json.dumps(newresult)
 
-    if "download" in config:
+    if "download" in config and len(config["download"]) > 0:
         p = subprocess.Popen(config["download"], stdin=subprocess.PIPE,
+                             stdout=None, stderr=None, close_fds=True,
                              shell=True)
-        p.communicate(input=bytes(myjson, "utf-8"))
+        wt = waitthread(p, bytes(myjson, "utf-8"))
+        wt.start()
 
 
 def process_feed(result, config):
@@ -157,6 +171,9 @@ def process(config, path):
 
 def http(config, path, get):
     for generator in rssit.generators.all.all_generators:
+        if not "http" in dir(generator):
+            continue
+
         result = generator.http(config, path, get)
 
         if result == None:
