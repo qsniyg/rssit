@@ -53,6 +53,7 @@ def generate(config, webpath):
     feed = {
         "title": author,
         "description": "%s's instagram" % user,
+        "author": user,
         "social": True,
         "entries": []
     }

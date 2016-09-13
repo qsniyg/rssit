@@ -54,6 +54,7 @@ def generate(config, path):
     feed = {
         "title": author,
         "description": description,
+        "author": user,
         "social": True,
         "entries": []
     }
