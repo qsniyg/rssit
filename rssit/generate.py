@@ -28,24 +28,34 @@ def social_to_regular(result, config):
         if not caption:
             caption = "(n/a)"
 
-        content = "<p><em>%s</em></p><p>%s</p>" % (
-            entry["author"],
-            caption.replace("\n", "<br />\n")
-        )
+        basecontent = caption.replace("\n", "<br />\n")
+        basetitle = caption.replace("\n", " ")
 
-        title = "%s: %s" % (
-            entry["author"],
-            caption.replace("\n", " ")
-        )
+        if entry["author"] != result["author"]:
+            content = "<p><em>%s</em></p><p>%s</p>" % (
+                entry["author"],
+                basecontent
+            )
+
+            title = "%s: %s" % (
+                entry["author"],
+                basetitle
+            )
+        else:
+            content = "<p>%s</p>" % basecontent
+            title = basetitle
 
         if entry["videos"]:
             for video in entry["videos"]:
-                content += "<p><em>Click to watch video</em></p>"
+                if "image" in video and video["image"]:
+                    content += "<p><em>Click to watch video</em></p>"
 
-                content += "<a href='%s'><img src='%s'/></a>" % (
-                    video["video"],
-                    video["image"]
-                )
+                    content += "<a href='%s'><img src='%s'/></a>" % (
+                        video["video"],
+                        video["image"]
+                    )
+                else:
+                    content += "<p><em><a href='%s'>Video</a></em></p>" % video["video"]
 
         if entry["images"]:
             for image in entry["images"]:

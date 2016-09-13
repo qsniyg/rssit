@@ -46,7 +46,9 @@ def generate(config, path):
 
     feed = {
         "title": author,
+        "author": user,
         "description": description,
+        "social": True,
         "entries": []
     }
 
@@ -66,10 +68,14 @@ def generate(config, path):
 
         feed["entries"].append({
             "url": link,
-            "title": text,
+            "caption": text,
             "author": username,
             "date": date,
-            "content": content
+            "images": None,
+            "videos": [{
+                "image": None,
+                "video": video
+            }]
         })
 
     return feed
