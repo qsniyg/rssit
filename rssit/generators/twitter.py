@@ -12,9 +12,22 @@ info = {
     "name": "Twitter",
     "codename": "twitter",
     "config": {
-        "author_username": False
+        "author_username": False,
+        "with_replies": True
     }
 }
+
+
+def get_string(element):
+    if type(element) is bs4.element.NavigableString:
+        return str(element.string)
+    else:
+        string = ""
+
+        for i in element.children:
+            string += get_string(i)
+
+        return string
 
 
 def check(url):
@@ -29,7 +42,8 @@ def generate(config, path):
 
     user = match.group("user")
 
-    data = rssit.util.download(config["url"])
+    if config["with_replies"] and not config["url"].endswith("/with_replies"):
+        data = rssit.util.download(config["url"] + "/with_replies")
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
@@ -82,8 +96,8 @@ def generate(config, path):
                             a_url = i["data-expanded-url"]
                             caption += a_url
                             urls.append(a_url)
-                        elif "twitter-hashtag" in i["class"]:
-                            caption += "#" + i.b.string
+                        elif not "u-hidden" in i["class"]:
+                            caption += get_string(i)
 
         image_holder = tweet.find_all(attrs={"data-image-url": True})
 
