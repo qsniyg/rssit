@@ -2,6 +2,7 @@
 
 
 import rssit.generators.all
+import rssit.util
 import importlib
 import copy
 import json
@@ -28,7 +29,7 @@ def social_to_regular(result, config):
         if not caption:
             caption = "(n/a)"
 
-        basecontent = caption.replace("\n", "<br />\n")
+        basecontent = rssit.util.link_urls(caption.replace("\n", "<br />\n"))
         basetitle = caption.replace("\n", " ")
 
         if entry["author"] != result["author"]:

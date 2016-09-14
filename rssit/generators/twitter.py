@@ -68,6 +68,7 @@ def generate(config, path):
         link = tweet["data-permalink-path"]
 
         caption = ""
+        urls = []
 
         for text in tweet.select("p.tweet-text"):
             for i in text.children:
@@ -80,6 +81,7 @@ def generate(config, path):
                         if "data-expanded-url" in i.attrs:
                             a_url = i["data-expanded-url"]
                             caption += a_url
+                            urls.append(a_url)
                         elif "twitter-hashtag" in i["class"]:
                             caption += "#" + i.b.string
 
@@ -93,6 +95,9 @@ def generate(config, path):
                 images.append(image_url)
         else:
             images = None
+
+        #for url in urls:
+        #    headers = rssit.util.download(url, head=True)
 
         is_video_el = tweet.select(".AdaptiveMedia-video")
         if len(is_video_el) > 0:

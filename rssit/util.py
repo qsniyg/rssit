@@ -3,10 +3,15 @@
 
 import urllib.request
 from dateutil.tz import *
+import re
 
 
-def download(url):
-    request = urllib.request.Request(url)
+def download(url, *args, **kwargs):
+    if "head" in kwargs and kwargs["head"]:
+        request = urllib.request.Request(url, method="HEAD")
+    else:
+        request = urllib.request.Request(url)
+
     request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
     request.add_header('Pragma', 'no-cache')
     request.add_header('Cache-Control', 'max-age=0')
@@ -46,3 +51,13 @@ def fix_surrogates(string):
 
 def localize_datetime(dt):
     return dt.replace(tzinfo=tzlocal())
+
+
+# http://stackoverflow.com/a/6883094
+url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+
+def get_urls(caption):
+    return re.findall(url_regex, caption)
+
+def link_urls(caption):
+    return re.sub("(" + url_regex + ")", r'<a href="\1">\1</a>', caption)
