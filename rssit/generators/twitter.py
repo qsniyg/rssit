@@ -65,6 +65,9 @@ def generate(config, path):
             if len(init_json["profile_user"]["description"]) > 0:
                 description = init_json["profile_user"]["description"]
 
+            if len(init_json["profile_user"]["screen_name"]) > 0:
+                user = init_json["profile_user"]["screen_name"]
+
     feed = {
         "title": author,
         "description": description,
