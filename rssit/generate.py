@@ -84,7 +84,7 @@ class waitthread(threading.Thread):
         self.p.wait()
 
 
-def social_download(result, config):
+def get_json(result, config):
     newresult = copy.deepcopy(result)
     newresult["config"] = copy.copy(config)
     newresult["config"]["generator"] = config["generator"].info["codename"]
@@ -92,7 +92,10 @@ def social_download(result, config):
     for entry in newresult["entries"]:
         entry["date"] = int(entry["date"].timestamp())
 
-    myjson = json.dumps(newresult)
+    return json.dumps(newresult)
+
+def social_download(result, config):
+    myjson = get_json(result, config)
 
     if "download" in config and len(config["download"]) > 0:
         p = subprocess.Popen(config["download"], stdin=subprocess.PIPE,
@@ -189,6 +192,14 @@ def http(config, path, get):
 
         if result == None:
             continue
+
+
+def direct(config, generator_name):
+    for generator in rssit.generators.all.all_generators:
+        if generator.info["codename"] != generator_name:
+            continue
+
+        return generator.generate(config, None)
 
 
 def update():

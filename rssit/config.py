@@ -21,52 +21,40 @@ default_config = {
 }
 
 
+def is_builtin_copy(key):
+    return key == "core"
+
+def is_builtin_skip(key):
+    return key == "default" or key.startswith("default/")
+
 def is_builtin(key):
-    if key == "core" or key == "default" or key.startswith("default/"):
-        return True
-    else:
-        return False
+    return is_builtin_copy(key) or is_builtin_skip(key)
+
+def is_url(section_key, section):
+    return (not is_builtin(section_key)) and "url" in section
+
+
+def read_file(path):
+    config = configparser.ConfigParser()
+    config.read(path + "/config")
+    return config
+
+
+def parse_section(section):
+    for key in section:
+        if section[key] == "true":
+            section[key] = True
+        elif section[key] == "false":
+            section[key] = False
+        elif section[key].isdigit():
+            section[key] = int(section[key])
 
 
 def parse_file(path):
-    config = configparser.ConfigParser()
-    config.read(path + "/config")
+    config = read_file(path)
 
     for section_key in config._sections:
-        section = config._sections[section_key]
-
-        for key in section:
-            if section[key] == "true":
-                section[key] = True
-            elif section[key] == "false":
-                section[key] = False
-            elif section[key].isdigit():
-                section[key] = int(section[key])
-
-    for section_key in config._sections:
-        section = config._sections[section_key]
-
-        if (not is_builtin(section_key)) and "url" in section:
-            generator = rssit.generate.find_generator(section["url"])
-
-            if generator:
-                section["generator"] = generator
-
-                gdefault_key = "default/" + generator.info["codename"]
-
-                if gdefault_key in config._sections:
-                    gdefault = config._sections[gdefault_key]
-
-                    for dkey in gdefault:
-                        if not dkey in section:
-                            section[dkey] = gdefault[dkey]
-
-                for gkey in generator.info["config"]:
-                    if not gkey in section:
-                        section[gkey] = generator.info["config"][gkey]
-
-            else:
-                section["generator"] = None
+        parse_section(config._sections[section_key])
 
     return config._sections
 
@@ -86,18 +74,42 @@ def parse_files(paths):
     return config
 
 
+def set_generator(section):
+    generator = rssit.generate.find_generator(section["url"])
+
+    if generator:
+        section["generator"] = generator
+    else:
+        section["generator"] = None
+
+
+def postprocess_section(config, section):
+    set_generator(section)
+
+    new_section = copy.deepcopy(config["default"])
+
+    new_section.update(copy.deepcopy(section["generator"].info["config"]))
+
+    codename = section["generator"].info["codename"]
+    default_section = "default/" + codename
+
+    if default_section in config:
+        new_section.update(copy.deepcopy(config[default_section]))
+
+    new_section.update(section)
+
+    return new_section
+
+
 def postprocess(config):
     new_config = {}
 
     for url in config:
-        if url == "default":
+        if is_builtin(url):
+            new_config[url] = config[url]
             continue
 
-        if url == "core":
-            new_config["core"] = config["core"]
-
-        new_config[url] = copy.deepcopy(config["default"])
-        new_config[url].update(config[url])
+        new_config[url] = postprocess_section(config, config[url])
 
     return new_config
 

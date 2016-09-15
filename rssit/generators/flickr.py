@@ -61,6 +61,9 @@ def generate(config, webpath):
 
     photopage = photostream["photoPageList"]["_data"]
     for photo in photopage:
+        if not photo:
+            continue
+
         if "title" in photo:
             caption = photo["title"]
         else:
