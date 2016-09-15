@@ -16,7 +16,8 @@ def main():
 
     if len(sys.argv) >= 3:
         config_section = {
-            "url": sys.argv[2]
+            "url": sys.argv[2],
+            "href": sys.argv[3] if len(sys.argv) >= 4 else sys.argv[2]
         }
         newconfig = rssit.config.postprocess_section(config, config_section)
 

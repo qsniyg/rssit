@@ -96,6 +96,8 @@ def postprocess_section(config, section):
     if default_section in config:
         new_section.update(copy.deepcopy(config[default_section]))
 
+    new_section["href"] = section["url"]
+
     new_section.update(section)
 
     return new_section

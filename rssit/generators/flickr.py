@@ -32,7 +32,7 @@ def generate(config, webpath):
 
     user = match.group("user")
 
-    url = config["url"]
+    url = config["href"]
 
     data = rssit.util.download(url)
 
