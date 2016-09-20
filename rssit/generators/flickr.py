@@ -36,18 +36,19 @@ def generate(config, webpath):
 
     data = rssit.util.download(url)
 
-    jsondatare = re.search(r"modelExport: *(?P<json>.*?), *\\n", str(data))
+    jsondatare = re.search(r"modelExport: *(?P<json>.*?), *\n", str(data))
     if jsondatare == None:
         return None
     jsondata = jsondatare.group("json")
-    jsondata = rssit.util.fix_surrogates(jsondata.encode('utf-8').decode('unicode-escape'))
+    jsondata = rssit.util.fix_surrogates(jsondata)
     decoded = ujson.loads(jsondata)
 
     photostream = decoded["photostream-models"][0]
 
     username = photostream["owner"]["username"]
+    author = username
 
-    if not config["author_username"]:
+    if not config["author_username"] and "realname" in photostream["owner"]:
         if len(photostream["owner"]["realname"]) > 0:
             author = photostream["owner"]["realname"]
 

@@ -84,8 +84,27 @@ class waitthread(threading.Thread):
         self.p.wait()
 
 
+def copy_result(result):
+    if type(result) == list:
+        mylist = []
+
+        for i in result:
+            mylist.append(copy_result(i))
+
+        return mylist
+    elif type(result) == dict:
+        mydict = {}
+
+        for i in result:
+            mydict[i] = copy_result(result[i])
+
+        return mydict
+    else:
+        return result
+
+
 def get_json(result, config):
-    newresult = copy.deepcopy(result)
+    newresult = copy_result(result)
     newresult["config"] = copy.copy(config)
     newresult["config"]["generator"] = config["generator"].info["codename"]
 
@@ -93,6 +112,7 @@ def get_json(result, config):
         entry["date"] = int(entry["date"].timestamp())
 
     return json.dumps(newresult)
+
 
 def social_download(result, config):
     myjson = get_json(result, config)
@@ -129,8 +149,8 @@ def process_feed(result, config):
     entries = result["entries"]
 
     if "social" in result and result["social"]:
-        entries = social_to_regular(result, config)
         social_download(result, config)
+        entries = social_to_regular(result, config)
 
 
     for entry in entries:

@@ -34,6 +34,9 @@ def generate(config, path):
     author_tag = soup.find(attrs={"property": "og:title"})
     if author_tag:
         author = re.match(r"^(?P<user>.*)'s Profile$", author_tag["content"]).group("user")
+
+        if user == 'u':
+            user = author
     else:
         author = user
 

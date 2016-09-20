@@ -18,7 +18,12 @@ def download(url, *args, **kwargs):
     request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
 
     with urllib.request.urlopen(request) as response:
-           return response.read()
+        charset = response.headers.get_content_charset()
+
+        if charset:
+            return response.read().decode(charset)
+        else:
+            return response.read()
 
 
 def convert_surrogate_pair(x, y):

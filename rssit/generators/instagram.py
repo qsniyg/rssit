@@ -37,7 +37,8 @@ def generate(config, webpath):
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare == None:
         return None
-    jsondata = jsondatare.group("json")
+    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    print(jsondata)
     #decoded = json.loads(jsondata)
     decoded = demjson.decode(jsondata)
 
@@ -47,8 +48,9 @@ def generate(config, webpath):
 
     if not config["author_username"]:
         if len(decoded_user["full_name"]) > 0:
-            author = decoded_user["full_name"].encode('utf-8').decode('unicode-escape')
-            author = rssit.util.fix_surrogates(author)
+            #author = decoded_user["full_name"].encode('utf-8').decode('unicode-escape')
+            decoded_user["full_name"]
+            #author = rssit.util.fix_surrogates(author)
 
     feed = {
         "title": author,
@@ -61,8 +63,9 @@ def generate(config, webpath):
     nodes = decoded_user["media"]["nodes"]
     for node in reversed(nodes):
         if "caption" in node:
-            captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
-            caption = rssit.util.fix_surrogates(captionjs)
+            #captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
+            #caption = rssit.util.fix_surrogates(captionjs)
+            caption = node["caption"]
         else:
             caption = None
 
