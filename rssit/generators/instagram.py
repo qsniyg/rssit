@@ -38,7 +38,7 @@ def generate(config, webpath):
     if jsondatare == None:
         return None
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
-    print(jsondata)
+    #print(jsondata)
     #decoded = json.loads(jsondata)
     decoded = demjson.decode(jsondata)
 
@@ -47,7 +47,7 @@ def generate(config, webpath):
     author = "@" + user
 
     if not config["author_username"]:
-        if len(decoded_user["full_name"]) > 0:
+        if "full_name" in decoded_user and type(decoded_user["full_name"]) == str and len(decoded_user["full_name"]) > 0:
             #author = decoded_user["full_name"].encode('utf-8').decode('unicode-escape')
             decoded_user["full_name"]
             #author = rssit.util.fix_surrogates(author)
