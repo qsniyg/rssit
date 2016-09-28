@@ -152,6 +152,7 @@ def generate_html(user, config, path):
             "caption": caption,
             "author": username,
             "date": date,
+            "updated_date": date,
             "images": images,
             "videos": videos
         })
@@ -189,7 +190,7 @@ def generate_api(user, config, path):
     if "description" in user_info.__dict__ and len(user_info.description) > 0:
         description = user_info.description
     else:
-        description = "%s's twitter" % author
+        description = "%s's twitter" % title
 
     feed = {
         "title": title,
@@ -214,6 +215,7 @@ def generate_api(user, config, path):
             "url": "https://twitter.com/statuses/" + obj.id_str,
             "caption": caption,
             "date": date,
+            "updated_date": date,
             "author": obj.author.screen_name,
             "images": [],
             "videos": []

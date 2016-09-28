@@ -111,6 +111,9 @@ def get_json(result, config):
     for entry in newresult["entries"]:
         entry["date"] = int(entry["date"].timestamp())
 
+        if "updated_date" in entry:
+            entry["updated_date"] = int(entry["updated_date"].timestamp())
+
     return json.dumps(newresult)
 
 
@@ -172,7 +175,10 @@ def process_feed(result, config):
 
         fe.author(name=entry["author"])
         fe.published(entry["date"])
-        #fe.updated(entry["date"])
+
+        if "updated_date" in entry:
+            fe.updated(entry["updated_date"])
+
         fe.content(entry["content"], type="html")
 
 
