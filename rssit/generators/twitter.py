@@ -218,7 +218,8 @@ def generate_api(user, config, path):
                 for url in obj.entities["urls"]:
                     newcaption = newcaption.replace(url["url"], url["expanded_url"])
 
-        caption = xml.sax.saxutils.unescape(newcaption)
+        caption = xml.sax.saxutils.unescape(re.sub(" *https?://t\.co/[^ ]*", "", newcaption))
+        #caption = xml.sax.saxutils.unescape(newcaption)
 
         #date = obj.created_at.timestamp()
         date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(timegm(parsedate(obj._json["created_at"])), None))

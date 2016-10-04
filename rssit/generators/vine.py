@@ -66,8 +66,11 @@ def generate(config, path):
 
         video = post.find("video")["src"]
 
-        text = post.find(class_="description").string
-        content = "<p>" + text + "</p><p><a href='%s'>Video</a></p>" % video
+        descriptiontag = post.find(class_="description")
+        if descriptiontag:
+            text = descriptiontag.string
+        else:
+            text = ""
 
         feed["entries"].append({
             "url": link,
