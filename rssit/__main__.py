@@ -51,6 +51,18 @@ config_model = {
                 "name": "Use brackets",
                 "value": False,
                 "description": "Add brackets to show generator name, e.g. '[Twitter] TwitterDev'"
+            },
+
+            "title": {
+                "name": "Title",
+                "value": "",
+                "description": "Custom title (leave blank for default)"
+            },
+
+            "description": {
+                "name": "Description",
+                "value": "",
+                "description": "Custom description (leave blank for default)"
             }
         }
     }

@@ -70,6 +70,12 @@ def process(server, config, path):
         return True
 
 
+    if len(config["title"]) > 0:
+        result["title"] = config["title"]
+
+    if len(config["description"]) > 0:
+        result["description"] = config["description"]
+
     if config["brackets"] and type(result) == dict and "title" in result:
         result["title"] = "[%s] %s" % (generator["display_name"],
                                        result["title"])
