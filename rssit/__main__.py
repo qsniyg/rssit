@@ -10,8 +10,6 @@ import rssit.globals
 import rssit.update
 
 
-appname = "rssit2"
-
 config_model = {
     "core": {
         "name": "Core",

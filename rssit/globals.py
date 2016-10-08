@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 
-appname = "rssit2"
+appname = "rssit"
+
 config = {
     "model": {},
     "config": {}
