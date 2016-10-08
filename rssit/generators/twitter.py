@@ -5,7 +5,7 @@ import datetime
 import re
 import rssit.util
 import bs4
-import demjson
+import ujson
 import tweepy
 import pprint
 from calendar import timegm
@@ -61,7 +61,7 @@ def generate_html(user, config, path):
         init_data = init_data[0]
 
         if "value" in init_data.attrs:
-            init_json = demjson.decode(init_data.attrs["value"])
+            init_json = ujson.loads(init_data.attrs["value"])
 
             if not config["author_username"]:
                 if len(init_json["profile_user"]["name"]) > 0:
