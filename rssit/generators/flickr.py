@@ -21,7 +21,7 @@ def get_modelExport(data):
 
 
 def get_url(url):
-    match = re.match(r"^https?://(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)/*", url)
+    match = re.match(r"^(https?://)?(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)/*", url)
 
     if match == None:
         return None

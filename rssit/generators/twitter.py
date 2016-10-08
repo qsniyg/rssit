@@ -34,7 +34,7 @@ def get_string(element):
 
 
 def get_url(url):
-    match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", url)
+    match = re.match(r"^(https?://)?(?:\w+\.)?twitter.com/(?P<user>[^/]*)", url)
 
     if match == None:
         return

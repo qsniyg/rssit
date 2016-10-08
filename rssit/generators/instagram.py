@@ -9,7 +9,7 @@ from dateutil.tz import *
 
 
 def get_url(url):
-    match = re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
+    match = re.match(r"^(https?://)?(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
 
     if match == None:
         return

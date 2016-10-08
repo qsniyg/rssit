@@ -8,7 +8,7 @@ import bs4
 
 
 def get_url(url):
-    match = re.match(r"^https?://(?:\w+\.)?vine.co/.*", url)
+    match = re.match(r"^(https?://)?(?:\w+\.)?vine.co/.*", url)
 
     if match == None:
         return
