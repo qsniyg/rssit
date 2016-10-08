@@ -27,20 +27,20 @@ def get_url(url):
         return None
 
     data = rssit.util.download(url)
-    decoded = get_modelExport(data)
 
-    return "/p/" + decoded["photostream-models"][0]["owner"]["id"]
-
-
-def generate(config, webpath):
-    match = re.match(r"^https?://(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)", config["url"])
-
-    if match == None:
+    if not data:
         return None
 
-    user = match.group("user")
+    decoded = get_modelExport(data)
 
-    url = config["href"]
+    if not decoded:
+        return None
+
+    return "/photos/" + decoded["photostream-models"][0]["owner"]["id"]
+
+
+def generate_photos(config, user):
+    url = "https://www.flickr.com/photos/" + user
 
     data = rssit.util.download(url)
     decoded = get_modelExport(data)
@@ -57,6 +57,7 @@ def generate(config, webpath):
     feed = {
         "title": author,
         "description": "%s's flickr" % username,
+        "url": url,
         "author": username,
         "social": True,
         "entries": []
@@ -74,7 +75,7 @@ def generate(config, webpath):
 
         date = datetime.datetime.fromtimestamp(int(photo["stats"]["datePosted"]), None).replace(tzinfo=tzlocal())
 
-        images = [urllib.parse.urljoin(config["url"], photo["sizes"]["o"]["url"])]
+        images = [urllib.parse.urljoin(url, photo["sizes"]["o"]["url"])]
 
         feed["entries"].append({
             "url": "https://www.flickr.com/photos/%s/%s" % (
@@ -90,6 +91,10 @@ def generate(config, webpath):
     return feed
 
 
+def process(server, config, path):
+    if path.startswith("/photos/"):
+        return ("social", generate_photos(config, path[len("/photos/"):]))
+
 infos = [{
     "name": "flickr",
     "display_name": "Flickr",
@@ -102,5 +107,6 @@ infos = [{
         }
     },
 
-    "get_url": get_url
+    "get_url": get_url,
+    "process": process
 }]
