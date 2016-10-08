@@ -7,6 +7,7 @@ import re
 import rssit.paths.all
 import rssit.config
 import traceback
+import urllib.parse
 
 
 def questionmark(path):
@@ -35,7 +36,7 @@ def questionmark(path):
         eq = kv.index("=")
 
         key = kv[:eq]
-        value = rssit.config.parse_value_simple(kv[eq + 1:])
+        value = rssit.config.parse_value_simple(urllib.parse.unquote(kv[eq + 1:]))
 
         options[key] = value
 
@@ -45,7 +46,7 @@ def questionmark(path):
 def process(server, path):
     normpath = re.sub("^/*", "", os.path.normpath(path))
     newpath, options = questionmark(normpath)
-    path_name = normpath.split("/")[0].lower()
+    path_name = newpath.split("/")[0].lower()
 
     path_list = rssit.paths.all.paths_dict
 
@@ -54,10 +55,9 @@ def process(server, path):
 
     try:
         output = path_list[path_name]["process"](server, path, newpath, options)
+        return output
     except Exception as err:
         server.send_response(500, "Internal Server Error")
         server.end_headers()
 
         server.wfile.write(bytes(traceback.format_exc(), "UTF-8"))
-
-    return output

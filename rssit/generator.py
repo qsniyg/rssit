@@ -4,6 +4,7 @@
 import rssit.generators.all
 import rssit.converter
 import rssit.config
+import rssit.util
 
 
 def get_model():
@@ -27,12 +28,18 @@ def get_config(path):
     return rssit.config.get_section(path)
 
 
-def get_url(url):
-    for i in rssit.generators.all.generator_dict:
-        newurl = i["get_url"](url)
+def get_urls(url):
+    urls = []
+    gd = rssit.generators.all.generator_dict
+
+    for i in gd:
+        newurl = gd[i]["get_url"](url)
 
         if newurl:
-            return newurl
+            fullpath = "/f/" + gd[i]["name"] + "/" + newurl
+            urls.append(rssit.util.get_local_url(fullpath))
+
+    return urls
 
 
 def process(server, config, path):

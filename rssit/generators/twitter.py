@@ -39,7 +39,7 @@ def get_url(url):
     if match == None:
         return
 
-    return "/u/" + match.group(user)
+    return "/u/" + match.group("user")
 
 
 def generate_html(user, config, path):
@@ -249,7 +249,7 @@ def generate_api(user, config, path):
     return feed
 
 
-def generate(config, path):
+def generate(server, config, path):
     if path.startswith("/u/"):
         user = path[len("/u/"):]
 

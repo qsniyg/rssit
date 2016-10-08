@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
 
-import rssit.globals
 import rssit.config
 
 
 def process(server, path, normpath, options):
-    rssit.globals.config = rssit.config.load()
+    rssit.config.load()
 
     server.send_response(200, "OK")
     server.end_headers()

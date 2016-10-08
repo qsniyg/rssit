@@ -5,14 +5,14 @@ import importlib
 import rssit.util
 import rssit.generators.instagram
 import rssit.generators.twitter
-#import rssit.generators.vine
+import rssit.generators.vine
 #import rssit.generators.flickr
 
 
 generator_list = [
     rssit.generators.instagram,
     rssit.generators.twitter,
-    #rssit.generators.vine,
+    rssit.generators.vine
     #rssit.generators.flickr
 ]
 

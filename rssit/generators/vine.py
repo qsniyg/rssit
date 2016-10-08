@@ -8,26 +8,27 @@ import bs4
 import demjson
 
 
-info = {
-    "name": "Vine",
-    "codename": "vine",
-    "config": {}
-}
-
-
-def check(url):
-    return re.match(r"^https?://(?:\w+\.)?vine.co/(?P<user>[^/]*)", url) != None
-
-
-def generate(config, path):
-    match = re.match(r"^https?://(?:\w+\.)?vine.co/(?P<user>[^/]*)", config["url"])
+def get_url(url):
+    match = re.match(r"^https?://(?:\w+\.)?vine.co/.*", url)
 
     if match == None:
-        return None
+        return
 
-    user = match.group("user")
+    data = str(rssit.util.download(url))
 
-    data = rssit.util.download(config["url"])
+    match = re.search("android-app:[^\"]*\/(?P<userid>[0-9]*)", data)
+    if match == None:
+        return
+
+    userid = match.group("userid")
+
+    return "/u/" + userid
+
+
+def generate_user(config, user):
+    url = "https://vine.co/u/" + user
+
+    data = rssit.util.download(url)
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
@@ -50,6 +51,7 @@ def generate(config, path):
     feed = {
         "title": author,
         "author": user,
+        "url": url,
         "description": description,
         "social": True,
         "entries": []
@@ -85,3 +87,21 @@ def generate(config, path):
         })
 
     return feed
+
+
+def process(server, config, path):
+    if path.startswith("/u/"):
+        return ("social", generate_user(config, path[len("/u/"):]))
+
+    return None
+
+
+infos = [{
+    "name": "vine",
+    "display_name": "Vine",
+
+    "config": {},
+
+    "get_url": get_url,
+    "process": process
+}]

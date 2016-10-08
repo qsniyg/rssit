@@ -6,6 +6,8 @@ from dateutil.tz import *
 import re
 import os
 import rssit.config
+import rssit.http
+import urllib.parse
 
 
 def download(url, *args, **kwargs):
@@ -95,16 +97,16 @@ def simple_copy(data):
         return data
 
 
+def get_host():
+    core_config = rssit.config.get_section("core")
+
+    return "http://%s:%i/" % (
+        core_config["hostname"],
+        rssit.http.port
+    )
+
+
 def get_local_url(path):
     path = os.path.normpath(path)
 
-    if len(path) > 0 and path[0] != "/":
-        path = "/" + path
-
-    core_config = rssit.config.get_section("core")
-
-    return "http://%s:%i/%s" % (
-        core_config["hostname"],
-        core_config["port"],
-        path
-    )
+    return urllib.parse.urljoin(get_host(), path)
