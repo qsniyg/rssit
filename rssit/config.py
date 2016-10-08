@@ -151,7 +151,10 @@ def get_section(section):
         return options
 
     get_config_model(options, "default")
-    get_config_model(options, section.split("/")[0])
+
+    splitted = section.split("/")[:-1]
+    for split in splitted:
+        get_config_model(options, path)
 
     options.update(copy.deepcopy(rssit.globals.config["config"].get(section, {})))
 
