@@ -3,44 +3,31 @@
 
 import re
 import rssit.util
-import json
-import demjson
+import ujson
 import datetime
 from dateutil.tz import *
 
 
-info = {
-    "name": "Instagram",
-    "codename": "instagram",
-    "config": {
-        "author_username": False
-    }
-}
-
-
-def check(url):
-    return re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url) != None
-
-
-def generate(config, webpath):
-    match = re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", config["url"])
+def get_url(url):
+    match = re.match(r"^https?://(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
 
     if match == None:
-        return None
+        return
 
-    user = match.group("user")
+    return "/u/" + match.group("user")
 
-    url = config["url"]
+
+def generate_user(config, user):
+    url = "https://www.instagram.com/" + user
 
     data = rssit.util.download(url)
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare == None:
         return None
+
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
-    #print(jsondata)
-    #decoded = json.loads(jsondata)
-    decoded = demjson.decode(jsondata)
+    decoded = ujson.decode(jsondata)
 
     decoded_user =  decoded["entry_data"]["ProfilePage"][0]["user"]
 
@@ -48,23 +35,19 @@ def generate(config, webpath):
 
     if not config["author_username"]:
         if "full_name" in decoded_user and type(decoded_user["full_name"]) == str and len(decoded_user["full_name"]) > 0:
-            #author = decoded_user["full_name"].encode('utf-8').decode('unicode-escape')
             decoded_user["full_name"]
-            #author = rssit.util.fix_surrogates(author)
 
     feed = {
         "title": author,
         "description": "%s's instagram" % user,
+        "url": url,
         "author": user,
-        "social": True,
         "entries": []
     }
 
     nodes = decoded_user["media"]["nodes"]
     for node in reversed(nodes):
         if "caption" in node:
-            #captionjs = node["caption"].encode('utf-8').decode('unicode-escape')
-            #caption = rssit.util.fix_surrogates(captionjs)
             caption = node["caption"]
         else:
             caption = None
@@ -77,7 +60,7 @@ def generate(config, webpath):
         if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
             videos = [{
                 "image": node["display_src"],
-                "video": "%s/%s" % (webpath, node["code"])
+                "video": rssit.util.get_local_url("/f/instagram/v/" + node["code"])
             }]
         else:
             images = [node["display_src"]]
@@ -91,18 +74,45 @@ def generate(config, webpath):
             "videos": videos
         })
 
-    return feed
+    return ("social", feed)
 
 
-def http(config, path, get):
-    id = re.sub(r'^.*/', '', path)
-
+def generate_video(server, id):
     url = "https://www.instagram.com/p/%s/" % id
 
     data = rssit.util.download(url)
 
     match = re.search(r"\"og:video\".*?content=\"(?P<video>.*?)\"", str(data))
 
-    get.send_response(301, "Moved")
-    get.send_header("Location", match.group("video"))
-    get.end_headers()
+    server.send_response(301, "Moved")
+    server.send_header("Location", match.group("video"))
+    server.end_headers()
+
+    return True
+
+
+def process(server, config, path):
+    if path.startswith("/u/"):
+        return generate_user(config, path[len("/u/"):])
+
+    if path.startswith("/v/"):
+        return generate_video(server, path[len("/v/"):])
+
+    return None
+
+
+infos = [{
+    "name": "instagram",
+    "display_name": "Instagram",
+
+    "config": {
+        "author_username": {
+            "name": "Author = Username",
+            "description": "Set the author's name to be their username",
+            "value": False
+        }
+    },
+
+    "get_url": get_url,
+    "process": process
+}]

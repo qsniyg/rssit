@@ -3,27 +3,70 @@
 
 import rssit.config
 import rssit.http
-import rssit.generate
 import ujson
 import sys
+import rssit.generator
+import rssit.globals
 
 
-appname = "rssit"
+appname = "rssit2"
+
+config_model = {
+    "core": {
+        "name": "Core",
+        "description": "Options affecting the core application",
+
+        "options": {
+            "hostname": {
+                "name": "Hostname",
+                "value": "localhost",
+                "description": "Network hostname"
+            },
+
+            "port": {
+                "name": "Port",
+                "value": 8123,
+                "description": "Port number"
+            }
+        }
+    },
+
+    "default": {
+        "name": "Default",
+        "description": "Default options",
+
+        "options": {
+            "output": {
+                "name": "Output format",
+                "value": "rss",
+                "description": "Output format for feeds"
+            },
+
+            "count": {
+                "name": "Count",
+                "value": 20,
+                "description": "Minimum amount of items to return"
+            },
+
+            "brackets": {
+                "name": "Use brackets",
+                "value": False,
+                "description": "Add brackets to show generator name, e.g. '[Twitter] TwitterDev'"
+            }
+        }
+    }
+}
+
+
+def update():
+    rssit.globals.config["model"] = config_model
+    rssit.globals.config["model"].update(rssit.generator.get_model())
 
 
 def main():
-    config = rssit.config.get(appname)
+    update()
 
-    if len(sys.argv) >= 3:
-        config_section = {
-            "url": sys.argv[2],
-            "href": sys.argv[3] if len(sys.argv) >= 4 else sys.argv[2]
-        }
-        newconfig = rssit.config.postprocess_section(config, config_section)
+    rssit.config.load()
 
-        result = rssit.generate.direct(newconfig, sys.argv[1])
-
-        print(rssit.generate.get_json(result, newconfig))
-        return
-
-    rssit.http.serve(int(config["core"]["port"]), config)
+    core = rssit.config.get_section("core")
+    rssit.http.serve(core["port"])

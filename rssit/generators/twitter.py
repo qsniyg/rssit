@@ -16,20 +16,6 @@ except ImportError:
     from email.utils import parsedate
 
 
-info = {
-    "name": "Twitter",
-    "codename": "twitter",
-    "config": {
-        "author_username": False,
-        "with_replies": True,
-        "consumer_key": "",
-        "consumer_secret": "",
-        "access_token": "",
-        "access_secret": ""
-    }
-}
-
-
 auths = {}
 user_infos = {}
 
@@ -46,20 +32,22 @@ def get_string(element):
         return string
 
 
-def check(url):
-    return re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", url) != None
+def get_url(url):
+    match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", url)
+
+    if match == None:
+        return
+
+    return "/u/" + match.group(user)
 
 
 def generate_html(user, config, path):
-    match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", config["url"])
+    url = "https://twitter.com/" + user
 
-    if match == None:
-        return None
+    if config["with_replies"]:
+        url += "/with_replies"
 
-    user = match.group("user")
-
-    if config["with_replies"] and not config["url"].endswith("/with_replies"):
-        data = rssit.util.download(config["url"] + "/with_replies")
+    data = rssit.util.download(url)
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
@@ -87,8 +75,8 @@ def generate_html(user, config, path):
     feed = {
         "title": author,
         "description": description,
+        "url": url,
         "author": user,
-        "social": True,
         "entries": []
     }
 
@@ -128,9 +116,6 @@ def generate_html(user, config, path):
                 images.append(image_url)
         else:
             images = None
-
-        #for url in urls:
-        #    headers = rssit.util.download(url, head=True)
 
         is_video_el = tweet.select(".AdaptiveMedia-video")
         if len(is_video_el) > 0:
@@ -212,7 +197,7 @@ def generate_api(user, config, path):
         date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(timegm(parsedate(obj._json["created_at"])), None))
 
         entrydict = {
-            "url": "https://twitter.com/statuses/" + obj.id_str,
+            "url": "https://twitter.com/" + obj.author.screen_name + "/status/" + obj.id_str,
             "caption": caption,
             "date": date,
             "updated_date": date,
@@ -254,14 +239,52 @@ def generate_api(user, config, path):
 
 
 def generate(config, path):
-    match = re.match(r"^https?://(?:\w+\.)?twitter.com/(?P<user>[^/]*)", config["url"])
+    if path.startswith("/u/"):
+        user = path[len("/u/"):]
 
-    if match == None:
-        return None
+        if len(config["consumer_key"]) > 0:
+            return ("social", generate_api(user, config, path))
+        else:
+            return ("social", generate_html(user, config, path))
 
-    user = match.group("user")
 
-    if len(config["consumer_key"]) > 0:
-        return generate_api(user, config, path)
-    else:
-        return generate_html(user, config, path)
+infos = [{
+    "name": "twitter",
+    "display_name": "Twitter",
+
+    "config": {
+        "author_username": {
+            "name": "Author = Username",
+            "description": "Set the author's name to be their username",
+            "value": False
+        },
+
+        "with_replies": {
+            "name": "Include replies",
+            "value": True
+        },
+
+        "consumer_key": {
+            "name": "Consumer Key (API Key)",
+            "value": ""
+        },
+
+        "consumer_secret": {
+            "name": "Consumer Secret (API Secret)",
+            "value": ""
+        },
+
+        "access_token": {
+            "name": "Access Token",
+            "value": ""
+        },
+
+        "access_secret": {
+            "name": "Access Token Secret",
+            "value": ""
+        }
+    },
+
+    "get_url": get_url,
+    "process": generate
+}]

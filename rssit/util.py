@@ -4,6 +4,8 @@
 import urllib.request
 from dateutil.tz import *
 import re
+import os
+import rssit.config
 
 
 def download(url, *args, **kwargs):
@@ -66,3 +68,43 @@ def get_urls(caption):
 
 def link_urls(caption):
     return re.sub("(" + url_regex + ")", r'<a href="\1">\1</a>', caption)
+
+
+def build_all_dict(all_list, all_dict):
+    for item in all_list:
+        for info in item.infos:
+            all_dict[info["name"]] = info
+
+
+def simple_copy(data):
+    if type(data) == list:
+        mylist = []
+
+        for i in data:
+            mylist.append(simple_copy(i))
+
+        return mylist
+    elif type(data) == dict:
+        mydict = {}
+
+        for i in data:
+            mydict[i] = simple_copy(data[i])
+
+        return mydict
+    else:
+        return data
+
+
+def get_local_url(path):
+    path = os.path.normpath(path)
+
+    if len(path) > 0 and path[0] != "/":
+        path = "/" + path
+
+    core_config = rssit.config.get_section("core")
+
+    return "http://%s:%i/%s" % (
+        core_config["hostname"],
+        core_config["port"],
+        path
+    )

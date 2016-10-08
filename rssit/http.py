@@ -7,6 +7,7 @@ import re
 import rssit.generate
 import rssit.config
 import rssit.update
+import rssit.path
 import importlib
 import types
 
@@ -20,6 +21,9 @@ except NameError:
 
 def do_GET_real(self):
     self.protocol_version = "HTTP/1.1"
+
+    rssit.path.process(self, self.path)
+    return
 
     path = re.sub('^/*', '', self.path)
     path_base = re.sub(r'(\..*)/.*', r'\1', path)
@@ -87,10 +91,9 @@ class handler(http.server.SimpleHTTPRequestHandler):
         do_GET_real(self)
 
 
-def serve(wanted_port, app_config):
-    global config, port
+def serve(wanted_port):
+    global port
 
-    config = app_config
     port = wanted_port
 
     while True:

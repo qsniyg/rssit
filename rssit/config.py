@@ -5,62 +5,87 @@ import copy
 import configparser
 import xdg.BaseDirectory
 import os
+import os.path
 import rssit.generate
+import rssit.globals
 
 
-default_config = {
-    "core": {
-        "port": 8080
-    },
+def get_load_paths(appname):
+    paths = reversed(list(xdg.BaseDirectory.load_config_paths(appname)))
 
-    "default": {
-        "type": "rss",
-        "count": 10,
-        "brackets": True
-    }
-}
+    config_paths = []
+
+    for path in paths:
+        config_paths.append(os.path.join(path, "config.ini"))
+
+    return config_paths
 
 
-def is_builtin_copy(key):
-    return key == "core"
-
-def is_builtin_skip(key):
-    return key == "default" or key.startswith("default/")
-
-def is_builtin(key):
-    return is_builtin_copy(key) or is_builtin_skip(key)
-
-def is_url(section_key, section):
-    return (not is_builtin(section_key)) and "url" in section
+def get_save_path(appname):
+    return os.path.join(xdg.BaseDirectory.save_config_path(appname), "config.ini")
 
 
 def read_file(path):
     config = configparser.ConfigParser()
-    config.read(path + "/config")
+    config.read(path)
     return config
+
+
+def write_file(path, config):
+    dirname = os.path.dirname(path)
+
+    if not os.path.exists(dirname):
+        os.path.makedirs(dirname, exist_ok=True)
+
+    configparser = configparser.ConfigParser()
+    configparser.read_dict(config)
+
+    with open(path, 'w') as configfile:
+        configpwarser.write(configfile)
+
+
+def parse_value(value, model_value):
+    if type(model_value) == bool:
+        if value.lower() == "true":
+            return True
+        elif value.lower() == "false":
+            return False
+        else:
+            return None
+
+    if type(model_value) == int:
+        try:
+            return int(value)
+        except ValueError:
+            return None
+
+    if type(model_value) == float:
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    return value
 
 
 def parse_section(section):
     for key in section:
-        if section[key] == "true":
-            section[key] = True
-        elif section[key] == "false":
-            section[key] = False
-        elif section[key].isdigit():
-            section[key] = int(section[key])
+        section[key] = parse_value(section[key])
+
+
+def parse_sections(sections):
+    for section_key in sections:
+        parse_section(sections[section_key])
 
 
 def parse_file(path):
     config = read_file(path)
-
-    for section_key in config._sections:
-        parse_section(config._sections[section_key])
-
+    parse_sections(config._sections)
     return config._sections
 
 
 def parse_files(paths):
-    config = copy.deepcopy(default_config)
+    config = {}
 
     for path in paths:
         file_config = parse_file(path)
@@ -74,59 +99,59 @@ def parse_files(paths):
     return config
 
 
-def set_generator(section):
-    generator = rssit.generate.find_generator(section["url"])
+def get_model_options(model):
+    options = {}
 
-    if generator:
-        section["generator"] = generator
-    else:
-        section["generator"] = None
+    if not "options" in model:
+        return options
 
+    for option in model["options"]:
+        options[option] = copy.deepcopy(model["options"][option]["value"])
 
-def postprocess_section(config, section):
-    set_generator(section)
-
-    new_section = copy.deepcopy(config["default"])
-
-    new_section.update(copy.deepcopy(section["generator"].info["config"]))
-
-    codename = section["generator"].info["codename"]
-    default_section = "default/" + codename
-
-    if default_section in config:
-        new_section.update(copy.deepcopy(config[default_section]))
-
-    new_section["href"] = section["url"]
-
-    new_section.update(section)
-
-    return new_section
+    return options
 
 
-def postprocess(config):
-    new_config = {}
+def get_models_config(models):
+    config = {}
 
-    for url in config:
-        if is_builtin(url):
-            new_config[url] = config[url]
-            continue
+    for model in models:
+        config.update(get_model_options(model))
 
-        new_config[url] = postprocess_section(config, config[url])
-
-    return new_config
+    return config
 
 
-def get(appname):
-    config_paths = list(xdg.BaseDirectory.load_config_paths(appname))
+def get_config_model_obj(options, model, config):
+    options.update(copy.deepcopy(get_model_options(model)))
+    options.update(copy.deepcopy(config))
 
-    if len(config_paths) == 0 or not os.path.exists(config_paths[0] + "/config"):
-        config_paths = [xdg.BaseDirectory.save_config_path(appname)]
 
-        my_config = configparser.ConfigParser()
-        my_config.read_dict(default_config)
+def get_config_model(options, section):
+    config = rssit.globals.config["config"].get(section, {})
+    model = rssit.globals.config["model"].get(section, {})
 
-        with open(config_paths[0] + "/config", 'w') as configfile:
-            my_config.write(configfile)
+    get_config_model_obj(options, model, config)
 
-    config_parsed = parse_files(reversed(config_paths))
-    return postprocess(config_parsed)
+
+def get_section(section):
+    options = {}
+
+    if "/" not in section:
+        get_config_model(options, section)
+        return options
+
+    get_config_model(options, "default")
+    get_config_model(options, section.split("/")[0])
+
+    options.update(copy.deepcopy(rssit.globals.config["config"].get(section, {})))
+
+    return options
+
+
+def load():
+    rssit.globals.config["config"] = {}
+
+    config_paths = get_load_paths(rssit.globals.appname)
+    save_path = get_save_path(rssit.globals.appname)
+
+    if len(config_paths) > 0:
+        rssit.globals.config["config"] = parse_files(config_paths)
