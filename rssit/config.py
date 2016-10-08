@@ -6,7 +6,6 @@ import configparser
 import xdg.BaseDirectory
 import os
 import os.path
-import rssit.generate
 import rssit.globals
 
 

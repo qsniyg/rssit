@@ -20,18 +20,7 @@ def process(server, path, normpath):
     newpath = re.sub("^" + splitted[0] + "/", "", normpath)
 
     config = rssit.generator.get_config(newpath)
-
-    #try:
     result = rssit.generator.process(server, config, newpath)
-    #except Exception as e:
-    #    server.send_response(500, "ISE: Feed")
-    #    server.end_headers()
-    #
-#        strio = io.StringIO()
-#        traceback.print_exc(None, strio)
-#
-#        server.wfile.write(bytes(strio.read(), "UTF-8"))
-#        return
 
     if not result:
         server.send_response(500, "ISE: Feed")

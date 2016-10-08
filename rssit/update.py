@@ -3,10 +3,7 @@
 
 import importlib
 
-import rssit.generate
 import rssit.config
-import rssit.util
-import rssit.http
 
 
 def update_module(module):
