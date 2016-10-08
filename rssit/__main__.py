@@ -7,6 +7,7 @@ import ujson
 import sys
 import rssit.generator
 import rssit.globals
+import rssit.update
 
 
 appname = "rssit2"
@@ -64,7 +65,7 @@ def update():
 
 
 def main():
-    update()
+    rssit.update.update()
 
     rssit.config.load()
 

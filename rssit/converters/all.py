@@ -22,8 +22,6 @@ def build_dict():
 
             converters_dict[info["input"]][info["output"]] = info
 
-build_dict()
-
 
 def update():
     for i in converters_list:

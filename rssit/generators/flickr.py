@@ -3,25 +3,33 @@
 
 import re
 import rssit.util
-import json
 import ujson
-import demjson
 import datetime
 import urllib.parse
 from dateutil.tz import *
 
 
-info = {
-    "name": "Flickr",
-    "codename": "flickr",
-    "config": {
-        "author_username": False
-    }
-}
+def get_modelExport(data):
+    jsondatare = re.search(r"modelExport: *(?P<json>.*?), *\n", str(data))
+    if jsondatare == None:
+        return None
+
+    jsondata = jsondatare.group("json")
+    jsondata = rssit.util.fix_surrogates(jsondata)
+
+    return ujson.loads(jsondata)
 
 
-def check(url):
-    return re.match(r"^https?://(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)", url) != None
+def get_url(url):
+    match = re.match(r"^https?://(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)/*", url)
+
+    if match == None:
+        return None
+
+    data = rssit.util.download(url)
+    decoded = get_modelExport(data)
+
+    return "/p/" + decoded["photostream-models"][0]["owner"]["id"]
 
 
 def generate(config, webpath):
@@ -35,13 +43,7 @@ def generate(config, webpath):
     url = config["href"]
 
     data = rssit.util.download(url)
-
-    jsondatare = re.search(r"modelExport: *(?P<json>.*?), *\n", str(data))
-    if jsondatare == None:
-        return None
-    jsondata = jsondatare.group("json")
-    jsondata = rssit.util.fix_surrogates(jsondata)
-    decoded = ujson.loads(jsondata)
+    decoded = get_modelExport(data)
 
     photostream = decoded["photostream-models"][0]
 
@@ -86,3 +88,19 @@ def generate(config, webpath):
         })
 
     return feed
+
+
+infos = [{
+    "name": "flickr",
+    "display_name": "Flickr",
+
+    "config": {
+        "author_username": {
+            "name": "Author = Username",
+            "description": "Set the author's name to be their username",
+            "value": False
+        }
+    },
+
+    "get_url": get_url
+}]
