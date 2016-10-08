@@ -7,6 +7,7 @@ import rssit.util
 import bs4
 import demjson
 import tweepy
+import pprint
 from calendar import timegm
 import xml.sax.saxutils
 
@@ -192,7 +193,19 @@ def generate_api(user, config, path):
         return None
 
     for obj in tl:
-        caption = xml.sax.saxutils.unescape(re.sub(" *http[^ ]*t\.co/[^ ]*", "", obj.text))
+        #caption = xml.sax.saxutils.unescape(re.sub(" *http[^ ]*t\.co/[^ ]*", "", obj.text))
+        #caption = xml.sax.saxutils.unescape(obj.text)
+        origcaption = obj.text.replace("\r", "\n")
+        newcaption = origcaption
+
+        if "entities" in obj.__dict__:
+            if "urls" in obj.entities:
+                for url in obj.entities["urls"]:
+                    newcaption = newcaption.replace(url["url"], url["expanded_url"])
+
+        caption = xml.sax.saxutils.unescape(re.sub(" *https?://t\.co/[^ ]*", "", newcaption))
+        #caption = xml.sax.saxutils.unescape(newcaption)
+
         #date = obj.created_at.timestamp()
         date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(timegm(parsedate(obj._json["created_at"])), None))
 
@@ -208,30 +221,28 @@ def generate_api(user, config, path):
 
         #pprint.pprint(obj.__dict__)
 
-        if not "extended_entities" in obj.__dict__:
-            continue
+        if "extended_entities" in obj.__dict__:
+            for media in obj.__dict__["extended_entities"]["media"]:
+                if media["type"] == "photo":
+                    entrydict["images"].append(media["media_url"])
+                elif media["type"] == "video" or media["type"] == "animated_gif":
+                    videodict = {
+                        "image": media["media_url"]
+                    }
 
-        for media in obj.__dict__["extended_entities"]["media"]:
-            if media["type"] == "photo":
-                entrydict["images"].append(media["media_url"])
-            elif media["type"] == "video" or media["type"] == "animated_gif":
-                videodict = {
-                    "image": media["media_url"]
-                }
+                    variants = media["video_info"]["variants"]
 
-                variants = media["video_info"]["variants"]
+                    max_bitrate = -1
+                    curr = None
+                    for variant in variants:
+                        if "bitrate" in variant and variant["bitrate"] > max_bitrate:
+                            curr = variant
 
-                max_bitrate = -1
-                curr = None
-                for variant in variants:
-                    if "bitrate" in variant and variant["bitrate"] > max_bitrate:
-                        curr = variant
+                    if not curr:
+                        curr = variants[0]
 
-                if not curr:
-                    curr = variants[0]
-
-                videodict["video"] = curr["url"]
-                entrydict["videos"].append(videodict)
+                    videodict["video"] = curr["url"]
+                    entrydict["videos"].append(videodict)
 
         feed["entries"].append(entrydict)
 
