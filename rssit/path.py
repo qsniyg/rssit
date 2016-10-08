@@ -53,9 +53,9 @@ def process(server, path):
     if not path_name in path_list:
         path_name = "404"
 
+
     try:
-        output = path_list[path_name]["process"](server, path, newpath, options)
-        return output
+        path_list[path_name]["process"](server, path, newpath, options)
     except Exception as err:
         server.send_response(500, "Internal Server Error")
         server.end_headers()

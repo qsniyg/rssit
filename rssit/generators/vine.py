@@ -5,7 +5,6 @@ import datetime
 import re
 import rssit.util
 import bs4
-import demjson
 
 
 def get_url(url):
