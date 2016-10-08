@@ -67,15 +67,6 @@ def process(server, config, path):
         result["title"] = "[%s] %s" % (generator.info["name"],
                                        result["title"])
 
-    format = None
-
-    if "." in splitted[-1]:
-        extension = splitted[-1].split(".")[-1]
-
-        if "output_" + extension in config:
-            format = config["output_" + extension]
-
-    if not format:
-        format = config["output"]
+    format = config["output"]
 
     return (format, rssit.converter.process(config, result, result_format, format))

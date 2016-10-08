@@ -43,6 +43,18 @@ def write_file(path, config):
         configpwarser.write(configfile)
 
 
+def parse_value_simple(value):
+    if value.lower() == "true":
+        return True
+    elif value.lower() == "false":
+        return False
+
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
 def parse_value(value, model_value):
     if type(model_value) == bool:
         if value.lower() == "true":

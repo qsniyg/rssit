@@ -5,7 +5,7 @@ import importlib
 import rssit.update
 
 
-def process(server, path, normpath):
+def process(server, path, normpath, options):
     importlib.reload(rssit.update)
     rssit.update.update()
 

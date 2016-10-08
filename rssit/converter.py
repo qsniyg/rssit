@@ -75,8 +75,6 @@ def process(config, data, input, output):
         return False
 
     for i in path:
-        print(i)
-
         runhooks(config, data, i["input"])
 
         data = i["process"](data, config)

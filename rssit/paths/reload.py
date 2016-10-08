@@ -5,7 +5,7 @@ import rssit.globals
 import rssit.config
 
 
-def process(server, path, normpath):
+def process(server, path, normpath, options):
     rssit.globals.config = rssit.config.load()
 
     server.send_response(200, "OK")

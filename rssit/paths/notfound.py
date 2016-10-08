@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-def process(server, path, normpath):
+def process(server, path, normpath, options):
     server.send_response(404, "Not found")
     server.end_headers()
 

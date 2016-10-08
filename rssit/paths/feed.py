@@ -8,7 +8,7 @@ import io
 import traceback
 
 
-def process(server, path, normpath):
+def process(server, path, normpath, options):
     splitted = normpath.split("/")
 
     if len(splitted) < 2 or splitted[1] == "":
@@ -20,6 +20,7 @@ def process(server, path, normpath):
     newpath = re.sub("^" + splitted[0] + "/", "", normpath)
 
     config = rssit.generator.get_config(newpath)
+    config.update(options)
     result = rssit.generator.process(server, config, newpath)
 
     if not result:
