@@ -4,10 +4,10 @@
 import rssit.serializers.all
 
 
-def process(data, format):
-    sd = rssit.serializers.all.serializers_dict
+def process(config, data, format):
+    sd = rssit.serializers.all.serializer_dict
 
     if format not in sd:
         return data
 
-    return sd[format]["process"](data)
+    return sd[format]["process"](config, data)

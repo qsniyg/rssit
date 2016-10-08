@@ -5,9 +5,9 @@ import rssit.util
 import ujson
 
 
-def process(data):
-    newdata = rssit.util.simplecopy(data)
-    newdata["config"] = rssit.util.simplecopy(data["config"])
+def process(config, data):
+    newdata = rssit.util.simple_copy(data)
+    newdata["config"] = rssit.util.simple_copy(config)
 
     for entry in newdata["entries"]:
         entry["date"] = int(entry["date"].timestamp())
@@ -15,7 +15,7 @@ def process(data):
         if "updated_date" in entry:
             entry["updated_date"] = int(entry["updated_date"].timestamp())
 
-    return ujson.dumps(newresult)
+    return ujson.dumps(newdata)
 
 
 infos = [

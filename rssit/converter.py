@@ -5,6 +5,7 @@ import rssit.converters.all
 import rssit.serializer
 import copy
 import threading
+import subprocess
 
 
 def make_list(x):
@@ -55,7 +56,7 @@ def runhooks(config, data, format):
 
     hookslist = config[hooksname].split(";")
 
-    processed = str(rssit.serializer.process(data, format))
+    processed = str(rssit.serializer.process(config, data, format))
 
     if type(processed) != str:
         return
