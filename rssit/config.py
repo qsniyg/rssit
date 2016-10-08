@@ -79,14 +79,14 @@ def parse_value(value, model_value):
     return value
 
 
-def parse_section(section):
+def parse_section(section, section_key):
     for key in section:
-        section[key] = parse_value(section[key])
+        section[key] = parse_value_simple(section[key])
 
 
 def parse_sections(sections):
     for section_key in sections:
-        parse_section(sections[section_key])
+        parse_section(sections[section_key], section_key)
 
 
 def parse_file(path):
@@ -153,8 +153,9 @@ def get_section(section):
     get_config_model(options, "default")
 
     splitted = section.split("/")[:-1]
-    for split in splitted:
-        get_config_model(options, path)
+    for i in range(len(splitted)):
+        split = os.path.join(splitted[0], *splitted[1:i+1])
+        get_config_model(options, split)
 
     options.update(copy.deepcopy(rssit.globals.config["config"].get(section, {})))
 
