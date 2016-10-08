@@ -71,7 +71,7 @@ def process(server, config, path):
 
 
     if config["brackets"] and type(result) == dict and "title" in result:
-        result["title"] = "[%s] %s" % (generator.info["name"],
+        result["title"] = "[%s] %s" % (generator["display_name"],
                                        result["title"])
 
     format = config["output"]
