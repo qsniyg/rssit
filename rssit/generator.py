@@ -80,6 +80,8 @@ def process(server, config, path):
         result["title"] = "[%s] %s" % (generator["display_name"],
                                        result["title"])
 
+    config["generator"] = generator["name"]
+
     format = config["output"]
 
     return (format, rssit.converter.process(config, result, result_format, format))
