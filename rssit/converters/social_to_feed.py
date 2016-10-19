@@ -19,7 +19,7 @@ def process(result, config):
         if not caption:
             caption = "(n/a)"
 
-        basecontent = rssit.util.link_urls(caption.replace("\n", "<br />\n"))
+        basecontent = rssit.util.link_urls(caption).replace("\n", "<br />\n")
         basetitle = caption.replace("\n", " ")
 
         if entry["author"] != result["author"]:
