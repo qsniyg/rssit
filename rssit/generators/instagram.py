@@ -17,6 +17,10 @@ def get_url(url):
     return "/u/" + match.group("user")
 
 
+def normalize_image(url):
+    return re.sub(r"\.com/l/", ".com/", url)
+
+
 def generate_user(config, user):
     url = "https://www.instagram.com/" + user
 
@@ -59,7 +63,7 @@ def generate_user(config, user):
 
         if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
             videos = [{
-                "image": node["display_src"],
+                "image": normalize_image(node["display_src"]),
                 "video": rssit.util.get_local_url("/f/instagram/v/" + node["code"])
             }]
         else:
