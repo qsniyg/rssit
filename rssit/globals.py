@@ -3,7 +3,10 @@
 
 appname = "rssit"
 
-config = {
-    "model": {},
-    "config": {}
-}
+try:
+    config
+except NameError:
+    config = {
+        "model": {},
+        "config": {}
+    }
