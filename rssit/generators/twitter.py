@@ -76,7 +76,7 @@ def generate_html(user, config, path):
     feed = {
         "title": author,
         "description": description,
-        "url": url,
+        "url": "https://twitter.com/" + user,
         "author": user,
         "entries": []
     }
@@ -182,6 +182,7 @@ def generate_api(user, config, path):
         "title": title,
         "description": description,
         "author": user_info.screen_name,
+        "url": "https://twitter.com/" + user_info.screen_name,
         "social": True,
         "entries": []
     }
