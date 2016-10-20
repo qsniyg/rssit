@@ -15,6 +15,8 @@ def get_string(element):
         return str(element.string)
     elif element.name == "img":
         return element["title"]
+    elif element.name == "a" and "longtext" in element.get("class", []):
+        return ""
     else:
         string = ""
 
