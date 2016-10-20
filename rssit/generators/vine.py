@@ -49,7 +49,7 @@ def generate_user(config, user):
 
     feed = {
         "title": author,
-        "author": user,
+        "author": author,
         "url": url,
         "description": description,
         "social": True,
