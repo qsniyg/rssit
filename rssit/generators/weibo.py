@@ -42,7 +42,6 @@ def generate_user(config, user):
     url = "http://weibo.wbdacdn.com/user/" + user
 
     data = rssit.util.download(url)
-    #data = rssit.util.download("file:///tmp/weibo.html")
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
