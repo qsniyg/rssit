@@ -42,7 +42,7 @@ def generate_user(config, user):
 
     description_tag = soup.find(attrs={"property": "og:description"})
 
-    if description_tag:
+    if description_tag and len(description_tag["content"]) > 0:
         description = description_tag["content"]
     else:
         description = "%s's vine" % author
