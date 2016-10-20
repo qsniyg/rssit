@@ -39,7 +39,7 @@ def generate_user(config, user):
 
     if not config["author_username"]:
         if "full_name" in decoded_user and type(decoded_user["full_name"]) == str and len(decoded_user["full_name"]) > 0:
-            decoded_user["full_name"]
+            author = decoded_user["full_name"]
 
     feed = {
         "title": author,
