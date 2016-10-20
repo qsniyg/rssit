@@ -30,7 +30,7 @@ def get_url(url):
     match = re.match(r"^(https?://)?weibo.wbdacdn.com/user/(?P<user>[0-9]*)", url)
 
     if match == None:
-        match = re.match(r"^(https?://)?weibo.com/u/(?P<user>[0-9]*)", url)
+        match = re.match(r"^(https?://)?(www.)?weibo.com/u/(?P<user>[0-9]*)", url)
 
         if match == None:
             return None
