@@ -91,9 +91,11 @@ def generate_user(config, user):
             if "小时前" in datetext:
                 hoursago = int(datetext.replace("小时前", ""))
                 date = datetime.datetime.now() - datetime.timedelta(hours=hoursago)
+                date = date.replace(minute = 0, second = 0, microsecond = 0)
             elif "分钟前" in datetext:
                 minutesago = int(datetext.replace("分钟前", ""))
                 date = datetime.datetime.now() - datetime.timedelta(minutes=minutesago)
+                date = date.replace(second = 0, microsecond = 0)
             else:
                 print("WARNING: Unparsable date: " + datetext)
                 continue
