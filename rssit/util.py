@@ -61,6 +61,9 @@ def fix_surrogates(string):
 def localize_datetime(dt):
     return dt.replace(tzinfo=tzlocal())
 
+def utc_datetime(dt):
+    return dt.replace(tzinfo=tzutc()).astimezone(tzlocal())
+
 
 # http://stackoverflow.com/a/6883094
 url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'

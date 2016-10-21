@@ -11,10 +11,11 @@ import pprint
 from calendar import timegm
 import xml.sax.saxutils
 
-try:
-    from rfc822 import parsedate
-except ImportError:
-    from email.utils import parsedate
+from email.utils import parsedate_tz, mktime_tz
+#try:
+#    from rfc822 import parsedate
+#except ImportError:
+#    from email.utils import parsedate
 
 
 auths = {}
@@ -207,8 +208,7 @@ def generate_api(user, config, path):
         caption = xml.sax.saxutils.unescape(re.sub(" *https?://t\.co/[^ ]*", "", newcaption))
         #caption = xml.sax.saxutils.unescape(newcaption)
 
-        #date = obj.created_at.timestamp()
-        date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(timegm(parsedate(obj._json["created_at"])), None))
+        date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(mktime_tz(parsedate_tz(obj._json["created_at"]))))
 
         entrydict = {
             "url": "https://twitter.com/" + obj.author.screen_name + "/status/" + obj.id_str,
