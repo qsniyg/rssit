@@ -44,6 +44,8 @@ def process_base(result, config):
 
         if "updated_date" in entry:
             fe.updated(entry["updated_date"])
+        else:
+            fe.updated(entry["created_at"])
 
         fe.content(entry["content"], type="html")
 
