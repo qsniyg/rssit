@@ -8,6 +8,7 @@ import rssit.generators.twitter
 import rssit.generators.vine
 import rssit.generators.flickr
 import rssit.generators.weibo
+import rssit.generators.facebook
 
 
 generator_list = [
@@ -15,7 +16,8 @@ generator_list = [
     rssit.generators.twitter,
     rssit.generators.vine,
     rssit.generators.flickr,
-    rssit.generators.weibo
+    rssit.generators.weibo,
+    rssit.generators.facebook
 ]
 
 generator_dict = {}
