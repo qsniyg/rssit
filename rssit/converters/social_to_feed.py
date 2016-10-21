@@ -52,13 +52,18 @@ def process(result, config):
             for image in entry["images"]:
                 content += "<p><img src='%s'/></p>" % image
 
-        feed["entries"].append({
+        thisentry = {
             "url": entry["url"],
             "title": title,
             "author": entry["author"],
             "date": entry["date"],
             "content": content
-        })
+        }
+
+        if "updated_date" in entry:
+            thisentry["updated_date"] = entry["updated_date"]
+
+        feed["entries"].append(thisentry)
 
     return feed
 

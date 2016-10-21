@@ -22,7 +22,7 @@ def get_url(url):
     if match.group("photos"):
         return "/photos/" + match.group("user")
 
-    #return "/u/" + match.group("user")
+    return "/user/" + match.group("user")
 
 
 def get_api(access_token):
@@ -67,7 +67,7 @@ def get_albumid_from_link(link):
 
 
 def generate_photos(graph, config, user_info):
-    feed = get_feed_info(user_info, config)
+    entries = []
 
     photos_api = graph.get_connections(user_info['id'], 'photos/uploaded?limit=100&fields=link,name,updated_time,images')
     photos = photos_api["data"]
@@ -100,20 +100,24 @@ def generate_photos(graph, config, user_info):
 
         if "name" in photo:
             caption = photo["name"]
+            media_caption = caption
         else:
+            caption = ""
+
             if photo["updated_time"] in album_unnamed:
                 unnamed_id = album_unnamed[photo["updated_time"]]
             else:
                 album_unnamed[photo["updated_time"]] = 0
                 unnamed_id = 0
 
-            caption = "unnamed " + str(unnamed_id)
+            media_caption = "unnamed " + str(unnamed_id)
 
             album_unnamed[photo["updated_time"]] += 1
 
-        feed["entries"].append({
+        entries.append({
             "url": photo["link"],
             "caption": caption,
+            "media_caption": media_caption,
             "date": date,
             "album": newalbumname,
             "author": user_info["username"],
@@ -121,7 +125,47 @@ def generate_photos(graph, config, user_info):
             "videos": []
         })
 
-    return feed
+    return entries
+
+
+def generate_posts(graph, config, user_info):
+    entries = []
+
+    posts_api = graph.get_connections(user_info['id'], 'posts?limit=100&fields=id,message,created_time,updated_time,permalink_url,picture')
+    posts = posts_api["data"]
+
+    for post in posts:
+        if "message" in post:
+            caption = post["message"]
+        else:
+            caption = ""
+
+        media_caption = "[POST] " + caption
+
+        url = post["permalink_url"]
+        if "permalink_url" not in post or not url or len(url) <= 0:
+            url = "https://www.facebook.com/" + user_info["username"] + "/posts/" + post["id"].split("_")[1]
+
+        date = parse(post["created_time"])
+        updated_date = parse(post["updated_time"])
+
+        images = []
+        if "picture" in post:
+            images = [post["picture"]]
+
+        entries.append({
+            "url": url,
+            "author": user_info["username"],
+            "caption": caption,
+            "media_caption": media_caption,
+            "date": date,
+            "updated_date": updated_date,
+            "images": images,
+            "videos": [],
+            "album": "Posts"
+        })
+
+    return entries
 
 
 def process(server, config, path):
@@ -175,11 +219,34 @@ def process(server, config, path):
     if not graph:
         return None
 
+    if path.startswith("/user/"):
+        user = path[len("/user/"):]
+        user_info = get_user_info(graph, user)
+
+        feed = get_feed_info(user_info, config)
+
+        feed["entries"] = generate_posts(graph, config, user_info)
+        feed["entries"].extend(generate_photos(graph, config, user_info))
+
+        return ("social", feed)
     if path.startswith("/photos/"):
         user = path[len("/photos/"):]
         user_info = get_user_info(graph, user)
 
-        return ("social", generate_photos(graph, config, user_info))
+        feed = get_feed_info(user_info, config)
+
+        feed["entries"] = generate_photos(graph, config, user_info)
+
+        return ("social", feed)
+    elif path.startswith("/posts/"):
+        user = path[len("/posts/"):]
+        user_info = get_user_info(graph, user)
+
+        feed = get_feed_info(user_info, config)
+
+        feed["entries"] = generate_posts(graph, config, user_info)
+
+        return ("social", feed)
 
 
 infos = [{
