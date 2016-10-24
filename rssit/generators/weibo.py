@@ -107,7 +107,10 @@ def generate_user(config, user):
 
         if lotspic and len(lotspic) > 0:
             for pic in lotspic[0].select("img"):
-                images.append(pic["data-rel"])
+                if pic.has_attr("data-rel"):
+                    images.append(pic["data-rel"])
+                else:
+                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/", pic["src"]))
 
         feed["entries"].append({
             "url": posturl,

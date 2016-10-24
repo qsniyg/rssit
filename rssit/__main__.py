@@ -41,6 +41,12 @@ config_model = {
                 "description": "Output format for feeds"
             },
 
+            "timeout": {
+                "name": "Download timeout",
+                "value": 40,
+                "description": "Timeout for downloads (in seconds)"
+            },
+
             "count": {
                 "name": "Count",
                 "value": 20,

@@ -11,6 +11,13 @@ import urllib.parse
 
 
 def download(url, *args, **kwargs):
+    if "config" in kwargs:
+        config = kwargs["config"]
+    else:
+        config = {
+            "timeout": 40
+        }
+
     if "head" in kwargs and kwargs["head"]:
         request = urllib.request.Request(url, method="HEAD")
     else:
@@ -21,7 +28,7 @@ def download(url, *args, **kwargs):
     request.add_header('Cache-Control', 'max-age=0')
     request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
 
-    with urllib.request.urlopen(request) as response:
+    with urllib.request.urlopen(request, timeout=config["timeout"]) as response:
         charset = response.headers.get_content_charset()
 
         if charset:
