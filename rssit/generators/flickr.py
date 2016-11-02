@@ -39,6 +39,31 @@ def get_url(url):
     return "/photos/" + decoded["photostream-models"][0]["owner"]["id"]
 
 
+def get_photo_url(sizes):
+    if "o" in sizes:
+        return sizes["o"]["url"]
+    if "k" in sizes:
+        return sizes["k"]["url"]
+    if "h" in sizes:
+        return sizes["h"]["url"]
+    if "b" in sizes:
+        return sizes["b"]["url"]
+    if "c" in sizes:
+        return sizes["c"]["url"]
+    if "n" in sizes:
+        return sizes["n"]["url"]
+    if "m" in sizes:
+        return sizes["m"]["url"]
+    if "t" in sizes:
+        return sizes["t"]["url"]
+    if "sq" in sizes:
+        return sizes["sq"]["url"]
+    if "s" in sizes:
+        return sizes["s"]["url"]
+
+    return None
+
+
 def generate_photos(config, user):
     url = "https://www.flickr.com/photos/" + user
 
@@ -75,7 +100,11 @@ def generate_photos(config, user):
 
         date = datetime.datetime.fromtimestamp(int(photo["stats"]["datePosted"]), None).replace(tzinfo=tzlocal())
 
-        images = [urllib.parse.urljoin(url, photo["sizes"]["o"]["url"])]
+        images = [urllib.parse.urljoin(url, get_photo_url(photo["sizes"]))]
+
+        if not images[0]:
+            print("Skipping flickr image " + caption)
+            continue
 
         feed["entries"].append({
             "url": "https://www.flickr.com/photos/%s/%s" % (
@@ -94,6 +123,7 @@ def generate_photos(config, user):
 def process(server, config, path):
     if path.startswith("/photos/"):
         return ("social", generate_photos(config, path[len("/photos/"):]))
+
 
 infos = [{
     "name": "flickr",

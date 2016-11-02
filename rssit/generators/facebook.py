@@ -36,14 +36,19 @@ def get_user_info(graph, user):
     if not user in user_infos:
         user_infos[user] = graph.get_object(user + "?fields=name,username,about,description,link")
 
+        if "username" not in user_infos and "name" in user_infos:
+            user_infos["username"] = user_infos["name"]
+
     return user_infos[user]
 
 
 def get_feed_info(user_info, config):
+    username = user_info.get("username", user_info.get("name", None))
+
     if not config["author_username"] and "name" in user_info and len(user_info["name"]) > 0:
         user = user_info["name"]
     else:
-        user = user_info["username"]
+        user = username
 
     if "about" in user_info:
         description = user_info["about"]
@@ -55,7 +60,7 @@ def get_feed_info(user_info, config):
     return {
         "title": user,
         "description": description,
-        "author": user_info["username"],
+        "author": username,
         "url": user_info["link"],
         "social": True,
         "entries": []
@@ -73,6 +78,8 @@ def generate_photos(graph, config, user_info):
     photos = photos_api["data"]
 
     unnamed_ids = {}
+
+    username = user_info.get("username", user_info.get("name", None))
 
     for photo in photos:
         albumid = get_albumid_from_link(photo["link"])
@@ -120,7 +127,7 @@ def generate_photos(graph, config, user_info):
             "media_caption": media_caption,
             "date": date,
             "album": newalbumname,
-            "author": user_info["username"],
+            "author": username,
             "images": [image],
             "videos": []
         })
@@ -133,6 +140,8 @@ def generate_posts(graph, config, user_info):
 
     posts_api = graph.get_connections(user_info['id'], 'posts?limit=100&fields=id,message,created_time,updated_time,permalink_url,picture')
     posts = posts_api["data"]
+
+    username = user_info.get("username", user_info.get("name", None))
 
     for post in posts:
         if "message" in post:
@@ -155,7 +164,7 @@ def generate_posts(graph, config, user_info):
 
         entries.append({
             "url": url,
-            "author": user_info["username"],
+            "author": username,
             "caption": caption,
             "media_caption": media_caption,
             "date": date,
