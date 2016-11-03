@@ -226,8 +226,10 @@ def generate_api(user, config, path):
             for media in obj.__dict__["extended_entities"]["media"]:
                 if media["type"] == "photo":
                     url = media["media_url"]
-                    if not url.endswith(":large"):
-                        url += ":large"
+                    if url.endswith(":large"):
+                        url = url.replace(":large", ":orig")
+                    elif not url.endswith(":orig"):
+                        url += ":orig"
                     entrydict["images"].append(url)
                     #entrydict["images"].append(media["media_url"])
                 elif media["type"] == "video" or media["type"] == "animated_gif":
