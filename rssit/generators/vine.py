@@ -5,6 +5,7 @@ import datetime
 import re
 import rssit.util
 import bs4
+from dateutil.parser import parse
 
 
 def get_url(url):
@@ -59,7 +60,8 @@ def generate_user(config, user):
     for post in soup.find_all(class_="post"):
         timestamp = re.search(r"(?P<date>[0-9][^ ]*)",
                               post.find(string=re.compile("Uploaded at"))).group("date")
-        date = rssit.util.localize_datetime(datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S"))
+        date = rssit.util.utc_datetime(datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S"))
+        #date = parse(timestamp)
 
         username = post.find("span").string
 
