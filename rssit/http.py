@@ -27,6 +27,10 @@ class handler(http.server.SimpleHTTPRequestHandler):
         do_GET_real(self)
 
 
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
+
 def serve(wanted_port):
     global port
 
@@ -35,7 +39,8 @@ def serve(wanted_port):
     while True:
         try:
             print("Trying port %i" % port)
-            socketserver.TCPServer(('', port), handler).serve_forever()
+            #socketserver.TCPServer(('', port), handler).serve_forever()
+            ThreadedTCPServer(('', port), handler).serve_forever()
         except OSError as exc:
             if exc.errno != 98:
                 raise
