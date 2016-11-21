@@ -79,7 +79,12 @@ def generate_user(config, user):
         else:
             caption = get_string(status_word[0])
 
-        dateel = status.select("small span a")[0]
+        dateels = status.select("small span a")
+        if not dateels or len(dateels) <= 0:
+            # invalid
+            continue
+
+        dateel = dateels[0]
         datetext = dateel["title"]
 
         posturl = urllib.parse.urljoin(url, dateel["href"])
