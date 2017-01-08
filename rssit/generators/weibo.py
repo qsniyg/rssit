@@ -112,7 +112,9 @@ def generate_user(config, user):
 
         if lotspic and len(lotspic) > 0:
             for pic in lotspic[0].select("img"):
-                if pic.has_attr("data-rel"):
+                if pic.has_attr("data-o"):
+                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/", pic["data-o"]))
+                elif pic.has_attr("data-rel"):
                     images.append(pic["data-rel"])
                 else:
                     images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/", pic["src"]))
