@@ -10,6 +10,15 @@ import rssit.http
 import urllib.parse
 
 
+def quote_url(link):
+    link = urllib.parse.unquote(link).strip()
+    scheme, netloc, path, query, fragment = urllib.parse.urlsplit(link)
+    path = urllib.parse.quote(path)
+    link = urllib.parse.urlunsplit((scheme, netloc, path, query, fragment))
+    link = link.replace("%3A", ":")
+    return link
+
+
 def download(url, *args, **kwargs):
     if "config" in kwargs:
         config = kwargs["config"]

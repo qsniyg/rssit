@@ -130,6 +130,7 @@ def generate_user(config, user):
 
     return ("social", feed)
 
+
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, path[len("/u/"):])

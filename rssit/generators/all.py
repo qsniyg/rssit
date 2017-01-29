@@ -10,6 +10,7 @@ import rssit.generators.flickr
 import rssit.generators.weibo
 import rssit.generators.facebook
 import rssit.generators.soundcloud
+import rssit.generators.tumblr
 
 
 generator_list = [
@@ -19,7 +20,8 @@ generator_list = [
     rssit.generators.flickr,
     rssit.generators.weibo,
     rssit.generators.facebook,
-    rssit.generators.soundcloud
+    rssit.generators.soundcloud,
+    rssit.generators.tumblr
 ]
 
 generator_dict = {}
