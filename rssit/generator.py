@@ -2,6 +2,7 @@
 
 
 import rssit.generators.all
+import rssit.formats
 import rssit.converter
 import rssit.config
 import rssit.util
@@ -64,24 +65,36 @@ def process(server, config, path):
         return
 
     if type(process_result) == tuple:
-        result_format = process_result[0]
-        result = process_result[1]
+        process_result_bak = process_result
+        process_result = {}
+        process_result[process_result_bak[0]] = process_result_bak[1]
     elif process_result == True:
         return True
 
+    results = {}
+    preferred_i = None
+    for result_format in process_result:
+        result = process_result[result_format]
 
-    if len(config["title"]) > 0:
-        result["title"] = config["title"]
+        if len(config["title"]) > 0:
+            result["title"] = config["title"]
 
-    if len(config["description"]) > 0:
-        result["description"] = config["description"]
+        if len(config["description"]) > 0:
+            result["description"] = config["description"]
 
-    if config["brackets"] and type(result) == dict and "title" in result:
-        result["title"] = "[%s] %s" % (generator["display_name"],
-                                       result["title"])
+        if config["brackets"] and type(result) == dict and "title" in result:
+            result["title"] = "[%s] %s" % (generator["display_name"],
+                                           result["title"])
 
-    config["generator"] = generator["name"]
+        config["generator"] = generator["name"]
 
-    format = config["output"]
+        format = config["output"]
 
-    return (format, rssit.converter.process(config, result, result_format, format))
+        if result_format in rssit.formats.formats_order:
+            if preferred_i is None or preferred_i > rssit.formats.formats_order.index(result_format):
+                preferred_i = rssit.formats.formats_order.index(result_format)
+
+        results[result_format] = rssit.converter.process(config, result, result_format, format)
+
+    preferred_format = rssit.formats.formats_order[preferred_i]
+    return (preferred_format, results[preferred_format])

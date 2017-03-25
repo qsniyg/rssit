@@ -21,6 +21,7 @@ def process(server, path, normpath, options):
 
     config = rssit.generator.get_config(newpath)
     config.update(options)
+    config["fullpath"] = path
     result = rssit.generator.process(server, config, newpath)
 
     if not result:

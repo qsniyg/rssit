@@ -23,6 +23,8 @@ def questionmark(path):
     while idx < len(kvs):
         kvs = kvs[idx + 1:]
 
+        if "?" in kvs:
+            idx = len(kvs)
         if "&" in kvs:
             idx = kvs.index("&")
         else:

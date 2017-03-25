@@ -24,3 +24,5 @@ formats = {
         "content-type": "application/atom+xml"
     }
 }
+
+formats_order = ["atom", "rss", "feed", "social"]
