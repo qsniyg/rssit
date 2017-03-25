@@ -28,7 +28,8 @@ def get_url(url):
         "entertain\.naver\.com/",
         "find\.joins\.com/",
         "isplus\.joins\.com/",
-        "news1.kr/search_front/"
+        "news1.kr/search_front/",
+        "topstarnews.net/search.php"
     ]
 
     found = False
@@ -67,7 +68,8 @@ def get_author(url):
         return "joins"
     if "news1.kr/" in url:
         return "news1"
-
+    if "topstarnews.net" in url:
+        return "topstarnews"
     return None
 
 
@@ -77,10 +79,14 @@ def ascii_only(string):
 
 def parse_date(date):
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
+    date = date.replace("년", "-")
+    date = date.replace("월", "-")
+    date = date.replace("시", ":")
     date = ascii_only(date)
     date = re.sub("\( *\)", "", date)
     date = re.sub("\( *= *1 *\)", "", date) # workaround for news1
     date = re.sub("\|", " ", date)
+    date = re.sub(":[^0-9]*$", "", date)
     date = date.strip()
     if not date:
         return None
@@ -161,7 +167,8 @@ def get_images(myjson, soup):
         ".view_box center img",
         ".newsbm_img_wrap > img",
         ".article .detail img",
-        "#articeBody img"
+        "#articeBody img",
+        "center table td a > img"  # topstarnews search
     ])
 
     if not imagestag:
@@ -195,7 +202,7 @@ def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] == "news1":
+    elif myjson["author"] == "news1" or myjson["author"] == "topstarnews":
         if "search.php" not in myjson["url"]:
             return
     else:
@@ -227,6 +234,14 @@ def get_articles(myjson, soup):
             "caption": "a > strong",
             "date": "a .date",
             "images": ".thumb img"
+        },
+        # topstarnews
+        {
+            "parent": "table#search_part_1 > tr > td > table > tr > td",
+            "link": "center > table > tr > td > a",
+            "caption": "center > table > tr > td > span > a",
+            "date": ".street-photo2",
+            "images": "center > table > tr > td > a > img"
         }
     ]
 
@@ -291,6 +306,9 @@ def get_max_quality(url):
         url = re.sub("\.tn_.*", "", url)
     if "image.news1.kr" in url:
         url = re.sub("/[^/.]*\.([^/]*)$", "/original.\\1", url)
+    if "uhd.img.topstarnews.net/" in url:
+        url = url.replace("/file_attach_thumb/", "/file_attach/")
+        url = re.sub(r"_[^/]*[0-9]*x[0-9]*_[^/]*(\.[^/]*)$", "-org\\1", url)
     return url
 
 
@@ -332,8 +350,15 @@ def do_url(config, url):
                 sys.stderr.write("error with article\n")
                 continue
             if quick:
+                if not article["caption"]:
+                    sys.stderr.write("no caption\n")
+                    return
+                if article["date"] == 0:
+                    sys.stderr.write("no date\n")
+                    return
                 if not article["caption"] or article["date"] == 0:
                     sys.stderr.write("no salvageable information from search\n")
+                    sys.stderr.write(pprint.pformat(article) + "\n")
                     return
 
                 if not article["author"]:
