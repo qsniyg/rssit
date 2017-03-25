@@ -11,6 +11,7 @@ import rssit.generators.weibo
 import rssit.generators.facebook
 import rssit.generators.soundcloud
 import rssit.generators.tumblr
+import rssit.generators.tistory
 
 
 generator_list = [
@@ -21,7 +22,8 @@ generator_list = [
     rssit.generators.weibo,
     rssit.generators.facebook,
     rssit.generators.soundcloud,
-    rssit.generators.tumblr
+    rssit.generators.tumblr,
+    rssit.generators.tistory
 ]
 
 generator_dict = {}
