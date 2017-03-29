@@ -15,6 +15,25 @@ import datetime
 # for starnews: http://star.mt.co.kr/search/index.html?kwd=[...]&category=PHOTO
 
 
+# http://stackoverflow.com/a/18359215
+def get_encoding(soup):
+    encod = soup.find("meta", charset=True)
+    if encod:
+        return encod["charset"]
+
+    encod = soup.find("meta", attrs={'http-equiv': "Content-Type"})
+    if not encod:
+        encod = soup.find("meta", attrs={"Content-Type": True})
+
+    if encod:
+        content = encod["content"]
+        match = re.search('charset *= *(.*)', content)
+        if match:
+            return match.group(1)
+
+    raise ValueError('unable to find encoding')
+
+
 def get_url(url):
     base = "/url/"
     if url.startswith("quick:"):
@@ -32,7 +51,8 @@ def get_url(url):
         "isplus\.joins\.com/",
         "news1.kr/search_front/",
         "topstarnews.net/search.php",
-        "star\.mt\.co\.kr/search"
+        "star\.mt\.co\.kr/search",
+        "stardailynews\.co\.kr/news/articleList"
     ]
 
     found = False
@@ -79,6 +99,8 @@ def get_author(url):
         return "topstarnews"
     if "star.mt.co.kr" in url:
         return "starnews"
+    if "stardailynews.co.kr" in url:
+        return "stardailynews"
     return None
 
 
@@ -220,6 +242,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "starnews":
         if "search" not in myjson["url"]:
             return
+    elif myjson["author"] == "stardailynews":
+        if "news/articleList" not in myjson["url"]:
+            return
     else:
         return
 
@@ -265,6 +290,16 @@ def get_articles(myjson, soup):
             "caption": ".txt > a",
             "date": "-1",
             "images": ".thum img"
+        },
+        # stardailynews
+        {
+            "parent": "#ND_Warp table tr > td table tr > td table tr > td table",
+            "link": "tr > td > span > a",
+            "caption": "tr > td > span > a",
+            "description": "tr > td > p",
+            "date": "-1",
+            "images": "tr > td img",
+            "html": lambda entry: "<p>" + entry["description"] + "</p>" + '\n'.join(["<p><img src='" + x + "' /></p>" for x in entry["images"]])
         }
     ]
 
@@ -279,6 +314,9 @@ def get_articles(myjson, soup):
         return []
 
     for a in parenttag:
+        if not a.select(selector["link"]):
+            # print warning?
+            continue
         link = get_article_url(urllib.parse.urljoin(myjson["url"], a.select(selector["link"])[0]["href"]))
 
         date = 0
@@ -308,9 +346,9 @@ def get_articles(myjson, soup):
         if "images" in selector:
             image_tags = a.select(selector["images"])
             for image in image_tags:
-                images.append(get_max_quality(image["src"]))
+                images.append(get_max_quality(urllib.parse.urljoin(myjson["url"], image["src"])))
 
-        articles.append({
+        entry = {
             "url": link,
             "date": date,
             "caption": caption,
@@ -318,7 +356,12 @@ def get_articles(myjson, soup):
             "author": author,
             "images": images,
             "videos": []
-        })
+        }
+
+        if "html" in selector:
+            entry["description"] = selector["html"](entry)
+
+        articles.append(entry)
 
     return articles
 
@@ -328,15 +371,24 @@ def get_max_quality(url):
         url = re.sub("\?.*", "", url)
         #if "imgnews" not in url:
         # do blogfiles
+
     if ".joins.com" in url:
         url = re.sub("\.tn_.*", "", url)
+
     if "image.news1.kr" in url:
         url = re.sub("/[^/.]*\.([^/]*)$", "/original.\\1", url)
+
     if "uhd.img.topstarnews.net/" in url:
         url = url.replace("/file_attach_thumb/", "/file_attach/")
         url = re.sub(r"_[^/]*[0-9]*x[0-9]*_[^/]*(\.[^/]*)$", "-org\\1", url)
+
     if "thumb.mtstarnews.com/" in url:
         url = re.sub(r"\.com/[0-9][0-9]/", ".com/06/", url)
+
+    if "stardailynews.co.kr" in url:
+        url = re.sub("/thumbnail/", "/photo/", url)
+        url = re.sub(r"_v[0-9]*\.", ".", url)
+
     return url
 
 
@@ -346,7 +398,18 @@ def do_url(config, url):
         quick = True
 
     url = urllib.parse.quote(url, safe="%/:=&?~#+!$,;'@()*[]")
-    data = rssit.util.download(url).decode("utf-8", "ignore")
+    data = rssit.util.download(url)
+    soup = bs4.BeautifulSoup(data, 'lxml')
+
+    encoding = "utf-8"
+    try:
+        encoding = get_encoding(soup)
+    except Exception as e:
+        print(e)
+        pass
+    #data = data.decode("utf-8", "ignore")
+    if type(data) != str:
+        data = data.decode(encoding, "ignore")
     #data = download("file:///tmp/naver.html")
 
     soup = bs4.BeautifulSoup(data, 'lxml')
