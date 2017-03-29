@@ -53,7 +53,9 @@ def get_url(url):
         "news1.kr/search_front/",
         "topstarnews.net/search.php",
         "star\.mt\.co\.kr/search",
-        "stardailynews\.co\.kr/news/articleList"
+        "stardailynews\.co\.kr/news/articleList",
+        "tvdaily\.asiae\.co\.kr/searchs",
+        "search\.hankyung\.com"
     ]
 
     found = False
@@ -104,6 +106,8 @@ def get_author(url):
         return "stardailynews"
     if "tvdaily.asiae.co.kr" in url:
         return "tvdaily"
+    if "hankyung.com" in url:
+        return "hankyung"
     return None
 
 
@@ -251,6 +255,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "tvdaily":
         if "searchs.php" not in myjson["url"]:
             return
+    elif myjson["author"] == "hankyung":
+        if "search.hankyung.com" not in myjson["url"]:
+            return
     else:
         return
 
@@ -320,6 +327,16 @@ def get_articles(myjson, soup):
                 "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"])
             },
             "html": True
+        },
+        # hankyung
+        {
+            "parent": ".hk_news .section_cont > ul.article > li",
+            "link": ".txt_wrap > a",
+            "caption": ".txt_wrap .tit",
+            "description": ".txt_wrap > p.txt",
+            "date": ".info span.date_time",
+            "images": ".thumbnail img",
+            "html": True
         }
     ]
 
@@ -359,7 +376,7 @@ def get_articles(myjson, soup):
 
         caption = None
         if "caption" in selector:
-            caption = a.select(selector["caption"])[0].text
+            caption = a.select(selector["caption"])[0].text.strip()
         entry["caption"] = caption
 
         description = None
@@ -422,6 +439,12 @@ def get_max_quality(url, data=None):
         url = url.replace("/tvdaily.asiae", "/image.tvdaily")
         url = url.replace("/thumb/", "/gisaimg/" + data["date"][:6] + "/")
         url = re.sub(r"/([^/]*)\.[^/]*$", "/" + data["aid"][:10] + "_\\1.jpg", url)
+
+    if "img.hankyung.com" in url:
+        url = re.sub(r"\.[0-9]\.([a-zA-Z0-9]*)$", ".1.\\1", url)
+
+    if "img.tenasia.hankyung.com" in url:
+        url = re.sub(r"-[0-9]*x[0-9]*\.jpg$", ".jpg", url)
 
     return url
 
