@@ -13,6 +13,7 @@ import datetime
 
 # for news1: http://news1.kr/search_front/search.php?query=[...]&collection=front_photo&startCount=[0,20,40,...]
 # for starnews: http://star.mt.co.kr/search/index.html?kwd=[...]&category=PHOTO
+# for tvdaily: http://tvdaily.asiae.co.kr/searchs.php?section=17&searchword=[...]&s_category=2
 
 
 # http://stackoverflow.com/a/18359215
@@ -101,6 +102,8 @@ def get_author(url):
         return "starnews"
     if "stardailynews.co.kr" in url:
         return "stardailynews"
+    if "tvdaily.asiae.co.kr" in url:
+        return "tvdaily"
     return None
 
 
@@ -245,6 +248,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "stardailynews":
         if "news/articleList" not in myjson["url"]:
             return
+    elif myjson["author"] == "tvdaily":
+        if "searchs.php" not in myjson["url"]:
+            return
     else:
         return
 
@@ -299,7 +305,21 @@ def get_articles(myjson, soup):
             "description": "tr > td > p",
             "date": "-1",
             "images": "tr > td img",
-            "html": lambda entry: "<p>" + entry["description"] + "</p>" + '\n'.join(["<p><img src='" + x + "' /></p>" for x in entry["images"]])
+            "html": True
+        },
+        # tvdaily
+        {
+            "parent": "body > table tr > td > table tr > td > table tr > td > table tr > td",
+            "link": "a.sublist",
+            "date": "span.date",
+            "caption": "a.sublist",
+            "description": "p",
+            "images": "a > img",
+            "imagedata": lambda entry, soup: {
+                "date": re.sub(r"[^0-9]*", "", soup.select("span.date")[0].text),
+                "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"])
+            },
+            "html": True
         }
     ]
 
@@ -317,7 +337,11 @@ def get_articles(myjson, soup):
         if not a.select(selector["link"]):
             # print warning?
             continue
+
+        entry = {}
+
         link = get_article_url(urllib.parse.urljoin(myjson["url"], a.select(selector["link"])[0]["href"]))
+        entry["url"] = link
 
         date = 0
         if "date" in selector:
@@ -331,34 +355,39 @@ def get_articles(myjson, soup):
                             break
                     except Exception as e:
                         pass
+        entry["date"] = date
 
         caption = None
         if "caption" in selector:
             caption = a.select(selector["caption"])[0].text
+        entry["caption"] = caption
 
         description = None
         if "description" in selector:
             description = a.select(selector["description"])[0].text
+        entry["description"] = description
 
         author = get_author(link)
+        entry["author"] = author
+
+        imagedata = None
+        if "imagedata" in selector:
+            imagedata = selector["imagedata"](entry, a)
 
         images = []
         if "images" in selector:
             image_tags = a.select(selector["images"])
             for image in image_tags:
-                images.append(get_max_quality(urllib.parse.urljoin(myjson["url"], image["src"])))
+                image_full_url = urllib.parse.urljoin(myjson["url"], image["src"])
+                image_max_url = get_max_quality(image_full_url, imagedata)
+                images.append(image_max_url)
 
-        entry = {
-            "url": link,
-            "date": date,
-            "caption": caption,
-            "description": description,
-            "author": author,
-            "images": images,
-            "videos": []
-        }
+        entry["images"] = images
+        entry["videos"] = []
 
         if "html" in selector:
+            if selector["html"] is True:
+                selector["html"] = lambda entry: "<p>" + entry["description"] + "</p>" + '\n'.join(["<p><img src='" + x + "' /></p>" for x in entry["images"]])
             entry["description"] = selector["html"](entry)
 
         articles.append(entry)
@@ -366,7 +395,7 @@ def get_articles(myjson, soup):
     return articles
 
 
-def get_max_quality(url):
+def get_max_quality(url, data=None):
     if "naver." in url:
         url = re.sub("\?.*", "", url)
         #if "imgnews" not in url:
@@ -388,6 +417,11 @@ def get_max_quality(url):
     if "stardailynews.co.kr" in url:
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
+
+    if "tvdaily.asiae.co.kr" in url:
+        url = url.replace("/tvdaily.asiae", "/image.tvdaily")
+        url = url.replace("/thumb/", "/gisaimg/" + data["date"][:6] + "/")
+        url = re.sub(r"/([^/]*)\.[^/]*$", "/" + data["aid"][:10] + "_\\1.jpg", url)
 
     return url
 
