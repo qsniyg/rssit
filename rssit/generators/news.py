@@ -8,9 +8,11 @@ import re
 import html
 import pprint
 import rssit.util
+import datetime
 
 
 # for news1: http://news1.kr/search_front/search.php?query=[...]&collection=front_photo&startCount=[0,20,40,...]
+# for starnews: http://star.mt.co.kr/search/index.html?kwd=[...]&category=PHOTO
 
 
 def get_url(url):
@@ -29,7 +31,8 @@ def get_url(url):
         "find\.joins\.com/",
         "isplus\.joins\.com/",
         "news1.kr/search_front/",
-        "topstarnews.net/search.php"
+        "topstarnews.net/search.php",
+        "star\.mt\.co\.kr/search"
     ]
 
     found = False
@@ -58,7 +61,11 @@ def get_selector(soup, selectors):
 
 
 def get_title(myjson, soup):
-    return html.unescape(soup.find("meta", attrs={"property": "og:title"})["content"])
+    og_title = soup.find("meta", attrs={"property": "og:title"})
+    if og_title:
+        return html.unescape(og_title["content"])
+    elif "search" in myjson["url"]:
+        return "(search)"
 
 
 def get_author(url):
@@ -70,6 +77,8 @@ def get_author(url):
         return "news1"
     if "topstarnews.net" in url:
         return "topstarnews"
+    if "star.mt.co.kr" in url:
+        return "starnews"
     return None
 
 
@@ -78,6 +87,8 @@ def ascii_only(string):
 
 
 def parse_date(date):
+    if type(date) is int:
+        return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
     date = date.replace("년", "-")
     date = date.replace("월", "-")
@@ -169,6 +180,7 @@ def get_images(myjson, soup):
         ".article .detail img",
         "#articeBody img",
         "center table td a > img"  # topstarnews search
+
     ])
 
     if not imagestag:
@@ -204,6 +216,9 @@ def get_articles(myjson, soup):
             return
     elif myjson["author"] == "news1" or myjson["author"] == "topstarnews":
         if "search.php" not in myjson["url"]:
+            return
+    elif myjson["author"] == "starnews":
+        if "search" not in myjson["url"]:
             return
     else:
         return
@@ -242,6 +257,14 @@ def get_articles(myjson, soup):
             "caption": "center > table > tr > td > span > a",
             "date": ".street-photo2",
             "images": "center > table > tr > td > a > img"
+        },
+        # starnews
+        {
+            "parent": "#container > #content > .fbox li.bundle",
+            "link": ".txt > a",
+            "caption": ".txt > a",
+            "date": "-1",
+            "images": ".thum img"
         }
     ]
 
@@ -260,13 +283,16 @@ def get_articles(myjson, soup):
 
         date = 0
         if "date" in selector:
-            for date_tag in a.select(selector["date"]):
-                try:
-                    date = parse_date(date_tag.text)
-                    if date:
-                        break
-                except Exception as e:
-                    pass
+            if selector["date"] == "-1":
+                date = parse_date(-1)
+            else:
+                for date_tag in a.select(selector["date"]):
+                    try:
+                        date = parse_date(date_tag.text)
+                        if date:
+                            break
+                    except Exception as e:
+                        pass
 
         caption = None
         if "caption" in selector:
@@ -309,6 +335,8 @@ def get_max_quality(url):
     if "uhd.img.topstarnews.net/" in url:
         url = url.replace("/file_attach_thumb/", "/file_attach/")
         url = re.sub(r"_[^/]*[0-9]*x[0-9]*_[^/]*(\.[^/]*)$", "-org\\1", url)
+    if "thumb.mtstarnews.com/" in url:
+        url = re.sub(r"\.com/[0-9][0-9]/", ".com/06/", url)
     return url
 
 
@@ -318,7 +346,7 @@ def do_url(config, url):
         quick = True
 
     url = urllib.parse.quote(url, safe="%/:=&?~#+!$,;'@()*[]")
-    data = rssit.util.download(url)
+    data = rssit.util.download(url).decode("utf-8", "ignore")
     #data = download("file:///tmp/naver.html")
 
     soup = bs4.BeautifulSoup(data, 'lxml')
