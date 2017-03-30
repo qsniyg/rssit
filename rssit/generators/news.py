@@ -286,7 +286,8 @@ def get_articles(myjson, soup):
             "link": "a",
             "caption": "a > strong",
             "date": "a .date",
-            "images": ".thumb img"
+            "images": ".thumb img",
+            "aid": lambda soup: re.sub(r".*/\?([0-9]*).*", "\\1", soup.select("a")[0]["href"])
         },
         # topstarnews
         {
@@ -294,7 +295,8 @@ def get_articles(myjson, soup):
             "link": "center > table > tr > td > a",
             "caption": "center > table > tr > td > span > a",
             "date": ".street-photo2",
-            "images": "center > table > tr > td > a > img"
+            "images": "center > table > tr > td > a > img",
+            "aid": lambda soup: re.sub(r".*[^a-zA-Z0-9_]number=([0-9]*).*", "\\1", soup.select("center > table > tr > td > a")[0]["href"])
         },
         # starnews
         {
@@ -302,7 +304,8 @@ def get_articles(myjson, soup):
             "link": ".txt > a",
             "caption": ".txt > a",
             "date": "-1",
-            "images": ".thum img"
+            "images": ".thum img",
+            "aid": lambda soup: re.sub(r".*[^a-zA-Z0-9_]no=([0-9]*).*", "\\1", soup.select(".txt > a")[0]["href"])
         },
         # stardailynews
         {
@@ -312,7 +315,8 @@ def get_articles(myjson, soup):
             "description": "tr > td > p",
             "date": "-1",
             "images": "tr > td img",
-            "html": True
+            "html": True,
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("tr > td > span > a")[0]["href"])
         },
         # tvdaily
         {
@@ -326,6 +330,7 @@ def get_articles(myjson, soup):
                 "date": re.sub(r"[^0-9]*", "", soup.select("span.date")[0].text),
                 "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"])
             },
+            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"]),
             "html": True
         },
         # hankyung
@@ -374,14 +379,24 @@ def get_articles(myjson, soup):
                         pass
         entry["date"] = date
 
+        realcaption = None
         caption = None
+        aid = ""
+        if "aid" in selector:
+            aid = selector["aid"](a) + " "
         if "caption" in selector:
-            caption = a.select(selector["caption"])[0].text.strip()
+            realcaption = a.select(selector["caption"])[0].text.strip()
+            caption = aid + realcaption
         entry["caption"] = caption
+        entry["realcaption"] = realcaption
 
         description = None
         if "description" in selector:
             description = a.select(selector["description"])[0].text
+        else:
+            description = entry["realcaption"]
+            if not "html" in selector:
+                selector["html"] = True
         entry["description"] = description
 
         author = get_author(link)
@@ -592,7 +607,10 @@ def generate_url(config, url):
 
     feedjson = rssit.util.simple_copy(socialjson)
     for entry in feedjson["entries"]:
-        entry["title"] = entry["caption"]
+        if "realcaption" in entry:
+            entry["title"] = entry["realcaption"]
+        else:
+            entry["title"] = entry["caption"]
         if entry["description"] and entry["description"] != "":
             entry["content"] = entry["description"]
         else:
