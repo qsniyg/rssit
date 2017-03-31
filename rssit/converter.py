@@ -25,6 +25,8 @@ def get_path(input, output):
         return make_list(cd[input][output])
 
     for key in cd[input].keys():
+        if key == input:
+            continue
         path = get_path(key, output)
 
         if path is not None:

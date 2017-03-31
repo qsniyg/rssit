@@ -59,7 +59,8 @@ def get_url(url):
         "liveen.co.kr/news/articleList",
         "tvdaily\.asiae\.co\.kr/searchs",
         "search\.hankyung\.com",
-        "serach\.chosun\.com"
+        "search\.chosun\.com",
+        "mydaily.co.kr/.*/search"
     ]
 
     found = False
@@ -118,6 +119,8 @@ def get_author(url):
         return "liveen"
     if "search.chosun.com" in url:
         return "chosun"
+    if "mydaily.co.kr" in url:
+        return "mydaily"
     return None
 
 
@@ -267,6 +270,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "chosun":
         if "search.chosun.com" not in myjson["url"]:
             return
+    elif myjson["author"] == "mydaily":
+        if "search" not in myjson["url"]:
+            return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -382,6 +388,17 @@ def get_articles(myjson, soup):
             "date": "dt > em",
             "images": ".thumb img",
             "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
+            "html": True
+        },
+        # mydaily
+        {
+            "parent": "#wrap > #section_left > .section_list",
+            "link": ".section_list_text > dt > a",
+            "caption": ".section_list_text > dt > a",
+            "description": ".section_list_text > dd",
+            "date": ".section_list_text > dd > p",
+            "images": ".section_list_img > a > img",
+            "aid": lambda soup: re.sub(r".*newsid=([^&]*).*", "\\1", soup.select(".section_list_text > dt > a")[0]["href"]),
             "html": True
         }
     ]
