@@ -70,6 +70,10 @@ def runhooks(config, data, format):
 
 
 def process(config, data, input, output):
+    if input == output:
+        runhooks(config, data, input)
+        return data
+
     path = get_path(input, output)
 
     if not path:

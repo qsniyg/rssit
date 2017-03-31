@@ -10,4 +10,4 @@ sys.path.append(os.path.normpath(SCRIPT_DIR))
 from rssit import __main__
 
 if __name__ == "__main__":
-    __main__.main()
+    exit(__main__.main())

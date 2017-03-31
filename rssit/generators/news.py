@@ -54,6 +54,7 @@ def get_url(url):
         "news1.kr/search_front/",
         "topstarnews.net/search.php",
         "star\.mt\.co\.kr/search",
+        "osen\.mt\.co\.kr/search",
         "stardailynews\.co\.kr/news/articleList",
         "liveen.co.kr/news/articleList",
         "tvdaily\.asiae\.co\.kr/searchs",
@@ -105,6 +106,8 @@ def get_author(url):
         return "topstarnews"
     if "star.mt.co.kr" in url:
         return "starnews"
+    if "osen.mt.co.kr" in url:
+        return "osen"
     if "stardailynews.co.kr" in url:
         return "stardailynews"
     if "tvdaily.asiae.co.kr" in url:
@@ -216,7 +219,6 @@ def get_images(myjson, soup):
         ".article .detail img",
         "#articeBody img",
         "center table td a > img"  # topstarnews search
-
     ])
 
     if not imagestag:
@@ -253,7 +255,7 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "news1" or myjson["author"] == "topstarnews":
         if "search.php" not in myjson["url"]:
             return
-    elif myjson["author"] == "starnews":
+    elif myjson["author"] == "starnews" or myjson["author"] == "osen":
         if "search" not in myjson["url"]:
             return
     elif myjson["author"] == "tvdaily":
@@ -314,6 +316,15 @@ def get_articles(myjson, soup):
             "date": "-1",
             "images": ".thum img",
             "aid": lambda soup: re.sub(r".*[^a-zA-Z0-9_]no=([0-9]*).*", "\\1", soup.select(".txt > a")[0]["href"])
+        },
+        # osen
+        {
+            "parent": "#container .searchBox > table tr > td",
+            "link": "a",
+            "caption": "p.photoView",
+            "date": "-1",
+            "images": "a > img",
+            "aid": lambda soup: re.sub(r".*/([0-9A-Za-z]*)", "\\1", soup.select("a")[0]["href"])
         },
         # liveen
         {
@@ -496,7 +507,11 @@ def get_max_quality(url, data=None):
         url = re.sub(r"-[0-9]*x[0-9]*\.jpg$", ".jpg", url)
 
     if "chosun.com" in url:
-        return url.replace("/thumb_dir/", "/img_dir/").replace("/thumbnail/", "/image/").replace("_thumb.", ".")
+        url = url.replace("/thumb_dir/", "/img_dir/").replace("/thumbnail/", "/image/").replace("_thumb.", ".")
+
+    if "file.osen.co.kr" in url:
+        url = url.replace("/article_thumb/", "/article/")
+        url = re.sub(r"_[0-9]*x[0-9]*\.jpg$", ".jpg", url)
 
     return url
 

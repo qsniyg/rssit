@@ -134,6 +134,7 @@ def get_models_config(models):
 def get_config_model_obj(options, model, config):
     options.update(copy.deepcopy(get_model_options(model)))
     options.update(copy.deepcopy(config))
+    options.update(copy.deepcopy(rssit.globals.config["config"].get("args", {})))
 
 
 def get_config_model(options, section):
@@ -158,6 +159,7 @@ def get_section(section):
         get_config_model(options, split)
 
     options.update(copy.deepcopy(rssit.globals.config["config"].get(section, {})))
+    options.update(copy.deepcopy(rssit.globals.config["config"].get("args", {})))
 
     return options
 

@@ -6,6 +6,7 @@ import rssit.formats
 import re
 import io
 import traceback
+import ujson
 
 
 def process(server, path, normpath, options):
@@ -38,12 +39,18 @@ def process(server, path, normpath, options):
 
     result_format = result[0]
     if not result_format in rssit.formats.formats:
+        # print error?
         return
 
     server.send_header("Content-type", rssit.formats.formats[result_format]["content-type"])
     server.end_headers()
 
-    server.wfile.write(result[1])
+    str_result = result[1]
+
+    if type(str_result) not in [str, bytes]:
+        str_result = ujson.dumps(str_result).encode('utf-8')
+
+    server.wfile.write(str_result)
 
 
 infos = [{

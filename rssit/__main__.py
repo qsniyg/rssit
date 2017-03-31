@@ -8,6 +8,8 @@ import sys
 import rssit.generator
 import rssit.globals
 import rssit.update
+import rssit.args
+import rssit.cli
 
 
 config_model = {
@@ -85,5 +87,11 @@ def main():
 
     rssit.config.load()
 
+    url = rssit.args.parse_args(sys.argv)
+    if url:
+        return rssit.cli.serve(url)
+
     core = rssit.config.get_section("core")
     rssit.http.serve(core["port"])
+
+    return 0
