@@ -49,6 +49,9 @@ class runthread(threading.Thread):
 
 
 def runhooks(config, data, format):
+    if "nohooks" in config and config["nohooks"] is True:
+        return
+
     hooksname = format + "_hooks"
 
     if hooksname not in config:
