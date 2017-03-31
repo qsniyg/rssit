@@ -60,7 +60,8 @@ def get_url(url):
         "tvdaily\.asiae\.co\.kr/searchs",
         "search\.hankyung\.com",
         "search\.chosun\.com",
-        "mydaily.co.kr/.*/search"
+        "mydaily.co.kr/.*/search",
+        "search.mbn.co.kr"
     ]
 
     found = False
@@ -121,6 +122,8 @@ def get_author(url):
         return "chosun"
     if "mydaily.co.kr" in url:
         return "mydaily"
+    if "mbn.co.kr" in url:
+        return "mbn"
     return None
 
 
@@ -258,7 +261,7 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "news1" or myjson["author"] == "topstarnews":
         if "search.php" not in myjson["url"]:
             return
-    elif myjson["author"] == "starnews" or myjson["author"] == "osen":
+    elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
         if "search" not in myjson["url"]:
             return
     elif myjson["author"] == "tvdaily":
@@ -269,9 +272,6 @@ def get_articles(myjson, soup):
             return
     elif myjson["author"] == "chosun":
         if "search.chosun.com" not in myjson["url"]:
-            return
-    elif myjson["author"] == "mydaily":
-        if "search" not in myjson["url"]:
             return
     else:
         if "news/articleList" not in myjson["url"]:
@@ -399,6 +399,17 @@ def get_articles(myjson, soup):
             "date": ".section_list_text > dd > p",
             "images": ".section_list_img > a > img",
             "aid": lambda soup: re.sub(r".*newsid=([^&]*).*", "\\1", soup.select(".section_list_text > dt > a")[0]["href"]),
+            "html": True
+        },
+        # mbn
+        {
+            "parent": "#search_result > .collaction_news > ul > li",
+            "link": "a",
+            "caption": "a > strong",
+            "description": "p.desc",
+            "date": ".write_time",
+            "images": ".thumb img",
+            "aid": lambda soup: re.sub(r".*news_seq_no=([^&]*).*", "\\1", soup.select("a")[0]["href"]),
             "html": True
         }
     ]
@@ -529,6 +540,10 @@ def get_max_quality(url, data=None):
     if "file.osen.co.kr" in url:
         url = url.replace("/article_thumb/", "/article/")
         url = re.sub(r"_[0-9]*x[0-9]*\.jpg$", ".jpg", url)
+
+    if "img.mbn.co.kr" in url:
+        url = re.sub(r"_[^_/?&]*x[0-9]*\.([^_/?&])", ".\\1", url)
+        url = re.sub(r"_s[0-9]*\.([^_/?&])", ".\\1", url)
 
     return url
 
