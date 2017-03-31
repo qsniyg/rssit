@@ -13,6 +13,7 @@ import datetime
 
 # for news1: http://news1.kr/search_front/search.php?query=[...]&collection=front_photo&startCount=[0,20,40,...]
 # for starnews: http://star.mt.co.kr/search/index.html?kwd=[...]&category=PHOTO
+# for articleList-based: http://stardailynews.co.kr/news/articleList.html?page=1&sc_area=A&sc_word=[...]&view_type=sm
 # for tvdaily: http://tvdaily.asiae.co.kr/searchs.php?section=17&searchword=[...]&s_category=2
 
 
@@ -54,8 +55,10 @@ def get_url(url):
         "topstarnews.net/search.php",
         "star\.mt\.co\.kr/search",
         "stardailynews\.co\.kr/news/articleList",
+        "liveen.co.kr/news/articleList",
         "tvdaily\.asiae\.co\.kr/searchs",
-        "search\.hankyung\.com"
+        "search\.hankyung\.com",
+        "serach\.chosun\.com"
     ]
 
     found = False
@@ -108,6 +111,10 @@ def get_author(url):
         return "tvdaily"
     if "hankyung.com" in url:
         return "hankyung"
+    if "liveen.co.kr" in url:
+        return "liveen"
+    if "search.chosun.com" in url:
+        return "chosun"
     return None
 
 
@@ -249,17 +256,18 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "starnews":
         if "search" not in myjson["url"]:
             return
-    elif myjson["author"] == "stardailynews":
-        if "news/articleList" not in myjson["url"]:
-            return
     elif myjson["author"] == "tvdaily":
         if "searchs.php" not in myjson["url"]:
             return
     elif myjson["author"] == "hankyung":
         if "search.hankyung.com" not in myjson["url"]:
             return
+    elif myjson["author"] == "chosun":
+        if "search.chosun.com" not in myjson["url"]:
+            return
     else:
-        return
+        if "news/articleList" not in myjson["url"]:
+            return
 
     articles = []
 
@@ -307,6 +315,17 @@ def get_articles(myjson, soup):
             "images": ".thum img",
             "aid": lambda soup: re.sub(r".*[^a-zA-Z0-9_]no=([0-9]*).*", "\\1", soup.select(".txt > a")[0]["href"])
         },
+        # liveen
+        {
+            "parent": "table#article-list > tr > td > table > tr > td > table",
+            "link": "td.list-titles a",
+            "caption": "td.list-titles a",
+            "description": "td.list-summary a",
+            "date": "td.list-times",
+            "images": ".list-photos img",
+            "html": True,
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("td.list-titles a")[0]["href"])
+        },
         # stardailynews
         {
             "parent": "#ND_Warp table tr > td table tr > td table tr > td table",
@@ -341,6 +360,17 @@ def get_articles(myjson, soup):
             "description": ".txt_wrap > p.txt",
             "date": ".info span.date_time",
             "images": ".thumbnail img",
+            "html": True
+        },
+        # chosun
+        {
+            "parent": ".result_box > section.result > dl",
+            "link": "dt > a",
+            "caption": "dt > a",
+            "description": "dd > a",
+            "date": "dt > em",
+            "images": ".thumb img",
+            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
             "html": True
         }
     ]
@@ -392,7 +422,11 @@ def get_articles(myjson, soup):
 
         description = None
         if "description" in selector:
-            description = a.select(selector["description"])[0].text
+            description_tag = a.select(selector["description"])
+            description = ""
+            for tag in description_tag:
+                if len(tag.text)  > len(description):
+                    description = tag.text
         else:
             description = entry["realcaption"]
             if not "html" in selector:
@@ -446,7 +480,7 @@ def get_max_quality(url, data=None):
     if "thumb.mtstarnews.com/" in url:
         url = re.sub(r"\.com/[0-9][0-9]/", ".com/06/", url)
 
-    if "stardailynews.co.kr" in url:
+    if "stardailynews.co.kr" in url or "liveen.co.kr" in url:
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
 
@@ -460,6 +494,9 @@ def get_max_quality(url, data=None):
 
     if "img.tenasia.hankyung.com" in url:
         url = re.sub(r"-[0-9]*x[0-9]*\.jpg$", ".jpg", url)
+
+    if "chosun.com" in url:
+        return url.replace("/thumb_dir/", "/img_dir/").replace("/thumbnail/", "/image/").replace("_thumb.", ".")
 
     return url
 
