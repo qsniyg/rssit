@@ -90,11 +90,18 @@ def process(server, config, path):
 
         format = config["output"]
 
+        old_preferred_i = preferred_i
         if result_format in rssit.formats.formats_order:
             if preferred_i is None or preferred_i > rssit.formats.formats_order.index(result_format):
                 preferred_i = rssit.formats.formats_order.index(result_format)
 
         results[result_format] = rssit.converter.process(config, result, result_format, format)
+
+        if not results[result_format]:
+            preferred_i = old_preferred_i
+
+    if preferred_i is None:
+        preferred_i = 0
 
     preferred_format = rssit.formats.formats_order[preferred_i]
     return (preferred_format, results[preferred_format])
