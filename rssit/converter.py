@@ -18,7 +18,7 @@ def make_list(x):
 def get_path(input, output):
     cd = rssit.converters.all.converters_dict
 
-    if not input in cd:
+    if input not in cd:
         return None
 
     if output in cd[input]:
@@ -27,7 +27,7 @@ def get_path(input, output):
     for key in cd[input].keys():
         path = get_path(key, output)
 
-        if path != None:
+        if path is not None:
             current_path = make_list(cd[input][key])
             current_path.extend(path)
 
@@ -73,11 +73,11 @@ def runhooks(config, data, format):
 
 
 def process(config, data, input, output):
-    if input == output:
+    path = get_path(input, output)
+
+    if not path and input == output:
         runhooks(config, data, input)
         return data
-
-    path = get_path(input, output)
 
     if not path:
         return False

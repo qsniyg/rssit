@@ -2,11 +2,13 @@
 
 
 import importlib
+import rssit.converters.social_to_social
 import rssit.converters.social_to_feed
 import rssit.converters.feed_to_rssatom
 
 
 converters_list = [
+    rssit.converters.social_to_social,
     rssit.converters.social_to_feed,
     rssit.converters.feed_to_rssatom
 ]
