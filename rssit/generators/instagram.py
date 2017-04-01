@@ -5,6 +5,7 @@ import re
 import rssit.util
 import ujson
 import datetime
+import sys
 from dateutil.tz import *
 
 
@@ -18,7 +19,38 @@ def get_url(url):
 
 
 def normalize_image(url):
-    return url.replace(".com/l/", ".com/")
+    url = url.replace(".com/l/", ".com/")
+    url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
+    return url
+
+
+def get_node_media(node, images, videos):
+    image_src = None
+    if "display_src" in node:
+        image_src = node["display_src"]
+    elif "display_url" in node:
+        image_src = node["display_url"]
+    else:
+        sys.stderr.write("No image!!\n")
+    normalized = normalize_image(image_src)
+
+    if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
+        videourl = rssit.util.get_local_url("/f/instagram/v/" + node["code"])
+
+        found = False
+        for video in videos:
+            if video["video"] == videourl:
+                found = True
+                break
+
+        if not found:
+            videos.append({
+                "image": normalized,
+                "video": videourl
+            })
+    else:
+        if normalized not in images:
+            images.append(normalized)
 
 
 def generate_user(config, user):
@@ -58,16 +90,29 @@ def generate_user(config, user):
 
         date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
 
-        images = None
-        videos = None
+        images = []
+        videos = []
 
-        if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
-            videos = [{
-                "image": normalize_image(node["display_src"]),
-                "video": rssit.util.get_local_url("/f/instagram/v/" + node["code"])
-            }]
-        else:
-            images = [normalize_image(node["display_src"])]
+        get_node_media(node, images, videos)
+
+        #if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
+        #    videos = [{
+        #        "image": normalize_image(node["display_src"]),
+        #        "video": rssit.util.get_local_url("/f/instagram/v/" + node["code"])
+        #    }]
+        #else:
+        #    images = [normalize_image(node["display_src"])]
+
+        if "__typename" in node and node["__typename"] == "GraphSidecar":
+            sidecar_url = "http://www.instagram.com/p/" + node["code"] + "/?__a=1"
+            newdl = rssit.util.download("http://www.instagram.com/p/" + node["code"] + "/?__a=1")
+            newnodes = ujson.decode(newdl)
+
+            if "edge_sidecar_to_children" not in newnodes["media"]:
+                sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
+            else:
+                for newnode in newnodes["media"]["edge_sidecar_to_children"]["edges"]:
+                    get_node_media(newnode["node"], images, videos)
 
         feed["entries"].append({
             "url": "https://www.instagram.com/p/%s/" % node["code"],

@@ -134,7 +134,10 @@ def ascii_only(string):
 def parse_date(date):
     if type(date) is int:
         return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
+    date = date.strip()
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
+    date = re.sub("([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
+                  "20\\1-\\2-\\3 \\4", date) # mbn
     date = date.replace("년", "-")
     date = date.replace("월", "-")
     date = date.replace("시", ":")
