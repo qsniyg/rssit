@@ -493,10 +493,10 @@ def get_articles(myjson, soup):
         entry["images"] = images
         entry["videos"] = []
 
-        if "html" in selector:
-            if selector["html"] is True:
-                selector["html"] = lambda entry: "<p>" + entry["description"] + "</p>" + '\n'.join(["<p><img src='" + x + "' /></p>" for x in entry["images"]])
-            entry["description"] = selector["html"](entry)
+        #if "html" in selector:
+        #    if selector["html"] is True:
+        #        selector["html"] = lambda entry: "<p>" + entry["description"] + "</p>" + '\n'.join(["<p><img src='" + x + "' /></p>" for x in entry["images"]])
+        #    entry["description"] = selector["html"](entry)
 
         articles.append(entry)
 
@@ -525,6 +525,9 @@ def get_max_quality(url, data=None):
     if "stardailynews.co.kr" in url or "liveen.co.kr" in url:
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
+        baseurl = url
+
+        url = [baseurl, re.sub("\.jpg$", ".gif", baseurl)]
 
     if "tvdaily.asiae.co.kr" in url:
         url = url.replace("/tvdaily.asiae", "/image.tvdaily")
@@ -692,16 +695,23 @@ def generate_url(config, url):
         "social": socialjson
     }
 
-    feedjson = rssit.util.simple_copy(socialjson)
-    for entry in feedjson["entries"]:
+    basefeedjson = rssit.util.simple_copy(socialjson)
+    for entry in basefeedjson["entries"]:
         if "realcaption" in entry:
-            entry["title"] = entry["realcaption"]
-        else:
-            entry["title"] = entry["caption"]
-        if entry["description"] and entry["description"] != "":
-            entry["content"] = entry["description"]
-        else:
-            return retval
+            entry["caption"] = entry["realcaption"]
+
+    feedjson = rssit.converters.social_to_feed.process(basefeedjson, config)
+
+    ##feedjson = rssit.util.simple_copy(socialjson)
+    ##for entry in feedjson["entries"]:
+    ##    if "realcaption" in entry:
+    ##        entry["title"] = entry["realcaption"]
+    ##    else:
+    ##        entry["title"] = entry["caption"]
+    ##    if entry["description"] and entry["description"] != "":
+    ##        entry["content"] = entry["description"]
+    ##    else:
+    ##        return retval
 
     return {
         "social": socialjson,

@@ -19,7 +19,12 @@ def process(result, config):
         if not caption:
             caption = "(n/a)"
 
-        basecontent = rssit.util.link_urls(caption).replace("\n", "<br />\n")
+
+        if "description" in entry:
+            basecontent = rssit.util.link_urls(entry["description"]).replace("\n", "<br />\n")
+        else:
+            basecontent = rssit.util.link_urls(caption).replace("\n", "<br />\n")
+
         basetitle = caption.replace("\n", " ")
 
         if entry["author"] != result["author"]:
@@ -50,7 +55,11 @@ def process(result, config):
 
         if entry["images"]:
             for image in entry["images"]:
-                content += "<p><img src='%s'/></p>" % image
+                if type(image) not in [list, tuple]:
+                    image = [image]
+
+                for theimage in image:
+                    content += "<p><img src='%s'/></p>" % theimage
 
         thisentry = {
             "url": entry["url"],
