@@ -58,6 +58,7 @@ def get_url(url):
         "stardailynews\.co\.kr/news/articleList",
         "liveen.co.kr/news/articleList",
         "tvdaily\.asiae\.co\.kr/searchs",
+        "chicnews\.mk\.co\.kr/searchs",
         "search\.hankyung\.com",
         "search\.chosun\.com",
         "mydaily.co.kr/.*/search",
@@ -124,6 +125,8 @@ def get_author(url):
         return "mydaily"
     if "mbn.co.kr" in url:
         return "mbn"
+    if "chicnews.mk.co.kr" in url:
+        return "chicnews"
     return None
 
 
@@ -156,7 +159,8 @@ def get_date(myjson, soup):
     datetag = get_selector(soup, [
         ".article_info .author em",
         ".article_tit .write_info .write",
-        "#article_body_content .title .info"
+        "#article_body_content .title .info",
+        "font.read_time"  # chicnews
     ])
 
     if not datetag:
@@ -165,12 +169,13 @@ def get_date(myjson, soup):
 
     date = None
     for date_tag in datetag:
-        if myjson["author"] == "naver":
-            if not "오후" in date_tag.text:
-                continue
-            date = parse(date_tag.text.replace("오후", ""))
-        else:
-            date = parse_date(date_tag.text)
+        date = parse_date(date_tag.text)
+        ##if myjson["author"] == "naver":
+        ##    if not "오후" in date_tag.text:
+        ##        continue
+        ##    date = parse(date_tag.text.replace("오후", ""))
+        ##else:
+        ##    date = parse_date(date_tag.text)
 
     return date
 
@@ -235,7 +240,8 @@ def get_images(myjson, soup):
 
     images = []
     for image in imagestag:
-        images.append(get_max_quality(image["src"]))
+        image_full_url = urllib.parse.urljoin(myjson["url"], image["src"])
+        images.append(get_max_quality(image_full_url))
 
     return images
 
@@ -243,7 +249,8 @@ def get_images(myjson, soup):
 def get_description(myjson, soup):
     desc_tag = get_selector(soup, [
         "#article_content #adiContents",
-        "#article_body_content .detail"
+        "#article_body_content .detail",
+        "#CmAdContent",  # chicnews
     ])
 
     if not desc_tag:
@@ -267,7 +274,7 @@ def get_articles(myjson, soup):
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
         if "search" not in myjson["url"]:
             return
-    elif myjson["author"] == "tvdaily":
+    elif myjson["author"] == "tvdaily" or myjson["author"] == "chicnews":
         if "searchs.php" not in myjson["url"]:
             return
     elif myjson["author"] == "hankyung":
@@ -414,6 +421,21 @@ def get_articles(myjson, soup):
             "images": ".thumb img",
             "aid": lambda soup: re.sub(r".*news_seq_no=([^&]*).*", "\\1", soup.select("a")[0]["href"]),
             "html": True
+        },
+        # chicnews
+        {
+            "parent": "#container .container_left dl.article",
+            "link": ".tit > a",
+            "caption": ".tit > a",
+            "description": ".subtxt",
+            "date": "span.date",
+            "images": ".img img",
+            "imagedata": lambda entry, soup: {
+                "date": re.sub(r"[^0-9]*", "", soup.select("span.date")[0].text),
+                "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select(".tit > a")[0]["href"])
+            },
+            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", soup.select(".tit > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -529,10 +551,11 @@ def get_max_quality(url, data=None):
 
         url = [baseurl, re.sub("\.jpg$", ".gif", baseurl)]
 
-    if "tvdaily.asiae.co.kr" in url:
-        url = url.replace("/tvdaily.asiae", "/image.tvdaily")
-        url = url.replace("/thumb/", "/gisaimg/" + data["date"][:6] + "/")
-        url = re.sub(r"/([^/]*)\.[^/]*$", "/" + data["aid"][:10] + "_\\1.jpg", url)
+    if "tvdaily.asiae.co.kr" in url or "chicnews.mk.co.kr":
+        if data:
+            url = url.replace("/tvdaily.asiae", "/image.tvdaily")
+            url = url.replace("/thumb/", "/gisaimg/" + data["date"][:6] + "/")
+            url = re.sub(r"/[a-zA-Z]*([^/]*)\.[^/]*$", "/" + data["aid"][:10] + "_\\1.jpg", url)
 
     if "img.hankyung.com" in url:
         url = re.sub(r"\.[0-9]\.([a-zA-Z0-9]*)$", ".1.\\1", url)

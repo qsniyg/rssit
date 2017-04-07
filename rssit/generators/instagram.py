@@ -35,7 +35,10 @@ def get_node_media(node, images, videos):
     normalized = normalize_image(image_src)
 
     if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
-        videourl = rssit.util.get_local_url("/f/instagram/v/" + node["code"])
+        if "video_url" in node:
+            videourl = node["video_url"]
+        else:
+            videourl = rssit.util.get_local_url("/f/instagram/v/" + node["code"])
 
         found = False
         for video in videos:
