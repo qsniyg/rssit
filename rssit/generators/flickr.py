@@ -96,7 +96,10 @@ def generate_photos(config, user):
         if "title" in photo:
             caption = photo["title"]
         else:
-            caption = None
+            caption = ""
+
+        newcaption = str(photo["id"]) + " " + caption
+        newcaption = newcaption.strip()
 
         date = datetime.datetime.fromtimestamp(int(photo["stats"]["datePosted"]), None).replace(tzinfo=tzlocal())
 
@@ -111,6 +114,8 @@ def generate_photos(config, user):
                 user, photo["id"]
             ),
             "caption": caption,
+            "media_caption": newcaption,
+            "similarcaption": caption,
             "author": username,
             "date": date,
             "images": images,
