@@ -111,10 +111,10 @@ def generate_user(config, user):
             newdl = rssit.util.download("http://www.instagram.com/p/" + node["code"] + "/?__a=1")
             newnodes = ujson.decode(newdl)
 
-            if "edge_sidecar_to_children" not in newnodes["media"]:
+            if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
                 sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
             else:
-                for newnode in newnodes["media"]["edge_sidecar_to_children"]["edges"]:
+                for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
                     get_node_media(newnode["node"], images, videos)
 
         feed["entries"].append({
