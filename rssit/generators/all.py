@@ -13,6 +13,7 @@ import rssit.generators.soundcloud
 import rssit.generators.tumblr
 import rssit.generators.tistory
 import rssit.generators.news
+import rssit.generators.xe
 
 
 generator_list = [
@@ -25,7 +26,8 @@ generator_list = [
     rssit.generators.soundcloud,
     rssit.generators.tumblr,
     rssit.generators.tistory,
-    rssit.generators.news
+    rssit.generators.news,
+    rssit.generators.xe
 ]
 
 generator_dict = {}
