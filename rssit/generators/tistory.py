@@ -53,6 +53,7 @@ def generate_url(config, url):
             ".list_box li > a",
             "ol.article_post li a",
             "#masonry ul li.box > a",
+            "#masonry li div.lbox > a",
             "#content .entry_slist ol li > a",
             "#content #content-inner .list ul li > a",
             "#result li > a",
