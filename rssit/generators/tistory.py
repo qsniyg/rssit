@@ -247,6 +247,7 @@ def generate_url(config, url):
 
 def process(server, config, path):
     if path.startswith("/url/"):
+        path = re.sub(".*?/tistory", "", config["fullpath"])
         url = "http://" + path[len("/url/"):]
         return generate_url(config, url)
 

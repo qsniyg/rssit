@@ -127,6 +127,8 @@ def get_author(url):
         return "mbn"
     if "chicnews.mk.co.kr" in url:
         return "chicnews"
+    if "newsen.com" in url:
+        return "newsen"
     return None
 
 
@@ -283,6 +285,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "chosun":
         if "search.chosun.com" not in myjson["url"]:
             return
+    elif myjson["author"] == "newsen":
+        if "news_list.php" not in myjson["url"]:
+            return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -363,6 +368,17 @@ def get_articles(myjson, soup):
             "images": "tr > td img",
             "html": True,
             "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("tr > td > span > a")[0]["href"])
+        },
+        # newsen
+        {
+            "parent": "table[align='left'] > tr > td[align='left'] > table[align='center'] > tr[bgcolor]",
+            "link": "a.line",
+            "caption": "a > b",
+            "description": "td[colspan='2'] > a",
+            "date": "td[nowrap]",
+            "images": "a > img",
+            "aid": lambda soup: re.sub(r".*uid=([^&]*).*", "\\1", soup.select("td > a")[0]["href"]),
+            "html": True
         },
         # tvdaily
         {
@@ -573,6 +589,9 @@ def get_max_quality(url, data=None):
     if "img.mbn.co.kr" in url:
         url = re.sub(r"_[^_/?&]*x[0-9]*\.([^_/?&])", ".\\1", url)
         url = re.sub(r"_s[0-9]*\.([^_/?&])", ".\\1", url)
+
+    if "cdn.newsen.com" in url:
+        url = url.replace("_ts.gif", ".jpg")
 
     return url
 
