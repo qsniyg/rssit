@@ -129,6 +129,8 @@ def get_author(url):
         return "chicnews"
     if "newsen.com" in url:
         return "newsen"
+    if "hankooki.com" in url:
+        return "hankooki"
     return None
 
 
@@ -143,6 +145,8 @@ def parse_date(date):
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
     date = re.sub("(^|[^0-9])([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
                   "\\1 20\\2-\\3-\\4 \\5", date) # mbn
+    if "수정시간" in date:
+        date = re.sub(".*수정시간", "", date)
     date = date.replace("년", "-")
     date = date.replace("월", "-")
     date = date.replace("시", ":")
@@ -151,6 +155,8 @@ def parse_date(date):
     date = re.sub("\( *= *1 *\)", "", date) # workaround for news1
     date = re.sub("\|", " ", date)
     date = re.sub(":[^0-9]*$", "", date)
+    while re.search("^[^0-9]*[:.].*", date):
+        date = re.sub("^[^0-9]*[:.]", "", date)
     date = date.strip()
     if not date:
         return None
@@ -162,7 +168,8 @@ def get_date(myjson, soup):
         ".article_info .author em",
         ".article_tit .write_info .write",
         "#article_body_content .title .info",
-        "font.read_time"  # chicnews
+        "font.read_time",  # chicnews
+        ".gisacopyright"
     ])
 
     if not datetag:
@@ -234,7 +241,8 @@ def get_images(myjson, soup):
         ".newsbm_img_wrap > img",
         ".article .detail img",
         "#articeBody img",
-        "center table td a > img"  # topstarnews search
+        "center table td a > img",  # topstarnews search
+        ".gisaimg > ul > li > img"  # hankooki
     ])
 
     if not imagestag:
@@ -253,6 +261,7 @@ def get_description(myjson, soup):
         "#article_content #adiContents",
         "#article_body_content .detail",
         "#CmAdContent",  # chicnews
+        "#GS_Content" #hankooki
     ])
 
     if not desc_tag:
@@ -270,7 +279,7 @@ def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] == "news1" or myjson["author"] == "topstarnews":
+    elif myjson["author"] == "news1" or myjson["author"] == "topstarnews" or myjson["author"] == "hankooki":
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
@@ -452,6 +461,18 @@ def get_articles(myjson, soup):
             },
             "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", soup.select(".tit > a")[0]["href"]),
             "html": True
+        },
+        # hankooki
+        {
+            "parent": "#SectionCenter .news > .pb12",
+            "link": "li.title > a",
+            "caption": "li.title > a",
+            "description": "li.con > a",
+            "date": "li.source",
+            "images": ".thumb > a > img",
+            "aid": lambda soup: re.sub(r".*/[a-zA-Z]*([^/]*)\.htm[^/]*$", "\\1", soup.select("li.title > a")[0]["href"]),
+            "html": True,
+            "is_valid": lambda soup: soup.select("li.title > a")[0]["href"].strip()
         }
     ]
 
@@ -474,6 +495,10 @@ def get_articles(myjson, soup):
 
         link = get_article_url(urllib.parse.urljoin(myjson["url"], a.select(selector["link"])[0]["href"]))
         entry["url"] = link
+
+        if not link.strip():
+            # empty link
+            continue
 
         date = 0
         if "date" in selector:
@@ -530,6 +555,10 @@ def get_articles(myjson, soup):
 
         entry["images"] = images
         entry["videos"] = []
+
+        if "is_valid" in selector:
+            if not selector["is_valid"](a):
+                continue
 
         #if "html" in selector:
         #    if selector["html"] is True:
@@ -593,6 +622,10 @@ def get_max_quality(url, data=None):
     if "cdn.newsen.com" in url:
         url = url.replace("_ts.gif", ".jpg")
 
+    if "photo.hankooki.com" in url:
+        url = url.replace("/photo/", "/original/").replace("/arch/thumbs/", "/arch/original/")
+        url = re.sub(r"/(.*\/)t([0-9]*[^/]*)$/", "\\1\\2", url)
+
     return url
 
 
@@ -602,7 +635,12 @@ def do_url(config, url):
         quick = True
 
     url = urllib.parse.quote(url, safe="%/:=&?~#+!$,;'@()*[]")
-    data = rssit.util.download(url)
+
+    if "post" in config and config["post"]:
+        data = rssit.util.download(url, post=config["post"])
+    else:
+        data = rssit.util.download(url)
+
     soup = bs4.BeautifulSoup(data, 'lxml')
 
     encoding = "utf-8"
@@ -675,6 +713,7 @@ def do_url(config, url):
             try:
                 newjson = do_url(config, article_url)
             except Exception as e:
+                sys.stderr.write("exception: " + e)
                 pass
             if not newjson:
                 sys.stderr.write("url: " + article_url + " is invalid\n")
@@ -705,7 +744,10 @@ def do_url(config, url):
         sys.stderr.write("no date\n")
         return
 
-    album = "[" + str(date.year)[-2:] + str(date.month).zfill(2) + str(date.day).zfill(2) + "] " + title
+    if "albums" in config and config["albums"]:
+        album = "[" + str(date.year)[-2:] + str(date.month).zfill(2) + str(date.day).zfill(2) + "] " + title
+    else:
+        album = None
 
     images = get_images(myjson, soup)
     if not images:
@@ -762,6 +804,14 @@ def generate_url(config, url):
 
 
 def process(server, config, path):
+    if path.startswith("/post/"):
+        if "/endpost/" not in config["fullpath"]:
+            sys.stderr.write("no /endpost/\n")
+            return None
+        config["post"] = re.sub(".*?/post/(.*?)/endpost/.*", "\\1", config["fullpath"]).encode("utf-8")
+        newpath = re.sub(".*?/endpost", "", path)
+        config["fullpath"] = re.sub(".*?/endpost", "", config["fullpath"])
+        return process(server, config, newpath)
     if path.startswith("/url/"):
         url = "http://" + re.sub(".*?/url/", "", config["fullpath"])
         return generate_url(config, url)
@@ -775,7 +825,13 @@ infos = [{
     "name": "news",
     "display_name": "News",
 
-    "config": {},
+    "config": {
+        "albums": {
+            "name": "Albums",
+            "description": "Create albums for articles",
+            "value": False
+        }
+    },
 
     "get_url": get_url,
     "process": process

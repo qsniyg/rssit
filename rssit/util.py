@@ -29,6 +29,8 @@ def download(url, *args, **kwargs):
 
     if "head" in kwargs and kwargs["head"]:
         request = urllib.request.Request(url, method="HEAD")
+    elif "post" in kwargs and kwargs["post"]:
+        request = urllib.request.Request(url, data=kwargs["post"], method="POST")
     else:
         request = urllib.request.Request(url)
 
