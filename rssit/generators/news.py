@@ -62,7 +62,8 @@ def get_url(url):
         "search\.hankyung\.com",
         "search\.chosun\.com",
         "mydaily.co.kr/.*/search",
-        "search.mbn.co.kr"
+        "search.mbn.co.kr",
+        "newsen\.com"
     ]
 
     found = False
@@ -91,6 +92,15 @@ def get_selector(soup, selectors):
 
 
 def get_title(myjson, soup):
+    if myjson["author"] in [
+            "ettoday"
+            ]:
+        title = get_selector(soup, [
+            ".block_title" # ettoday
+        ])
+        if title and len(title) > 0:
+            return title[0].text
+
     og_title = soup.find("meta", attrs={"property": "og:title"})
     if og_title:
         return html.unescape(og_title["content"])
@@ -131,6 +141,8 @@ def get_author(url):
         return "newsen"
     if "hankooki.com" in url:
         return "hankooki"
+    if "ettoday.net" in url:
+        return "ettoday"
     return None
 
 
@@ -164,6 +176,11 @@ def parse_date(date):
 
 
 def get_date(myjson, soup):
+    if myjson["author"] in [
+            "ettoday"
+            ]:
+        return parse_date(-1)
+
     datetag = get_selector(soup, [
         ".article_info .author em",
         ".article_tit .write_info .write",
@@ -242,7 +259,8 @@ def get_images(myjson, soup):
         ".article .detail img",
         "#articeBody img",
         "center table td a > img",  # topstarnews search
-        ".gisaimg > ul > li > img"  # hankooki
+        ".gisaimg > ul > li > img",  # hankooki
+        ".part_thumb_2 .box_0 .pic img" # star.ettoday.net
     ])
 
     if not imagestag:
@@ -625,6 +643,9 @@ def get_max_quality(url, data=None):
     if "photo.hankooki.com" in url:
         url = url.replace("/photo/", "/original/").replace("/arch/thumbs/", "/arch/original/")
         url = re.sub(r"/(.*\/)t([0-9]*[^/]*)$/", "\\1\\2", url)
+
+    if ".ettoday.net" in url:
+        url = re.sub(r"/[a-z]*([0-9]*\.[^/]*)$", "/\\1", url)
 
     return url
 

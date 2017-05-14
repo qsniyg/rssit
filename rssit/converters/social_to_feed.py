@@ -19,8 +19,7 @@ def process(result, config):
         if not caption:
             caption = "(n/a)"
 
-
-        if "description" in entry:
+        if "description" in entry and entry["description"] is not None:
             basecontent = rssit.util.link_urls(entry["description"]).replace("\n", "<br />\n")
         else:
             basecontent = rssit.util.link_urls(caption).replace("\n", "<br />\n")
