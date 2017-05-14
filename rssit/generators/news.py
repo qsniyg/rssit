@@ -93,10 +93,12 @@ def get_selector(soup, selectors):
 
 def get_title(myjson, soup):
     if myjson["author"] in [
-            "ettoday"
+            "ettoday",
+            "koreastardaily"
             ]:
         title = get_selector(soup, [
-            ".block_title" # ettoday
+            ".block_title", # ettoday
+            "#content-title > h1" # koreastardaily
         ])
         if title and len(title) > 0:
             return title[0].text
@@ -143,6 +145,8 @@ def get_author(url):
         return "hankooki"
     if "ettoday.net" in url:
         return "ettoday"
+    if "koreastardaily.com" in url:
+        return "koreastardaily"
     return None
 
 
@@ -160,7 +164,10 @@ def parse_date(date):
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
     date = date.replace("년", "-")
+    date = date.replace("年", "-")
     date = date.replace("월", "-")
+    date = date.replace("月", "-")
+    date = date.replace("日", "")
     date = date.replace("시", ":")
     date = ascii_only(date)
     date = re.sub("\( *\)", "", date)
@@ -186,7 +193,8 @@ def get_date(myjson, soup):
         ".article_tit .write_info .write",
         "#article_body_content .title .info",
         "font.read_time",  # chicnews
-        ".gisacopyright"
+        ".gisacopyright",
+        "#content-title > h2" # koreastardaily
     ])
 
     if not datetag:
@@ -195,7 +203,10 @@ def get_date(myjson, soup):
 
     date = None
     for date_tag in datetag:
-        date = parse_date(date_tag.text)
+        if myjson["author"] == "koreastardaily":
+            date = parse_date(date_tag.contents[0])
+        else:
+            date = parse_date(date_tag.text)
         ##if myjson["author"] == "naver":
         ##    if not "오후" in date_tag.text:
         ##        continue
@@ -260,7 +271,8 @@ def get_images(myjson, soup):
         "#articeBody img",
         "center table td a > img",  # topstarnews search
         ".gisaimg > ul > li > img",  # hankooki
-        ".part_thumb_2 .box_0 .pic img" # star.ettoday.net
+        ".part_thumb_2 .box_0 .pic img", # star.ettoday.net
+        "#content-body p > img" # koreastardaily
     ])
 
     if not imagestag:
