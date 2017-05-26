@@ -138,6 +138,11 @@ def generate_url(config, url):
                 articletag = articletag[0]
                 break
 
+        if not articletag:
+            sys.stderr.write("failed!\n")
+            sys.stderr.flush()
+            continue
+
         #articletag = soup.select(".entry .article")
         #if articletag and len(articletag) > 0:
         #    articletag = articletag[0]

@@ -1,5 +1,6 @@
 import bs4
 import ujson
+import demjson
 import sys
 import urllib.request
 import urllib.parse
@@ -217,7 +218,23 @@ def get_date(myjson, soup):
     return date
 
 
+def is_album(myjson, soup):
+    return myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]
+
+
 def get_images(myjson, soup):
+    if myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]:
+        jsondatare = re.search(r"var *arrView *= *(?P<json>.*?) *;\n", str(soup))
+        if not jsondatare:
+            sys.stderr.write("No json data!\n")
+            return None
+        jsondata = str(jsondatare.group("json"))
+        decoded = demjson.decode(jsondata)
+        images = []
+        for img in decoded:
+            images.append(get_max_quality(img["photo"]))
+        return images
+
     imagestag = get_selector(soup, [
         "#adiContents img",
         ".article img",
@@ -503,6 +520,14 @@ def get_articles(myjson, soup):
             "aid": lambda soup: re.sub(r".*/[a-zA-Z]*([^/]*)\.htm[^/]*$", "\\1", soup.select("li.title > a")[0]["href"]),
             "html": True,
             "is_valid": lambda soup: soup.select("li.title > a")[0]["href"].strip()
+        },
+        # hankooki images
+        {
+            "parent": "#SectionCenter .images > .pr20",
+            "link": ".txt > a",
+            "caption": ".txt > a",
+            "date": "-1",
+            "images": ".pic img"
         }
     ]
 
@@ -777,7 +802,7 @@ def do_url(config, url):
         sys.stderr.write("no date\n")
         return
 
-    if "albums" in config and config["albums"]:
+    if "albums" in config and config["albums"] or is_album(myjson, soup):
         album = "[" + str(date.year)[-2:] + str(date.month).zfill(2) + str(date.day).zfill(2) + "] " + title
     else:
         album = None
