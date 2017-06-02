@@ -93,6 +93,11 @@ def get_selector(soup, selectors):
 
 
 def get_title(myjson, soup):
+    if myjson["author"] == "topstarnews":
+        og_title = soup.find("meta", attrs={"itemprop": "name"})
+        if og_title:
+            return html.unescape(og_title["content"])
+
     if myjson["author"] in [
             "ettoday",
             "koreastardaily"
@@ -148,6 +153,8 @@ def get_author(url):
         return "ettoday"
     if "koreastardaily.com" in url:
         return "koreastardaily"
+    if "segye.com" in url:
+        return "segye"
     return None
 
 
@@ -289,7 +296,8 @@ def get_images(myjson, soup):
         "center table td a > img",  # topstarnews search
         ".gisaimg > ul > li > img",  # hankooki
         ".part_thumb_2 .box_0 .pic img", # star.ettoday.net
-        "#content-body p > img" # koreastardaily
+        "#content-body p > img", # koreastardaily
+        "#adnmore_inImage div[align='center'] > table > tr > td > a > img" # topstarnews article
     ])
 
     if not imagestag:
@@ -297,7 +305,10 @@ def get_images(myjson, soup):
 
     images = []
     for image in imagestag:
-        image_full_url = urllib.parse.urljoin(myjson["url"], image["src"])
+        imagesrc = image["src"]
+        if image.has_attr("data-src"):
+            imagesrc = image["data-src"]
+        image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
         images.append(get_max_quality(image_full_url))
 
     return images
@@ -577,8 +588,8 @@ def get_articles(myjson, soup):
         if "caption" in selector:
             realcaption = a.select(selector["caption"])[0].text.strip()
             caption = aid + realcaption
-        entry["caption"] = caption
-        entry["realcaption"] = realcaption
+        entry["media_caption"] = caption
+        entry["caption"] = realcaption
 
         description = None
         if "description" in selector:
@@ -588,7 +599,7 @@ def get_articles(myjson, soup):
                 if len(tag.text)  > len(description):
                     description = tag.text
         else:
-            description = entry["realcaption"]
+            description = realcaption
             if not "html" in selector:
                 selector["html"] = True
         entry["description"] = description
@@ -636,6 +647,9 @@ def get_max_quality(url, data=None):
 
     if "image.news1.kr" in url:
         url = re.sub("/[^/.]*\.([^/]*)$", "/original.\\1", url)
+
+    if "main.img.topstarnews.net" in url:
+        url = url.replace("main.img.topstarnews.net", "uhd.img.topstarnews.net")
 
     if "uhd.img.topstarnews.net/" in url:
         url = url.replace("/file_attach_thumb/", "/file_attach/")
@@ -687,7 +701,7 @@ def get_max_quality(url, data=None):
     return url
 
 
-def do_url(config, url):
+def do_url(config, url, oldarticle=None):
     quick = False
     if "quick" in config and config["quick"]:
         quick = True
@@ -705,7 +719,7 @@ def do_url(config, url):
     try:
         encoding = get_encoding(soup)
     except Exception as e:
-        print(e)
+        sys.stderr.write(str(e) + "\n")
         pass
     #data = data.decode("utf-8", "ignore")
     if type(data) != str:
@@ -769,7 +783,7 @@ def do_url(config, url):
 
             newjson = None
             try:
-                newjson = do_url(config, article_url)
+                newjson = do_url(config, article_url, article)
             except Exception as e:
                 sys.stderr.write("exception: " + e)
                 pass
@@ -799,8 +813,11 @@ def do_url(config, url):
     date = get_date(myjson, soup)
 
     if not date:
-        sys.stderr.write("no date\n")
-        return
+        if oldarticle and "date" in oldarticle and oldarticle["date"]:
+            date = oldarticle["date"]
+        else:
+            sys.stderr.write("no date\n")
+            return
 
     if "albums" in config and config["albums"] or is_album(myjson, soup):
         album = "[" + str(date.year)[-2:] + str(date.month).zfill(2) + str(date.day).zfill(2) + "] " + title
@@ -816,7 +833,8 @@ def do_url(config, url):
     if not description:
         sys.stderr.write("no description\n")
 
-    myjson["entries"].append({
+    ourentry = oldarticle
+    ourentry.update({
         "caption": title,
         "description": description,
         "album": album,
@@ -826,6 +844,8 @@ def do_url(config, url):
         "images": images,
         "videos": [] # for now
     })
+
+    myjson["entries"].append(ourentry)
 
     return myjson
 
