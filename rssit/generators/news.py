@@ -82,12 +82,22 @@ def get_url(url):
 def get_selector(soup, selectors):
     tag = None
 
+    data = None
     for selector in selectors:
+        if type(selector) in [list, tuple]:
+            data = selector[1]
+            selector = selector[0]
+        else:
+            data = None
+
         tag = soup.select(selector)
         if tag and len(tag) > 0:
             break
         else:
             tag = None
+
+    if data:
+        return (tag, data)
 
     return tag
 
@@ -171,6 +181,7 @@ def parse_date(date):
                   "\\1 20\\2-\\3-\\4 \\5", date) # mbn
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
+    date = re.sub(" 송고.*", "", date) # news1
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
@@ -180,6 +191,7 @@ def parse_date(date):
     date = ascii_only(date)
     date = re.sub("\( *\)", "", date)
     date = re.sub("\( *= *1 *\)", "", date) # workaround for news1
+    date = re.sub("\( *= *1Biz *\)", "", date) # workaround for news1
     date = re.sub("\|", " ", date)
     date = re.sub(":[^0-9]*$", "", date)
     while re.search("^[^0-9]*[:.].*", date):
@@ -199,7 +211,7 @@ def get_date(myjson, soup):
     datetag = get_selector(soup, [
         ".article_info .author em",
         ".article_tit .write_info .write",
-        "#article_body_content .title .info",
+        "#article_body_content .title .info", # news1
         "font.read_time",  # chicnews
         ".gisacopyright",
         "#content-title > h2" # koreastardaily
@@ -244,6 +256,7 @@ def get_images(myjson, soup):
 
     imagestag = get_selector(soup, [
         "#adiContents img",
+        "#article_body_content div[itemprop='articleBody'] td > img",  # news1
         ".article img",
         "#article img",
         ".articletext img",
@@ -333,6 +346,17 @@ def get_article_url(url):
     return url
 
 
+def get_segye_photos(myjson, soup):
+    strsoup = str(soup)
+    match = re.search(r"var *photoData *= *eval *\( *' *(\[.*?\]) *' *\) *;", strsoup)
+    if not match or not match.group(1):
+        return
+
+    jsondatastr = match.group(1)
+    jsondata = demjson.decode(jsondatastr)
+    print(jsondata)
+
+
 def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
@@ -355,6 +379,12 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "newsen":
         if "news_list.php" not in myjson["url"]:
             return
+    elif myjson["author"] == "segye":
+        if not re.search("search[^./]*\.segye\.com", myjson["url"]):
+            if "photoView" in myjson["url"]:
+                return get_segye_photos(myjson, soup)
+            else:
+                return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -378,12 +408,21 @@ def get_articles(myjson, soup):
             "date": ".date",
             "images": ".photo img"
         },
-        # news1
+        # news1 photo
         {
-            "parent": ".search_detail ul li",
+            "parent": ".search_detail .listType3 ul li",
             "link": "a",
             "caption": "a > strong",
             "date": "a .date",
+            "images": ".thumb img",
+            "aid": lambda soup: re.sub(r".*/\?([0-9]*).*", "\\1", soup.select("a")[0]["href"])
+        },
+        # news1 list
+        {
+            "parent": ".search_detail .listType1 ul li",
+            "link": "a",
+            "caption": ".info a",
+            "date": "dd.date",
             "images": ".thumb img",
             "aid": lambda soup: re.sub(r".*/\?([0-9]*).*", "\\1", soup.select("a")[0]["href"])
         },
@@ -590,6 +629,7 @@ def get_articles(myjson, soup):
             caption = aid + realcaption
         entry["media_caption"] = caption
         entry["caption"] = realcaption
+        entry["similarcaption"] = realcaption
 
         description = None
         if "description" in selector:
@@ -646,7 +686,7 @@ def get_max_quality(url, data=None):
         url = re.sub("\.tn_.*", "", url)
 
     if "image.news1.kr" in url:
-        url = re.sub("/[^/.]*\.([^/]*)$", "/original.\\1", url)
+        url = [re.sub("/[^/.]*\.([^/]*)$", "/original.\\1", url), url]
 
     if "main.img.topstarnews.net" in url:
         url = url.replace("main.img.topstarnews.net", "uhd.img.topstarnews.net")
@@ -833,7 +873,11 @@ def do_url(config, url, oldarticle=None):
     if not description:
         sys.stderr.write("no description\n")
 
-    ourentry = oldarticle
+    if oldarticle:
+        ourentry = oldarticle
+    else:
+        ourentry = {}
+
     ourentry.update({
         "caption": title,
         "description": description,
