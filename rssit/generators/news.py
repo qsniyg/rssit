@@ -110,11 +110,13 @@ def get_title(myjson, soup):
 
     if myjson["author"] in [
             "ettoday",
-            "koreastardaily"
+            "koreastardaily",
+            "chosun"
             ]:
         title = get_selector(soup, [
             ".block_title", # ettoday
-            "#content-title > h1" # koreastardaily
+            "#content-title > h1", # koreastardaily
+            ".title_author_2011 #title_text", # chosun
         ])
         if title and len(title) > 0:
             return title[0].text
@@ -147,7 +149,7 @@ def get_author(url):
         return "hankyung"
     if "liveen.co.kr" in url:
         return "liveen"
-    if "search.chosun.com" in url:
+    if ".chosun.com" in url:
         return "chosun"
     if "mydaily.co.kr" in url:
         return "mydaily"
@@ -182,7 +184,7 @@ def parse_date(date):
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
     date = re.sub(" 송고.*", "", date) # news1
-    date = re.sub("\\(월\\)", "", date) # chicnews
+    date = re.sub("[(]월[)]", "", date) # chicnews
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
@@ -216,7 +218,8 @@ def get_date(myjson, soup):
         "font.read_time",  # chicnews
         ".gisacopyright",
         "#content-title > h2", # koreastardaily
-        ".read_view_wrap .read_view_date" # mydaily
+        ".read_view_wrap .read_view_date", # mydaily
+        ".date_ctrl_2011 #date_text" # chosun
     ])
 
     if not datetag:
@@ -243,6 +246,15 @@ def is_album(myjson, soup):
     return myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]
 
 
+def end_getimages(myjson, soup, oldimages):
+    images = []
+    for imagesrc in oldimages:
+        image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
+        images.append(get_max_quality(image_full_url))
+
+    return images
+
+
 def get_images(myjson, soup):
     if myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]:
         jsondatare = re.search(r"var *arrView *= *(?P<json>.*?) *;\n", str(soup))
@@ -256,9 +268,15 @@ def get_images(myjson, soup):
             images.append(get_max_quality(img["photo"]))
         return images
 
+    if myjson["author"] == "chosun" and "html_dir" in myjson["url"]:
+        jsondatare = re.findall(r"_photoTable._photoIdx[+][+]. *= *new *Array *[(]\"([^\"]*)\"", str(soup))
+        if jsondatare:
+            return end_getimages(myjson, soup, jsondatare)
+
     imagestag = get_selector(soup, [
         "#adiContents img",
         "#article_body_content div[itemprop='articleBody'] td > img",  # news1
+        ".article .img_pop_div > img", # chosun
         ".article img",
         "#article img",
         ".articletext img",
@@ -335,7 +353,9 @@ def get_description(myjson, soup):
         "#article_body_content .detail",
         "#CmAdContent",  # chicnews
         "#GS_Content", #hankooki
-        "#wrap #read_left #article" # mydaily
+        "#wrap #read_left #article", # mydaily
+        ".photo_art_box", # chosun
+        "#article_2011" # chosun
     ])
 
     if not desc_tag:
