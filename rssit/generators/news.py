@@ -514,13 +514,24 @@ def get_articles(myjson, soup):
             "images": ".thumbnail img",
             "html": True
         },
-        # chosun
+        # old chosun
         {
             "parent": ".result_box > section.result > dl",
             "link": "dt > a",
             "caption": "dt > a",
             "description": "dd > a",
             "date": "dt > em",
+            "images": ".thumb img",
+            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
+            "html": True
+        },
+        # new chosun
+        {
+            "parent": ".schCont_in .search_news_box .search_news",
+            "link": "dt > a",
+            "caption": "dt > a",
+            "description": ".desc",
+            "date": ".date",
             "images": ".thumb img",
             "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
             "html": True
