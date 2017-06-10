@@ -182,6 +182,7 @@ def parse_date(date):
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
     date = re.sub(" 송고.*", "", date) # news1
+    date = re.sub("\\(월\\)", "", date) # chicnews
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
