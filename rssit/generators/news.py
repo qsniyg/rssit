@@ -214,7 +214,8 @@ def get_date(myjson, soup):
         "#article_body_content .title .info", # news1
         "font.read_time",  # chicnews
         ".gisacopyright",
-        "#content-title > h2" # koreastardaily
+        "#content-title > h2", # koreastardaily
+        ".read_view_wrap .read_view_date" # mydaily
     ])
 
     if not datetag:
@@ -332,7 +333,8 @@ def get_description(myjson, soup):
         "#article_content #adiContents",
         "#article_body_content .detail",
         "#CmAdContent",  # chicnews
-        "#GS_Content" #hankooki
+        "#GS_Content", #hankooki
+        "#wrap #read_left #article" # mydaily
     ])
 
     if not desc_tag:
