@@ -185,6 +185,9 @@ def parse_date(date):
         date = re.sub(".*수정시간", "", date)
     date = re.sub(" 송고.*", "", date) # news1
     date = re.sub("[(]월[)]", "", date) # chicnews
+    #print(date)
+    #date = re.sub("입력: *(.*?) *\| *수정.*", "\\1", date) # chosun
+    #print(date)
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
@@ -200,6 +203,7 @@ def parse_date(date):
     while re.search("^[^0-9]*[:.].*", date):
         date = re.sub("^[^0-9]*[:.]", "", date)
     date = date.strip()
+    #print(date)
     if not date:
         return None
     return rssit.util.localize_datetime(parse(date))

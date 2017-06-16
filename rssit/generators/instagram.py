@@ -63,12 +63,13 @@ def generate_user(config, user):
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare == None:
+        sys.stderr.write("No sharedData!\n")
         return None
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = ujson.decode(jsondata)
 
-    decoded_user =  decoded["entry_data"]["ProfilePage"][0]["user"]
+    decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]
 
     author = "@" + user
 
