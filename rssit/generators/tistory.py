@@ -130,7 +130,8 @@ def generate_url(config, url):
             "#content",
             "#mArticle",
             "#article",
-            "#entire > #contents > .post"
+            "#entire > #contents > .post",
+            "#main .article-desc"
         ]
 
         for selector in article_selectors:
