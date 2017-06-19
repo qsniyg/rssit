@@ -203,7 +203,9 @@ def parse_date(date):
     while re.search("^[^0-9]*[:.].*", date):
         date = re.sub("^[^0-9]*[:.]", "", date)
     date = date.strip()
+    date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])$", "\\1-\\2-\\3", date) #tvdaily
     #print(date)
+    #print(parse(date))
     if not date:
         return None
     return rssit.util.localize_datetime(parse(date))
