@@ -167,6 +167,8 @@ def get_author(url):
         return "koreastardaily"
     if "segye.com" in url:
         return "segye"
+    if "xportsnews.com" in url:
+        return "xportsnews"
     return None
 
 
@@ -183,6 +185,8 @@ def parse_date(date):
                   "\\1 20\\2-\\3-\\4 \\5", date) # mbn
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
+    if "수정 :" in date:
+        date = re.sub(".*수정 :", "", date)
     date = re.sub(" 송고.*", "", date) # news1
     date = re.sub("[(]월[)]", "", date) # chicnews
     #print(date)
@@ -226,7 +230,8 @@ def get_date(myjson, soup):
         "#content-title > h2", # koreastardaily
         ".read_view_wrap .read_view_date", # mydaily
         ".date_ctrl_2011 #date_text", # chosun
-        "#_article font.read_time" # tvdaily
+        "#_article font.read_time", # tvdaily
+        ".article_head > .clearfx > .data" # segye
     ])
 
     if not datetag:
@@ -284,6 +289,7 @@ def get_images(myjson, soup):
         "#adiContents img",
         "#article_body_content div[itemprop='articleBody'] td > img",  # news1
         ".article .img_pop_div > img", # chosun
+        "#content .news_article #viewFrm .news_photo center > img", # segye
         ".article img",
         "#article img",
         ".articletext img",
@@ -363,7 +369,8 @@ def get_description(myjson, soup):
         "#wrap #read_left #article", # mydaily
         ".photo_art_box", # chosun
         "#article_2011", # chosun
-        "#_article .read" # tvdaily
+        "#_article .read", # tvdaily
+        "#viewFrm #article_txt", # segye
     ])
 
     if not desc_tag:
@@ -412,10 +419,13 @@ def get_articles(myjson, soup):
             return
     elif myjson["author"] == "segye":
         if not re.search("search[^./]*\.segye\.com", myjson["url"]):
-            if "photoView" in myjson["url"]:
+            if "photoView" in myjson["url"] and False:
                 return get_segye_photos(myjson, soup)
             else:
                 return
+    elif myjson["author"] == "xportsnews":
+        if "ac=article_search" not in myjson["url"]:
+            return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -620,6 +630,28 @@ def get_articles(myjson, soup):
             "caption": ".txt > a",
             "date": "-1",
             "images": ".pic img"
+        },
+        # segye (doesn't work, needs api call with access token)
+        {
+            "parent": "#articleArea .area_box",
+            "link": ".r_txt .title_cr > a",
+            "caption": ".r_txt .title_cr > a",
+            "description": ".read_cr > a",
+            "date": "span.date",
+            "images": ".Pho .photo img",
+            "aid": lambda soup: re.sub(r".*/[0-9]*\.htm[^/]*$", "\\1", soup.select(".r_txt .title_cr > a")[0]["href"]),
+            "html": True
+        },
+        # xportsnews
+        {
+            "parent": "#list_common_wrap > ul.list_news > li",
+            "link": "dl.dlist > dt > a",
+            "caption": "dl.dlist > dt > a",
+            "description": "dl.dlist > dd:nth-of-type(1)",
+            "date": "dl.dlist > dd:nth-of-type(2) > span.data",
+            "images": ".thumb > a > img",
+            "aid": lambda soup: re.sub(r".*entry_id=([0-9]*).*", "\\1", soup.select("dl.dlist > dt > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -629,6 +661,8 @@ def get_articles(myjson, soup):
         if parenttag and len(parenttag) > 0:
             #parenttag = parenttag[0]
             break
+        else:
+            parenttag = None
 
     if not parenttag:
         return []
@@ -779,6 +813,9 @@ def get_max_quality(url, data=None):
 
     if ".ettoday.net" in url:
         url = re.sub(r"/[a-z]*([0-9]*\.[^/]*)$", "/\\1", url)
+
+    if "xportsnews.com" in url:
+        url = re.sub(r"/thm_([^/]*)", "/\\1", url)
 
     return url
 
