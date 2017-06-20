@@ -231,7 +231,8 @@ def get_date(myjson, soup):
         ".read_view_wrap .read_view_date", # mydaily
         ".date_ctrl_2011 #date_text", # chosun
         "#_article font.read_time", # tvdaily
-        ".article_head > .clearfx > .data" # segye
+        ".article_head > .clearfx > .data", # segye
+        "#articleSubecjt .newsInfo" # xportsnews
     ])
 
     if not datetag:
@@ -371,6 +372,7 @@ def get_description(myjson, soup):
         "#article_2011", # chosun
         "#_article .read", # tvdaily
         "#viewFrm #article_txt", # segye
+        "#CmAdContent .newsView div[itemprop='articleBody']" # xportsnews
     ])
 
     if not desc_tag:
