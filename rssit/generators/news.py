@@ -170,6 +170,8 @@ def get_author(url):
         return "segye"
     if "xportsnews.com" in url:
         return "xportsnews"
+    if "program.sbs.co.kr" in url:
+        return "sbs"
     return None
 
 
@@ -227,15 +229,16 @@ def get_date(myjson, soup):
     datetag = get_selector(soup, [
         ".article_info .author em",
         ".article_tit .write_info .write",
-        "#article_body_content .title .info", # news1
+        "#article_body_content .title .info",  # news1
         "font.read_time",  # chicnews
         ".gisacopyright",
-        "#content-title > h2", # koreastardaily
-        ".read_view_wrap .read_view_date", # mydaily
-        ".date_ctrl_2011 #date_text", # chosun
-        "#_article font.read_time", # tvdaily
-        ".article_head > .clearfx > .data", # segye
-        "#articleSubecjt .newsInfo" # xportsnews
+        "#content-title > h2",  # koreastardaily
+        ".read_view_wrap .read_view_date",  # mydaily
+        ".date_ctrl_2011 #date_text",  # chosun
+        "#_article font.read_time",  # tvdaily
+        ".article_head > .clearfx > .data",  # segye
+        "#articleSubecjt .newsInfo",  # xportsnews
+        "em.sedafs_date"  # sbs program
     ])
 
     if not datetag:
@@ -259,7 +262,10 @@ def get_date(myjson, soup):
 
 
 def is_album(myjson, soup):
-    return myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]
+    return (
+        (myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]) or
+        (myjson["author"] == "sbs" and "program.sbs.co.kr" in myjson["url"])
+    )
 
 
 def end_getimages(myjson, soup, oldimages):
@@ -345,9 +351,10 @@ def get_images(myjson, soup):
         "#articeBody img",
         "center table td a > img",  # topstarnews search
         ".gisaimg > ul > li > img",  # hankooki
-        ".part_thumb_2 .box_0 .pic img", # star.ettoday.net
-        "#content-body p > img", # koreastardaily
-        "#adnmore_inImage div[align='center'] > table > tr > td > a > img" # topstarnews article
+        ".part_thumb_2 .box_0 .pic img",  # star.ettoday.net
+        "#content-body p > img",  # koreastardaily
+        "#adnmore_inImage div[align='center'] > table > tr > td > a > img",  # topstarnews article
+        ".sprg_main_w #post_cont_wrap p > img"  # sbs program
     ])
 
     if not imagestag:
@@ -369,13 +376,14 @@ def get_description(myjson, soup):
         "#article_content #adiContents",
         "#article_body_content .detail",
         "#CmAdContent",  # chicnews
-        "#GS_Content", #hankooki
-        "#wrap #read_left #article", # mydaily
-        ".photo_art_box", # chosun
-        "#article_2011", # chosun
-        "#_article .read", # tvdaily
-        "#viewFrm #article_txt", # segye
-        "#CmAdContent .newsView div[itemprop='articleBody']" # xportsnews
+        "#GS_Content",  # hankooki
+        "#wrap #read_left #article",  # mydaily
+        ".photo_art_box",  # chosun
+        "#article_2011",  # chosun
+        "#_article .read",  # tvdaily
+        "#viewFrm #article_txt",  # segye
+        "#CmAdContent .newsView div[itemprop='articleBody']",  # xportsnews
+        ".sprg_main_w #post_cont_wrap"  # sbs
     ])
 
     if not desc_tag:
@@ -424,6 +432,8 @@ def do_api(config, path):
         if "collection" in config and config["collection"]:
             url += "&collection=" + config["collection"]
         url += "&sfield=ART_TITLE"
+        if "startCount" in config and config["startCount"]:
+            url += "&startCount=" + str(config["startCount"])
         url += "&callback=?"
         url = rssit.util.quote_url1(url)
         myjson["url"] = url
