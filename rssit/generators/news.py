@@ -30,7 +30,7 @@ def get_encoding(soup):
 
     if encod:
         content = encod["content"]
-        match = re.search('charset *= *(.*)', content)
+        match = re.search('charset *= *(.*)', content, re.IGNORECASE)
         if match:
             return match.group(1)
 
@@ -64,7 +64,8 @@ def get_url(url):
         "search\.chosun\.com",
         "mydaily.co.kr/.*/search",
         "search.mbn.co.kr",
-        "newsen\.com"
+        "newsen\.com",
+        "xportsnews\.com"
     ]
 
     found = False
@@ -177,7 +178,7 @@ def ascii_only(string):
 
 
 def parse_date(date):
-    if type(date) is int:
+    if type(date) in [int, float]:
         return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
     date = date.strip()
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
@@ -187,6 +188,8 @@ def parse_date(date):
         date = re.sub(".*수정시간", "", date)
     if "수정 :" in date:
         date = re.sub(".*수정 :", "", date)
+    if "기사수정" in date: # xportsnews
+        date = re.sub(".*기사수정", "", date)
     date = re.sub(" 송고.*", "", date) # news1
     date = re.sub("[(]월[)]", "", date) # chicnews
     #print(date)
@@ -395,6 +398,95 @@ def get_segye_photos(myjson, soup):
     jsondatastr = match.group(1)
     jsondata = demjson.decode(jsondatastr)
     print(jsondata)
+
+
+def do_api(config, path):
+    author = re.sub(r".*?/api/([^/]*).*", "\\1", path)
+
+    if re.match(r".*?/api/[^/]*/([^/?]+)", path):
+        query = re.sub(r".*?/api/[^/]*/([^/?]+)", "\\1", path)
+    else:
+        query = None
+
+    myjson = {
+        "title": author,
+        "author": author,
+        "url": None,
+        "config": {
+            "generator": "news"
+        },
+        "entries": []
+    }
+
+    articles = []
+    if author == "joins":
+        url = 'http://searchapi.joins.com/search_jsonp.jsp?query=' + query
+        if "collection" in config and config["collection"]:
+            url += "&collection=" + config["collection"]
+        url += "&sfield=ART_TITLE"
+        url += "&callback=?"
+        url = rssit.util.quote_url1(url)
+        myjson["url"] = url
+        data = rssit.util.download(url)
+        data = re.sub(r"^[?][(](.*)[)];$", "\\1", data)
+        jsondata = demjson.decode(data)
+        collections = jsondata["SearchQueryResult"]["Collection"]
+
+        def remove_tags(text):
+            return text.replace("<!HS>", "").replace("<!HE>", "")
+
+        for collection in collections:
+            documentset = collection["DocumentSet"]
+            if documentset["Count"] == 0:
+                continue
+
+            documents = documentset["Document"]
+            for document in documents:
+                field = document["Field"]
+                thumb_url = urllib.parse.urljoin("http://pds.joins.com/", field["ART_THUMB"])
+                thumb_url = get_max_quality(thumb_url)
+                fday = field['SERVICE_DAY']
+                syear = int(fday[0:4])
+                smonth = int(fday[4:6])
+                sday = int(fday[6:8])
+                date = datetime.datetime(year=syear, month=smonth, day=sday).timestamp()
+                date += int(field['SERVICE_TIME'])
+                date = parse_date(date)
+                eurl = "http://isplus.live.joins.com/news/article/article.asp?total_id="
+                eurl += field["DOCID"]
+                articles.append({
+                    "url": eurl,
+                    "caption": remove_tags(field["ART_TITLE"]),
+                    "aid": field["DOCID"],
+                    "date": date,
+                    "description": remove_tags(field["ART_CONTENT"]),
+                    "images": [thumb_url],
+                    "videos": []
+                })
+
+    if not myjson["url"] or len(articles) == 0:
+        return
+
+    for entry_i in range(len(articles)):
+        articles[entry_i] = fix_entry(articles[entry_i])
+        articles[entry_i]["author"] = author
+
+    return do_article_list(config, articles, myjson)
+
+
+def fix_entry(entry):
+    realcaption = None
+    caption = None
+    aid = ""
+    if "aid" in entry and entry["aid"]:
+        aid = entry["aid"] + " "
+    if "caption" in entry and entry["caption"]:
+        realcaption = entry["caption"].strip()
+        caption = aid + realcaption
+    entry["media_caption"] = caption
+    entry["caption"] = realcaption
+    entry["similarcaption"] = realcaption
+    return entry
 
 
 def get_articles(myjson, soup):
@@ -822,6 +914,64 @@ def get_max_quality(url, data=None):
     return url
 
 
+def do_article_list(config, articles, myjson):
+    article_i = 1
+    quick = config.get("quick", False)
+    for article in articles:
+        if article is None:
+            sys.stderr.write("error with article\n")
+            continue
+        if quick:
+            if not article["caption"]:
+                sys.stderr.write("no caption\n")
+                return
+            if article["date"] == 0:
+                sys.stderr.write("no date\n")
+                return
+            if not article["caption"] or article["date"] == 0:
+                sys.stderr.write("no salvageable information from search\n")
+                sys.stderr.write(pprint.pformat(article) + "\n")
+                return
+
+            if not article["author"]:
+                article["author"] = myjson["author"]
+            elif article["author"] != myjson["author"]:
+                sys.stderr.write("different authors\n")
+                return
+
+            myjson["entries"].append(article)
+            continue
+        article_url = article["url"]
+        basetext = "(%i/%i) " % (article_i, len(articles))
+        article_i += 1
+
+        sys.stderr.write(basetext + "Downloading %s... " % article_url)
+        sys.stderr.flush()
+
+        newjson = None
+        try:
+            newjson = do_url(config, article_url, article)
+        except Exception as e:
+            sys.stderr.write("exception: " + e)
+            pass
+        if not newjson:
+            sys.stderr.write("url: " + article_url + " is invalid\n")
+            continue
+
+        if newjson["author"] != myjson["author"]:
+            sys.stderr.write("current:\n\n" +
+                             pprint.pformat(myjson) +
+                             "\n\nnew:\n\n" +
+                             pprint.pformat(newjson))
+            continue
+
+        sys.stderr.write("done\n")
+        sys.stderr.flush()
+
+        myjson["entries"].extend(newjson["entries"])
+    return myjson
+
+
 def do_url(config, url, oldarticle=None):
     quick = False
     if "quick" in config and config["quick"]:
@@ -870,60 +1020,7 @@ def do_url(config, url, oldarticle=None):
 
     articles = get_articles(myjson, soup)
     if articles is not None:
-        article_i = 1
-        for article in articles:
-            if article is None:
-                sys.stderr.write("error with article\n")
-                continue
-            if quick:
-                if not article["caption"]:
-                    sys.stderr.write("no caption\n")
-                    return
-                if article["date"] == 0:
-                    sys.stderr.write("no date\n")
-                    return
-                if not article["caption"] or article["date"] == 0:
-                    sys.stderr.write("no salvageable information from search\n")
-                    sys.stderr.write(pprint.pformat(article) + "\n")
-                    return
-
-                if not article["author"]:
-                    article["author"] = myjson["author"]
-                elif article["author"] != myjson["author"]:
-                    sys.stderr.write("different authors\n")
-                    return
-
-                myjson["entries"].append(article)
-                continue
-            article_url = article["url"]
-            basetext = "(%i/%i) " % (article_i, len(articles))
-            article_i += 1
-
-            sys.stderr.write(basetext + "Downloading %s... " % article_url)
-            sys.stderr.flush()
-
-            newjson = None
-            try:
-                newjson = do_url(config, article_url, article)
-            except Exception as e:
-                sys.stderr.write("exception: " + e)
-                pass
-            if not newjson:
-                sys.stderr.write("url: " + article_url + " is invalid\n")
-                continue
-
-            if newjson["author"] != myjson["author"]:
-                sys.stderr.write("current:\n\n" +
-                                 pprint.pformat(myjson) +
-                                 "\n\nnew:\n\n" +
-                                 pprint.pformat(newjson))
-                continue
-
-            sys.stderr.write("done\n")
-            sys.stderr.flush()
-
-            myjson["entries"].extend(newjson["entries"])
-        return myjson
+        return do_article_list(config, articles, myjson)
 
     title = get_title(myjson, soup)
 
@@ -977,7 +1074,13 @@ def do_url(config, url, oldarticle=None):
 
 def generate_url(config, url):
     socialjson = do_url(config, url)
+    return generate_base(config, socialjson)
 
+def generate_api(config, url):
+    socialjson = do_api(config, url)
+    return generate_base(config, socialjson)
+
+def generate_base(config, socialjson):
     retval = {
         "social": socialjson
     }
@@ -988,17 +1091,6 @@ def generate_url(config, url):
             entry["caption"] = entry["realcaption"]
 
     feedjson = rssit.converters.social_to_feed.process(basefeedjson, config)
-
-    ##feedjson = rssit.util.simple_copy(socialjson)
-    ##for entry in feedjson["entries"]:
-    ##    if "realcaption" in entry:
-    ##        entry["title"] = entry["realcaption"]
-    ##    else:
-    ##        entry["title"] = entry["caption"]
-    ##    if entry["description"] and entry["description"] != "":
-    ##        entry["content"] = entry["description"]
-    ##    else:
-    ##        return retval
 
     return {
         "social": socialjson,
@@ -1022,7 +1114,8 @@ def process(server, config, path):
         url = "http://" + re.sub(".*?/qurl/", "", config["fullpath"])
         config["quick"] = True
         return generate_url(config, url)
-
+    elif path.startswith("/api/"):
+        return generate_api(config, path)
 
 infos = [{
     "name": "news",

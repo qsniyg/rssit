@@ -8,6 +8,7 @@ import os
 import rssit.config
 import rssit.http
 import urllib.parse
+import sys
 
 
 def quote_url(link):
@@ -17,6 +18,10 @@ def quote_url(link):
     link = urllib.parse.urlunsplit((scheme, netloc, path, query, fragment))
     link = link.replace("%3A", ":")
     return link
+
+
+def quote_url1(link):
+    return urllib.parse.quote(link, safe="%/:=&?~#+!$,;'@()*[]")
 
 
 def download(url, *args, **kwargs):
@@ -42,10 +47,16 @@ def download(url, *args, **kwargs):
     with urllib.request.urlopen(request, timeout=config["timeout"]) as response:
         charset = response.headers.get_content_charset()
 
+        ourresponse = response.read()
+
         if charset:
-            return response.read().decode(charset)
-        else:
-            return response.read()
+            try:
+                return ourresponse.decode(charset)
+            except Exception as e:
+                sys.stderr.write("Error decoding charset " + charset + ": " + str(e) + "\n")
+                return ourresponse
+
+        return ourresponse
 
 
 def convert_surrogate_pair(x, y):
