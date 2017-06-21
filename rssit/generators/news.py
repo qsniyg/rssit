@@ -1090,6 +1090,7 @@ def do_url(config, url, oldarticle=None):
     images = get_images(myjson, soup)
     if not images:
         sys.stderr.write("no images\n")
+        images = []
         #return
 
     description = get_description(myjson, soup)
