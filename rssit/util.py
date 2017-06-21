@@ -44,7 +44,14 @@ def download(url, *args, **kwargs):
     request.add_header('Cache-Control', 'max-age=0')
     request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
 
-    with urllib.request.urlopen(request, timeout=config["timeout"]) as response:
+    if "proxy" in config:
+        proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
+        opener = urllib.request.build_opener(proxy_support)
+        openf = opener.open
+    else:
+        openf = urllib.request.urlopen
+
+    with openf(request, timeout=config["timeout"]) as response:
         charset = response.headers.get_content_charset()
 
         ourresponse = response.read()

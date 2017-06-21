@@ -186,6 +186,7 @@ def parse_date(date):
     if type(date) in [int, float]:
         return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
     date = date.strip()
+    date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])[(].[)]", "\\1-\\2-\\3 ", date) # tvdaily
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
     date = re.sub("(^|[^0-9])([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
                   "\\1 20\\2-\\3-\\4 \\5", date) # mbn
@@ -1025,9 +1026,9 @@ def do_url(config, url, oldarticle=None):
     url = urllib.parse.quote(url, safe="%/:=&?~#+!$,;'@()*[]")
 
     if "post" in config and config["post"]:
-        data = rssit.util.download(url, post=config["post"])
+        data = rssit.util.download(url, post=config["post"], config=config)
     else:
-        data = rssit.util.download(url)
+        data = rssit.util.download(url, config=config)
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
