@@ -175,6 +175,8 @@ def get_author(url):
         return "xportsnews"
     if "sbs.co.kr" in url:
         return "sbs"
+    if "munhwanews.com" in url:
+        return "munhwanews"
     return None
 
 
@@ -249,7 +251,8 @@ def get_date(myjson, soup):
         "#articleSubecjt .newsInfo",  # xportsnews
         "em.sedafs_date",  # sbs program
         "#content > .wrap_tit > p.date",  # sbsfune
-        ".atend_top .atend_reporter"  # sbs cnbc
+        ".atend_top .atend_reporter",  # sbs cnbc
+        "td > .View_Time"  # munhwanews
     ])
 
     if not datetag:
@@ -399,7 +402,8 @@ def get_description(myjson, soup):
         ".sprg_main_w #post_cont_wrap",  # sbs
         "#content > #etv_news_content",  # sbsfune
         ".w_article_left > .article_cont_area",  # sbs news
-        "#content .atend_center"  # sbs cnbc
+        "#content .atend_center",  # sbs cnbc
+        "#articleBody #talklink_contents"  # munhwanews
     ])
 
     if not desc_tag:
@@ -635,6 +639,7 @@ def get_articles(myjson, soup):
         # stardailynews
         {
             "parent": "#ND_Warp table tr > td table tr > td table tr > td table",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "stardailynews",
             "link": "tr > td > span > a",
             "caption": "tr > td > span > a",
             "description": "tr > td > p",
@@ -657,6 +662,7 @@ def get_articles(myjson, soup):
         # tvdaily
         {
             "parent": "body > table tr > td > table tr > td > table tr > td > table tr > td",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "tvdaily",
             "link": "a.sublist",
             "date": "span.date",
             "caption": "a.sublist",
@@ -789,6 +795,18 @@ def get_articles(myjson, soup):
             "date": "span.psil_info",
             "images": "span.psil_img > img",
             "html": True
+        },
+        # munhwanews
+        {
+            "parent": "#ND_Warp > table > tr > td > table > tr > td > table > tr",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "munhwanews",
+            "link": ".ArtList_Title > a",
+            "caption": ".ArtList_Title > a",
+            "description": ".ArtList_Title > div:nth-of-type(1)",
+            "date": ".ArtList_Title > div > font.FontEng",
+            "images": "td > img",
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select(".ArtList_Title > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -796,10 +814,13 @@ def get_articles(myjson, soup):
     for selector in parent_selectors:
         parenttag = soup.select(selector["parent"])
         if parenttag and len(parenttag) > 0:
-            #parenttag = parenttag[0]
-            break
-        else:
-            parenttag = None
+            if "parent_valid" in selector:
+                if selector["parent_valid"](parenttag, myjson, soup):
+                    break
+            else:
+                break
+
+        parenttag = None
 
     if not parenttag:
         return []
@@ -911,7 +932,7 @@ def get_max_quality(url, data=None):
     if "thumb.mtstarnews.com/" in url:
         url = re.sub(r"\.com/[0-9][0-9]/", ".com/06/", url)
 
-    if "stardailynews.co.kr" in url or "liveen.co.kr" in url:
+    if "stardailynews.co.kr" in url or "liveen.co.kr" in url or "munhwanews.com" in url:
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
         baseurl = url
