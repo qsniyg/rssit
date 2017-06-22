@@ -57,9 +57,9 @@ def get_node_media(node, images, videos):
 
 
 def generate_user(config, user):
-    url = "https://www.instagram.com/" + user
+    url = "https://www.instagram.com/" + user + "/"  # / to avoid redirect
 
-    data = rssit.util.download(url)
+    data = rssit.util.download(url, config=config)
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare == None:
@@ -109,7 +109,7 @@ def generate_user(config, user):
 
         if "__typename" in node and node["__typename"] == "GraphSidecar":
             sidecar_url = "http://www.instagram.com/p/" + node["code"] + "/?__a=1"
-            newdl = rssit.util.download("http://www.instagram.com/p/" + node["code"] + "/?__a=1")
+            newdl = rssit.util.download("http://www.instagram.com/p/" + node["code"] + "/?__a=1", config=config)
             newnodes = ujson.decode(newdl)
 
             if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
@@ -130,10 +130,10 @@ def generate_user(config, user):
     return ("social", feed)
 
 
-def generate_video(server, id):
+def generate_video(config, server, id):
     url = "https://www.instagram.com/p/%s/" % id
 
-    data = rssit.util.download(url)
+    data = rssit.util.download(url, config=config)
 
     match = re.search(r"\"og:video\".*?content=\"(?P<video>.*?)\"", str(data))
 
@@ -149,7 +149,7 @@ def process(server, config, path):
         return generate_user(config, path[len("/u/"):])
 
     if path.startswith("/v/"):
-        return generate_video(server, path[len("/v/"):])
+        return generate_video(config, server, path[len("/v/"):])
 
     return None
 

@@ -36,11 +36,11 @@ def write_file(path, config):
     if not os.path.exists(dirname):
         os.path.makedirs(dirname, exist_ok=True)
 
-    configparser = configparser.ConfigParser()
-    configparser.read_dict(config)
+    configp = configparser.ConfigParser()
+    configp.read_dict(config)
 
     with open(path, 'w') as configfile:
-        configpwarser.write(configfile)
+        configp.write(configfile)
 
 
 def parse_value_simple(value):

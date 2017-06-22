@@ -9,6 +9,8 @@ import rssit.config
 import rssit.http
 import urllib.parse
 import sys
+import pprint
+import http.cookiejar
 
 
 def quote_url(link):
@@ -43,6 +45,22 @@ def download(url, *args, **kwargs):
     request.add_header('Pragma', 'no-cache')
     request.add_header('Cache-Control', 'max-age=0')
     request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
+
+    for key in config:
+        if key.startswith("httpheader_"):
+            headername = list(key[len("httpheader_"):])
+
+            shouldupper = True
+            for i in range(len(headername)):
+                if headername[i].islower() and shouldupper:
+                    headername[i] = headername[i].upper()
+                    shouldupper = False
+                if headername[i] == '-':
+                    shouldupper = True
+
+            headername = "".join(headername)
+
+            request.add_header(headername, config[key])
 
     if "proxy" in config:
         proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
