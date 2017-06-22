@@ -65,7 +65,8 @@ def get_url(url):
         "mydaily.co.kr/.*/search",
         "search.mbn.co.kr",
         "newsen\.com",
-        "xportsnews\.com"
+        "xportsnews\.com",
+        "munhwanews\.com"
     ]
 
     found = False
