@@ -178,6 +178,8 @@ def get_author(url):
         return "sbs"
     if "munhwanews.com" in url:
         return "munhwanews"
+    if "pop.heraldcorp.com" in url:
+        return "heraldpop"
     return None
 
 
@@ -253,7 +255,8 @@ def get_date(myjson, soup):
         "em.sedafs_date",  # sbs program
         "#content > .wrap_tit > p.date",  # sbsfune
         ".atend_top .atend_reporter",  # sbs cnbc
-        "td > .View_Time"  # munhwanews
+        "td > .View_Time",  # munhwanews
+        "#content > .article > .info > .info_left"  # heraldpop
     ])
 
     if not datetag:
@@ -315,6 +318,7 @@ def get_images(myjson, soup):
         "#article_body_content div[itemprop='articleBody'] td > img",  # news1
         ".article .img_pop_div > img", # chosun
         "#content .news_article #viewFrm .news_photo center > img", # segye
+        ".articletext img",  # heraldpop
         ".article img",
         "#article img",
         ".articletext img",
@@ -392,7 +396,7 @@ def get_description(myjson, soup):
     desc_tag = get_selector(soup, [
         "#article_content #adiContents",
         "#article_body_content .detail",
-        "#CmAdContent",  # chicnews
+        "#CmAdContent",  # chicnews, heraldpop
         "#GS_Content",  # hankooki
         "#wrap #read_left #article",  # mydaily
         ".photo_art_box",  # chosun
@@ -404,7 +408,7 @@ def get_description(myjson, soup):
         "#content > #etv_news_content",  # sbsfune
         ".w_article_left > .article_cont_area",  # sbs news
         "#content .atend_center",  # sbs cnbc
-        "#articleBody #talklink_contents"  # munhwanews
+        "#articleBody #talklink_contents",  # munhwanews
     ])
 
     if not desc_tag:
@@ -528,7 +532,7 @@ def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] == "news1" or myjson["author"] == "topstarnews" or myjson["author"] == "hankooki":
+    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop"]:
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
@@ -808,6 +812,18 @@ def get_articles(myjson, soup):
             "images": "td > img",
             "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select(".ArtList_Title > a")[0]["href"]),
             "html": True
+        },
+        # heraldpop
+        {
+            "parent": "#wrap > #container > #content > .slist > dl",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "heraldpop",
+            "link": "dd > a",
+            "caption": "dd > a > h2",
+            "description": "dd > a > p",
+            "date": "dd > span",
+            "images": "dt > a > img",
+            "aid": lambda soup: re.sub(r".*ud=([0-9]*).*", "\\1", soup.select("dd > a")[0]["href"])[8:],
+            "html": True
         }
     ]
 
@@ -978,6 +994,9 @@ def get_max_quality(url, data=None):
 
     if "img.sbs.co.kr" in url:
         url = re.sub(r"_[0-9]*(\.[^/]*)$", "\\1", url)
+
+    if "res.heraldm.com" in url:
+        url = re.sub(r"([^A-Za-z0-9_])idx=[0-9]*", "\\1idx=6", url)
 
     return url
 

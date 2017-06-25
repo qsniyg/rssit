@@ -7,6 +7,7 @@ import xdg.BaseDirectory
 import os
 import os.path
 import rssit.globals
+import re
 
 
 def get_load_paths(appname):
@@ -49,8 +50,15 @@ def parse_value_simple(value):
     elif value.lower() == "false":
         return False
 
+    if re.search(r"[^0-9.]", value) or len(value) > 10:
+        return value
+
     try:
-        return int(value)
+        ival = int(value)
+        if ival < 2**32:
+            return ival
+        else:
+            return value
     except ValueError:
         return value
 
