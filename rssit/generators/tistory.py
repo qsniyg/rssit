@@ -63,7 +63,8 @@ def generate_url(config, url):
             ".gallery_ul li.grid-item > a",
             "section div.fixed_img_col ul li > a",
             "#entire > #contents > .list > ol > li > a",
-            "#mArticle > .list_content > a"
+            "#mArticle > .list_content > a",
+            ".wrapper > #main > .row > .clearfix .grid-item > a"  # blank
         ]
 
         parenttag = None
