@@ -180,6 +180,8 @@ def get_author(url):
         return "munhwanews"
     if "pop.heraldcorp.com" in url:
         return "heraldpop"
+    if "inews24.com" in url:
+        return "inews24"
     return None
 
 
@@ -207,6 +209,7 @@ def parse_date(date):
     #print(date)
     #date = re.sub("입력: *(.*?) *\| *수정.*", "\\1", date) # chosun
     #print(date)
+    date = re.sub(r"([0-9]*)년 *([0-9]*)월 *([0-9]*)일 *([0-9]*):([0-9]*)[PA]M", "\\1-\\2-\\3 \\4:\\5", date)  # inews24
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
@@ -256,7 +259,8 @@ def get_date(myjson, soup):
         "#content > .wrap_tit > p.date",  # sbsfune
         ".atend_top .atend_reporter",  # sbs cnbc
         "td > .View_Time",  # munhwanews
-        "#content > .article > .info > .info_left"  # heraldpop
+        "#content > .article > .info > .info_left",  # heraldpop
+        ".container #LeftMenuArea #content .info > span"  # inews24 (joynews)
     ])
 
     if not datetag:
@@ -409,6 +413,7 @@ def get_description(myjson, soup):
         ".w_article_left > .article_cont_area",  # sbs news
         "#content .atend_center",  # sbs cnbc
         "#articleBody #talklink_contents",  # munhwanews
+        "#news_content > div[itemprop='articleBody']"  # inews24
     ])
 
     if not desc_tag:
@@ -532,7 +537,7 @@ def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop"]:
+    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24"]:
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
@@ -824,6 +829,18 @@ def get_articles(myjson, soup):
             "images": "dt > a > img",
             "aid": lambda soup: re.sub(r".*ud=([0-9]*).*", "\\1", soup.select("dd > a")[0]["href"])[8:],
             "html": True
+        },
+        # inews24
+        {
+            "parent": "center > #wrapper .list > .box2",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "inews24",
+            "link": ".news li.title > a",
+            "caption": ".news li.title > a",
+            "description": ".news > ul > li:nth-of-type(2) > a:nth-of-type(2)",
+            "date": ".end > .time",
+            "images": ".thumb > a > img",
+            "aid": lambda soup: re.sub(r".*g_serial=([0-9]*).*", "\\1", soup.select(".news li.title > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -997,6 +1014,9 @@ def get_max_quality(url, data=None):
 
     if "res.heraldm.com" in url:
         url = re.sub(r"([^A-Za-z0-9_])idx=[0-9]*", "\\1idx=6", url)
+
+    if "inews24.com" in url:
+        url = url.replace("/thumbnail/", "/")
 
     return url
 
