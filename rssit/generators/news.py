@@ -1009,8 +1009,8 @@ def get_max_quality(url, data=None):
     if "xportsnews.com" in url:
         url = re.sub(r"/thm_([^/]*)", "/\\1", url)
 
-    if "img.sbs.co.kr" in url:
-        url = re.sub(r"_[0-9]*(\.[^/]*)$", "\\1", url)
+    #if "img.sbs.co.kr" in url:
+    #    url = re.sub(r"_[0-9]*(\.[^/]*)$", "\\1", url)
 
     if "res.heraldm.com" in url:
         url = re.sub(r"([^A-Za-z0-9_])idx=[0-9]*", "\\1idx=6", url)
