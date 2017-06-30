@@ -294,7 +294,9 @@ def end_getimages(myjson, soup, oldimages):
     images = []
     for imagesrc in oldimages:
         image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
-        images.append(get_max_quality(image_full_url))
+        max_quality = get_max_quality(image_full_url)
+        if max_quality:
+            images.append(max_quality)
 
     return images
 
@@ -309,7 +311,9 @@ def get_images(myjson, soup):
         decoded = demjson.decode(jsondata)
         images = []
         for img in decoded:
-            images.append(get_max_quality(img["photo"]))
+            max_quality = get_max_quality(img["photo"])
+            if max_quality:
+                images.append(max_quality)
         return images
 
     if myjson["author"] == "chosun" and "html_dir" in myjson["url"]:
@@ -391,7 +395,9 @@ def get_images(myjson, soup):
         if image.has_attr("data-src"):
             imagesrc = image["data-src"]
         image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
-        images.append(get_max_quality(image_full_url))
+        max_quality = get_max_quality(image_full_url)
+        if max_quality:
+            images.append(image_full_url)
 
     return images
 
@@ -945,6 +951,9 @@ def get_articles(myjson, soup):
 
 
 def get_max_quality(url, data=None):
+    if "cp.news.search.daum.net/api/publish.json" in url:
+        return None
+
     if "naver." in url:
         url = re.sub("\?.*", "", url)
         #if "imgnews" not in url:
