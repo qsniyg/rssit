@@ -37,6 +37,16 @@ def get_encoding(soup):
     raise ValueError('unable to find encoding')
 
 
+def get_redirect(myjson, soup):
+    refreshmeta = soup.find("meta", attrs={"http-equiv": "refresh"})
+    if refreshmeta:
+        content = refreshmeta["content"]
+        url = re.sub(r".*?url=(.*?)", "\\1", content)
+        if url != content:
+            return url
+    return None
+
+
 def get_url(url):
     base = "/url/"
     if url.startswith("quick:"):
@@ -182,6 +192,8 @@ def get_author(url):
         return "heraldpop"
     if "inews24.com" in url:
         return "inews24"
+    if "fnnews.com" in url:
+        return "fnnews"
     return None
 
 
@@ -197,6 +209,7 @@ def parse_date(date):
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
     date = re.sub("(^|[^0-9])([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
                   "\\1 20\\2-\\3-\\4 \\5", date) # mbn
+    date = date.replace("\n", "   ")  # fnnews
     if "수정시간" in date:
         date = re.sub(".*수정시간", "", date)
     if "수정 :" in date:
@@ -226,6 +239,7 @@ def parse_date(date):
         date = re.sub("^[^0-9]*[:.]", "", date)
     date = date.strip()
     date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])$", "\\1-\\2-\\3", date) #tvdaily
+    #print(date)
     #print(parse(date))
     if not date:
         return None
@@ -240,6 +254,11 @@ def get_date(myjson, soup):
 
     if "sbs.co.kr" in myjson["url"]:
         datetag = soup.select(".date > meta[itemprop='datePublished']")
+        if datetag:
+            return parse_date(datetag[0]["content"])
+
+    if "star.fnnews.com" in myjson["url"]:
+        datetag = soup.select("meta[property='article:published_time']")
         if datetag:
             return parse_date(datetag[0]["content"])
 
@@ -260,7 +279,8 @@ def get_date(myjson, soup):
         ".atend_top .atend_reporter",  # sbs cnbc
         "td > .View_Time",  # munhwanews
         "#content > .article > .info > .info_left",  # heraldpop
-        ".container #LeftMenuArea #content .info > span"  # inews24 (joynews)
+        ".container #LeftMenuArea #content .info > span",  # inews24 (joynews)
+        ".content > .article_head > .byline"  # www.fnnews.com
     ])
 
     if not datetag:
@@ -327,6 +347,7 @@ def get_images(myjson, soup):
         ".article .img_pop_div > img", # chosun
         "#content .news_article #viewFrm .news_photo center > img", # segye
         ".articletext img",  # heraldpop
+        ".post-content-right > .post-content > div[align='center'] a > img.aligncenter",  # fnnews
         ".article img",
         "#article img",
         ".articletext img",
@@ -397,7 +418,7 @@ def get_images(myjson, soup):
         image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
         max_quality = get_max_quality(image_full_url)
         if max_quality:
-            images.append(image_full_url)
+            images.append(max_quality)
 
     return images
 
@@ -419,7 +440,9 @@ def get_description(myjson, soup):
         ".w_article_left > .article_cont_area",  # sbs news
         "#content .atend_center",  # sbs cnbc
         "#articleBody #talklink_contents",  # munhwanews
-        "#news_content > div[itemprop='articleBody']"  # inews24
+        "#news_content > div[itemprop='articleBody']",  # inews24
+        ".post-container .post-content-right .post-content.description",  # star.fnnews.com
+        ".article_wrap > .article_body > #article_content"  # www.fnnews.com
     ])
 
     if not desc_tag:
@@ -546,7 +569,7 @@ def get_articles(myjson, soup):
     elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24"]:
         if "search.php" not in myjson["url"]:
             return
-    elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn"]:
+    elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn", "fnnews"]:
         if "search" not in myjson["url"]:
             return
     elif myjson["author"] == "sbs":
@@ -847,6 +870,17 @@ def get_articles(myjson, soup):
             "images": ".thumb > a > img",
             "aid": lambda soup: re.sub(r".*g_serial=([0-9]*).*", "\\1", soup.select(".news li.title > a")[0]["href"]),
             "html": True
+        },
+        # fnnews
+        {
+            "parent": "#container > .content > .section_list_wrap > .section_list > .bd > ul > li",
+            "link": "strong > a",
+            "caption": "strong > a",
+            "description": ".cont_txt > a",
+            "date": ".byline > em:nth-of-type(2)",
+            "images": ".thumb_img > img",
+            "aid": lambda soup: re.sub(r".*/([0-9]*)[^/]*", "\\1", soup.select("strong > a")[0]["href"])[8:],
+            "html": True
         }
     ]
 
@@ -1133,6 +1167,10 @@ def do_url(config, url, oldarticle=None):
 
     myjson["author"] = author
     myjson["title"] = author
+
+    newurl = get_redirect(myjson, soup)
+    if newurl:
+        return do_url(config, newurl, oldarticle)
 
     articles = get_articles(myjson, soup)
     if articles is not None:
