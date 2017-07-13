@@ -194,6 +194,8 @@ def get_author(url):
         return "inews24"
     if "fnnews.com" in url:
         return "fnnews"
+    if "spotvnews.co.kr" in url:
+        return "spotvnews"
     return None
 
 
@@ -280,7 +282,8 @@ def get_date(myjson, soup):
         "td > .View_Time",  # munhwanews
         "#content > .article > .info > .info_left",  # heraldpop
         ".container #LeftMenuArea #content .info > span",  # inews24 (joynews)
-        ".content > .article_head > .byline"  # www.fnnews.com
+        ".content > .article_head > .byline",  # www.fnnews.com
+        ".arl_view_writer > .arl_view_date"  # spotvnews
     ])
 
     if not datetag:
@@ -348,6 +351,7 @@ def get_images(myjson, soup):
         "#content .news_article #viewFrm .news_photo center > img", # segye
         ".articletext img",  # heraldpop
         ".post-content-right > .post-content > div[align='center'] a > img.aligncenter",  # fnnews
+        "#arl_view_content > div[itemprop='articleBody'] .news_photo_table td > img",  # spotvnews
         ".article img",
         "#article img",
         ".articletext img",
@@ -404,7 +408,7 @@ def get_images(myjson, soup):
         "#adnmore_inImage div[align='center'] > table > tr > td > a > img",  # topstarnews article
         ".sprg_main_w #post_cont_wrap p > img",  # sbs program
         "#content > #etv_news_content img[alt='이미지']",  # sbsfune
-        "#content .atend_center img[alt='이미지']",  # sbscnbc
+        "#content .atend_center img[alt='이미지']"  # sbscnbc
     ])
 
     if not imagestag:
@@ -442,7 +446,8 @@ def get_description(myjson, soup):
         "#articleBody #talklink_contents",  # munhwanews
         "#news_content > div[itemprop='articleBody']",  # inews24
         ".post-container .post-content-right .post-content.description",  # star.fnnews.com
-        ".article_wrap > .article_body > #article_content"  # www.fnnews.com
+        ".article_wrap > .article_body > #article_content",  # www.fnnews.com
+        "#arl_view_content"  # spotvnews
     ])
 
     if not desc_tag:
@@ -596,6 +601,9 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "xportsnews":
         if "ac=article_search" not in myjson["url"]:
             return
+    elif myjson["author"] == "spotvnews":
+        if "act=articleList" not in myjson["url"]:
+            return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -624,7 +632,7 @@ def get_articles(myjson, soup):
             "parent": ".search_detail .listType3 ul li",
             "link": "a",
             "caption": "a > strong",
-            "date": "a .date",
+            "date": "span.date",
             "images": ".thumb img",
             "aid": lambda soup: re.sub(r".*/\?([0-9]*).*", "\\1", soup.select("a")[0]["href"])
         },
@@ -881,6 +889,16 @@ def get_articles(myjson, soup):
             "images": ".thumb_img > img",
             "aid": lambda soup: re.sub(r".*/([0-9]*)[^/]*", "\\1", soup.select("strong > a")[0]["href"])[8:],
             "html": True
+        },
+        # spotvnews
+        {
+            "parent": "#content > .article_list > table tr",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "spotvnews",
+            "link": "td:nth-of-type(1) > a",
+            "caption": "td:nth-of-type(1) > a",
+            "date": "td:nth-of-type(2)",
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("td:nth-of-type(1) > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -901,6 +919,7 @@ def get_articles(myjson, soup):
 
     for a in parenttag:
         if not a.select(selector["link"]):
+            sys.stderr.write("couldn't find link\n")
             # print warning?
             continue
 
@@ -910,6 +929,7 @@ def get_articles(myjson, soup):
         entry["url"] = link
 
         if not link.strip():
+            sys.stderr.write("empty link\n")
             # empty link
             continue
 
