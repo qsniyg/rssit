@@ -3,6 +3,8 @@
 
 import urllib.request
 from dateutil.tz import *
+import datetime
+from dateutil.parser import parse
 import re
 import os
 import rssit.config
@@ -167,3 +169,52 @@ def get_local_url(path):
     path = os.path.normpath(path)
 
     return urllib.parse.urljoin(get_host(), path)
+
+
+def ascii_only(string):
+    return ''.join([i if ord(i) < 128 else ' ' for i in string])
+
+
+def parse_date(date):
+    if type(date) in [int, float]:
+        return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
+    date = date.strip()
+    date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])[(].[)]", "\\1-\\2-\\3 ", date) # tvdaily
+    date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
+    date = re.sub("(^|[^0-9])([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
+                  "\\1 20\\2-\\3-\\4 \\5", date) # mbn
+    date = date.replace("\n", "   ")  # fnnews
+    if "수정시간" in date:
+        date = re.sub(".*수정시간", "", date)
+    if "수정 :" in date:
+        date = re.sub(".*수정 :", "", date)
+    if "기사수정" in date: # xportsnews
+        date = re.sub(".*기사수정", "", date)
+    date = re.sub(" 송고.*", "", date) # news1
+    date = re.sub("[(]월[)]", "", date) # chicnews
+    date = re.sub("SBS *[A-Z]*", "", date) # sbs
+    #print(date)
+    #date = re.sub("입력: *(.*?) *\| *수정.*", "\\1", date) # chosun
+    #print(date)
+    date = re.sub(r"([0-9]*)년 *([0-9]*)월 *([0-9]*)일 *([0-9]*):([0-9]*)[PA]M", "\\1-\\2-\\3 \\4:\\5", date)  # inews24
+    date = date.replace("년", "-")
+    date = date.replace("年", "-")
+    date = date.replace("월", "-")
+    date = date.replace("月", "-")
+    date = date.replace("日", "")
+    date = date.replace("시", ":")
+    date = ascii_only(date)
+    date = re.sub("\( *\)", "", date)
+    date = re.sub("\( *= *1 *\)", "", date) # workaround for news1
+    date = re.sub("\( *= *1Biz *\)", "", date) # workaround for news1
+    date = re.sub("\|", " ", date)
+    date = re.sub(":[^0-9]*$", "", date)
+    while re.search("^[^0-9]*[:.].*", date):
+        date = re.sub("^[^0-9]*[:.]", "", date)
+    date = date.strip()
+    date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])$", "\\1-\\2-\\3", date) #tvdaily
+    #print(date)
+    #print(parse(date))
+    if not date:
+        return None
+    return rssit.util.localize_datetime(parse(date))

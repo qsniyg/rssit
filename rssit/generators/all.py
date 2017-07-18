@@ -14,6 +14,7 @@ import rssit.generators.tumblr
 import rssit.generators.tistory
 import rssit.generators.news
 import rssit.generators.xe
+import rssit.generators.naverblog
 
 
 generator_list = [
@@ -27,7 +28,8 @@ generator_list = [
     rssit.generators.tumblr,
     rssit.generators.tistory,
     rssit.generators.news,
-    rssit.generators.xe
+    rssit.generators.xe,
+    rssit.generators.naverblog
 ]
 
 generator_dict = {}
