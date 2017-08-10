@@ -49,7 +49,7 @@ def process(server, config, path):
     generator_name = splitted[0]
     gd = rssit.generators.all.generator_dict
 
-    if not generator_name in gd:
+    if generator_name not in gd:
         return
 
     generator = gd[generator_name]
@@ -61,14 +61,14 @@ def process(server, config, path):
 
     process_result = generator["process"](server, config, genpath)
 
-    if process_result == None:
+    if process_result is None:
         return
 
     if type(process_result) == tuple:
         process_result_bak = process_result
         process_result = {}
         process_result[process_result_bak[0]] = process_result_bak[1]
-    elif process_result == True:
+    elif process_result is True:
         return True
 
     results = {}

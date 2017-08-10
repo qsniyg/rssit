@@ -15,6 +15,7 @@ import rssit.generators.tistory
 import rssit.generators.news
 import rssit.generators.xe
 import rssit.generators.naverblog
+import rssit.generators.reddit
 
 
 generator_list = [
@@ -29,7 +30,8 @@ generator_list = [
     rssit.generators.tistory,
     rssit.generators.news,
     rssit.generators.xe,
-    rssit.generators.naverblog
+    rssit.generators.naverblog,
+    rssit.generators.reddit
 ]
 
 generator_dict = {}
