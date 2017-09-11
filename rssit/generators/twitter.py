@@ -19,7 +19,7 @@ from email.utils import parsedate_tz, mktime_tz
 
 
 auths = {}
-user_infos = {}
+#user_infos = {}
 
 
 def get_string(element):
@@ -148,6 +148,10 @@ def generate_html(user, config, path):
 
 
 def generate_api(user, config, path):
+    #global user_infos
+    global auths
+    user_infos = {}
+
     auth_key = config["consumer_key"] + config["consumer_secret"] +\
                config["access_token"] + config["access_secret"]
 
@@ -164,7 +168,7 @@ def generate_api(user, config, path):
             "api": api
         }
 
-    if not user in user_infos:
+    if user not in user_infos:
         user_infos[user] = api.get_user(id=user)
 
     user_info = user_infos[user]

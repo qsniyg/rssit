@@ -9,14 +9,14 @@ import re
 
 
 graphs = {}
-user_infos = {}
-albums = {}
+#user_infos = {}
+#albums = {}
 
 
 def get_url(url):
     match = re.match(r"^(https?://)?(?:\w+\.)?facebook.com/(?P<user>[^/]*)/?(?P<photos>photos)?(/.*?)?$", url)
 
-    if match == None:
+    if match is None:
         return
 
     if match.group("photos"):
@@ -26,14 +26,17 @@ def get_url(url):
 
 
 def get_api(access_token):
-    if not access_token in graphs:
+    global graphs
+    if access_token not in graphs:
         graphs[access_token] = facebook.GraphAPI(access_token)
 
     return graphs[access_token]
 
 
 def get_user_info(graph, user):
-    if not user in user_infos:
+    #global user_infos
+    user_infos = {}
+    if user not in user_infos:
         user_infos[user] = graph.get_object(user + "?fields=name,username,about,description,link")
 
         if "username" not in user_infos and "name" in user_infos:
@@ -72,6 +75,9 @@ def get_albumid_from_link(link):
 
 
 def generate_photos(graph, config, user_info):
+    #global albums
+    albums = {}
+
     entries = []
 
     photos_api = graph.get_connections(user_info['id'], 'photos/uploaded?limit=100&fields=link,name,updated_time,images')

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 
-import importlib
 import os.path
 import re
 import rssit.paths.all
@@ -32,7 +31,7 @@ def questionmark(path):
 
         kv = kvs[:idx]
 
-        if not "=" in kv:
+        if "=" not in kv:
             continue
 
         eq = kv.index("=")
@@ -52,9 +51,8 @@ def process(server, path):
 
     path_list = rssit.paths.all.paths_dict
 
-    if not path_name in path_list:
+    if path_name not in path_list:
         path_name = "404"
-
 
     try:
         path_list[path_name]["process"](server, path, newpath, options)
