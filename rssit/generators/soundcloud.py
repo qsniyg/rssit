@@ -25,7 +25,7 @@ def generate_user(config, user):
 
     data = rssit.util.download(url)
 
-    soup = bs4.BeautifulSoup(data)
+    soup = bs4.BeautifulSoup(data, 'lxml')
 
     author = html.unescape(soup.find("meta", attrs={"property": "og:title"})["content"])
 

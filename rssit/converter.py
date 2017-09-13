@@ -48,6 +48,8 @@ class runthread(threading.Thread):
     def run(self):
         self.p.communicate(input=self.data)
         self.p.wait()
+        #print("Done")
+        self.data = None
 
 
 def runhooks(config, data, format):

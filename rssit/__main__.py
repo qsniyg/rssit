@@ -10,6 +10,7 @@ import rssit.globals
 import rssit.update
 import rssit.args
 import rssit.cli
+import gc
 
 
 config_model = {
@@ -83,6 +84,9 @@ def update():
 
 
 def main():
+    gc.enable()
+    #gc.set_debug(gc.DEBUG_LEAK)
+
     rssit.update.update()
 
     rssit.config.load()
