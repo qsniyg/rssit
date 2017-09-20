@@ -104,6 +104,7 @@ def get_selector(soup, selectors):
 
         tag = soup.select(selector)
         if tag and len(tag) > 0:
+            #print(selector)
             break
         else:
             tag = None
@@ -196,6 +197,8 @@ def get_author(url):
         return "fnnews"
     if "spotvnews.co.kr" in url:
         return "spotvnews"
+    if "mk.co.kr" in url:
+        return "mk"
     return None
 
 
@@ -206,6 +209,8 @@ def ascii_only(string):
 def parse_date(date):
     if type(date) in [int, float]:
         return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
+    #print(date)
+    date = date.replace("&nbsp", " ")
     date = date.strip()
     date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])[(].[)]", "\\1-\\2-\\3 ", date) # tvdaily
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
@@ -221,10 +226,13 @@ def parse_date(date):
     date = re.sub(" 송고.*", "", date) # news1
     date = re.sub("[(]월[)]", "", date) # chicnews
     date = re.sub("SBS *[A-Z]*", "", date) # sbs
+    date = date.replace("mk Sports", "") # mk
+    date = date.replace("더 맥트", "") # mk
     #print(date)
     #date = re.sub("입력: *(.*?) *\| *수정.*", "\\1", date) # chosun
     #print(date)
     date = re.sub(r"([0-9]*)년 *([0-9]*)월 *([0-9]*)일 *([0-9]*):([0-9]*)[PA]M", "\\1-\\2-\\3 \\4:\\5", date)  # inews24
+    date = re.sub(r"([0-9]*)년 *([0-9]*)월 *([0-9]*)일", "\\1-\\2-\\3", date) # mk
     date = date.replace("년", "-")
     date = date.replace("年", "-")
     date = date.replace("월", "-")
@@ -243,6 +251,7 @@ def parse_date(date):
     date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])$", "\\1-\\2-\\3", date) #tvdaily
     #print(date)
     #print(parse(date))
+    #print("")
     if not date:
         return None
     return rssit.util.localize_datetime(parse(date))
@@ -283,7 +292,8 @@ def get_date(myjson, soup):
         "#content > .article > .info > .info_left",  # heraldpop
         ".container #LeftMenuArea #content .info > span",  # inews24 (joynews)
         ".content > .article_head > .byline",  # www.fnnews.com
-        ".arl_view_writer > .arl_view_date"  # spotvnews
+        ".arl_view_writer > .arl_view_date",  # spotvnews
+        ".news_title_author > ul > li.lasttime"  # mk
     ])
 
     if not datetag:
@@ -371,6 +381,7 @@ def get_images(myjson, soup):
         "#articleContent #img img",
         "#newsContent img.article-photo-mtn",
         "#article_content img",
+        "#article_body .img_center > img",  # mk
         "div[itemprop='articleBody'] img",
         "div[itemprop='articleBody'] img.news1_photo",
         "div[itemprop='articleBody'] div[rel='prettyPhoto'] img",
@@ -447,7 +458,8 @@ def get_description(myjson, soup):
         "#news_content > div[itemprop='articleBody']",  # inews24
         ".post-container .post-content-right .post-content.description",  # star.fnnews.com
         ".article_wrap > .article_body > #article_content",  # www.fnnews.com
-        "#arl_view_content"  # spotvnews
+        "#arl_view_content",  # spotvnews
+        "#article_body"  # mk
     ])
 
     if not desc_tag:
@@ -571,7 +583,7 @@ def get_articles(myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24"]:
+    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24", "mk"]:
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn", "fnnews"]:
@@ -899,8 +911,35 @@ def get_articles(myjson, soup):
             "date": "td:nth-of-type(2)",
             "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("td:nth-of-type(1) > a")[0]["href"]),
             "html": True
+        },
+        # mk
+        {
+            "parent": "td > div.sub_list",
+            "parent_valid": lambda parent, myjson, soup: myjson["author"] == "mk",
+            "link": ".art_tit > a",
+            "caption": ".art_tit > a",
+            "date": "/.art_time",
+            "description": "/a",
+            "aid": lambda soup: re.sub(r".*no=([0-9]*).*", "\\1", soup.select(".art_tit > a")[0]["href"]),
+            "html": True
         }
     ]
+
+    def extra_select(el, selector):
+        root = False
+        if selector[0] == "/":
+            root = True
+            selector = selector[1:]
+
+        selected = el.select(selector)
+        if not root:
+            return selected
+
+        newselected = []
+        for i in selected:
+            if i.parent == el:
+                newselected.append(i)
+        return newselected
 
     parenttag = None
     for selector in parent_selectors:
@@ -938,7 +977,7 @@ def get_articles(myjson, soup):
             if selector["date"] == "-1":
                 date = parse_date(-1)
             else:
-                for date_tag in a.select(selector["date"]):
+                for date_tag in extra_select(a, selector["date"]):#a.select(selector["date"]):
                     try:
                         date = parse_date(date_tag.text)
                         if date:
@@ -961,7 +1000,7 @@ def get_articles(myjson, soup):
 
         description = None
         if "description" in selector:
-            description_tag = a.select(selector["description"])
+            description_tag = extra_select(a, selector["description"])#a.select(selector["description"])
             description = ""
             for tag in description_tag:
                 if len(tag.text)  > len(description):
