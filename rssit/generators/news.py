@@ -199,6 +199,8 @@ def get_author(url):
         return "spotvnews"
     if "mk.co.kr" in url:
         return "mk"
+    if "yonhapnews.co.kr" in url:
+        return "yonhap"
     return None
 
 
@@ -488,6 +490,63 @@ def get_segye_photos(myjson, soup):
     print(jsondata)
 
 
+def get_yonhap_photos(config, myjson, soup):
+    newquery = re.sub(r".*query=([^&]*).*", "\\1", myjson["url"])
+    if not newquery or newquery == myjson["url"]:
+        return
+
+    firsturl = 'http://srch.yonhapnews.co.kr/NewSearch.aspx?callback=Search.SearchPreCallback&query='
+    lasturl = '&ctype=P&page_size=16&channel=basic_kr'
+
+    url = firsturl + newquery + lasturl
+
+    if "page_no" in config:
+        url += "&page_no=" + str(config["page_no"])
+
+    config["httpheader_Referer"] = myjson["url"]
+    data = rssit.util.download(url, config=config)
+    data = re.sub(r"^Search.SearchPreCallback\(", "", data)
+    data = data.strip()
+    data = re.sub(r"\);$", "", data)
+    jsondata = demjson.decode(data)
+
+    myjson = {
+        "title": myjson["author"],
+        "author": myjson["author"],
+        "url": myjson["url"],
+        "config": {
+            "generator": "news"
+        },
+        "entries": []
+    }
+
+    articles = []
+
+    for photo in jsondata["KQ_PHOTO"]["result"]:
+        articles.append({
+            "url": "http://www.yonhapnews.co.kr/photos/1990000000.html?cid=" + photo["CONTENTS_ID"],
+            "caption": photo["TITLE"].replace("<b>", "").replace("</b>", ""),
+            "aid": photo["CONTENTS_ID"][5:15],
+            "date": parse_date(photo["DIST_DATE"][0:4] + "-" + photo["DIST_DATE"][4:6] + "-" + photo["DIST_DATE"][6:8] +
+                          " " + photo["DIST_TIME"][0:2] + ":" + photo["DIST_TIME"][2:4]),
+            "images": [get_max_quality("http://img.yonhapnews.co.kr/" + photo["THUMBNAIL_FILE_PATH"] + "/" + photo["THUMBNAIL_FILE_NAME"])],
+            "videos": []
+        })
+
+    if not myjson["url"] or len(articles) == 0:
+        return
+
+    for entry_i in range(len(articles)):
+        articles[entry_i] = fix_entry(articles[entry_i])
+        articles[entry_i]["author"] = myjson["author"]
+
+    #print(len(articles))
+    #pprint.pprint(articles)
+
+    #return do_article_list(config, articles, myjson)
+    return articles
+
+
 def do_api(config, path):
     author = re.sub(r".*?/api/([^/]*).*", "\\1", path)
 
@@ -579,7 +638,7 @@ def fix_entry(entry):
     return entry
 
 
-def get_articles(myjson, soup):
+def get_articles(config, myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
@@ -616,6 +675,10 @@ def get_articles(myjson, soup):
     elif myjson["author"] == "spotvnews":
         if "act=articleList" not in myjson["url"]:
             return
+    elif myjson["author"] == "yonhap":
+        if not re.search(r"[?&]query=", myjson["url"]):
+            return
+        return get_yonhap_photos(config, myjson, soup)
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -922,6 +985,15 @@ def get_articles(myjson, soup):
             "description": "/a",
             "aid": lambda soup: re.sub(r".*no=([0-9]*).*", "\\1", soup.select(".art_tit > a")[0]["href"]),
             "html": True
+        },
+        # yonhap
+        {
+            "parent": "#photo_list_2 .search_pho_list_list_c",
+            "link": "div.txt > a",
+            "caption": "div.txt > a",
+            "date": "div.txt > p.pbdt_s",
+            "aid": lambda soup: re.sub(r".*/[^/]*\.[^/]*", "\\1", soup.select("div.txt > a")[0]["href"])[5:15],
+            "html": True
         }
     ]
 
@@ -945,6 +1017,7 @@ def get_articles(myjson, soup):
     for selector in parent_selectors:
         parenttag = soup.select(selector["parent"])
         if parenttag and len(parenttag) > 0:
+            #print(selector)
             if "parent_valid" in selector:
                 if selector["parent_valid"](parenttag, myjson, soup):
                     break
@@ -1120,12 +1193,16 @@ def get_max_quality(url, data=None):
     if "inews24.com" in url:
         url = url.replace("/thumbnail/", "/")
 
+    if "yonhapnews.co.kr" in url:
+        url = re.sub(r"(.*/[^/]*)_T(\.[^/]*)$", "\\1_P4\\2", url)
+
     return url
 
 
 def do_article_list(config, articles, myjson):
     article_i = 1
     quick = config.get("quick", False)
+    #print(len(articles))
     for article in articles:
         if article is None:
             sys.stderr.write("error with article\n")
@@ -1231,7 +1308,7 @@ def do_url(config, url, oldarticle=None):
     if newurl:
         return do_url(config, newurl, oldarticle)
 
-    articles = get_articles(myjson, soup)
+    articles = get_articles(config, myjson, soup)
     if articles is not None:
         return do_article_list(config, articles, myjson)
 
