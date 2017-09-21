@@ -201,6 +201,10 @@ def get_author(url):
         return "mk"
     if "yonhapnews.co.kr" in url:
         return "yonhap"
+    if "breaknews.com" in url:
+        return "breaknews"
+    if "getnews.co.kr" in url:
+        return "getnews"
     return None
 
 
@@ -270,7 +274,7 @@ def get_date(myjson, soup):
         if datetag:
             return parse_date(datetag[0]["content"])
 
-    if "star.fnnews.com" in myjson["url"]:
+    if "star.fnnews.com" in myjson["url"] or myjson["author"] in ["breaknews", "getnews"]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
             return parse_date(datetag[0]["content"])
@@ -461,7 +465,9 @@ def get_description(myjson, soup):
         ".post-container .post-content-right .post-content.description",  # star.fnnews.com
         ".article_wrap > .article_body > #article_content",  # www.fnnews.com
         "#arl_view_content",  # spotvnews
-        "#article_body"  # mk
+        "#article_body",  # mk
+        "#CLtag",  # breaknews
+        ".detailWrap > .detailCont"  # getnews
     ])
 
     if not desc_tag:
@@ -642,7 +648,7 @@ def get_articles(config, myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24", "mk"]:
+    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24", "mk", "getnews"]:
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn", "fnnews"]:
@@ -679,6 +685,9 @@ def get_articles(config, myjson, soup):
         if not re.search(r"[?&]query=", myjson["url"]):
             return
         return get_yonhap_photos(config, myjson, soup)
+    elif myjson["author"] == "breaknews":
+        if "search.html" not in myjson["url"]:
+            return
     else:
         if "news/articleList" not in myjson["url"]:
             return
@@ -994,6 +1003,26 @@ def get_articles(config, myjson, soup):
             "date": "div.txt > p.pbdt_s",
             "aid": lambda soup: re.sub(r".*/[^/]*\.[^/]*", "\\1", soup.select("div.txt > a")[0]["href"])[5:15],
             "html": True
+        },
+        # breaknews
+        {
+            "parent": "#contents_wrap_sub > table:nth-of-type(3) > tr > td > table > tr:nth-of-type(2) > td > table:nth-of-type(2) > tr",
+            "link": "td:nth-of-type(2) > a:nth-of-type(1)",
+            "caption": "td:nth-of-type(2) > a:nth-of-type(1)",
+            "date": "td.data",
+            "aid": lambda soup: re.sub(r".*uid=([0-9]*).*", "\\1", soup.select("td:nth-of-type(2) > a:nth-of-type(1)")[0]["href"]),
+            "html": True
+        },
+        # getnews
+        {
+            "parent": "ul#listAddID > li",
+            "link": "/a",
+            "caption": "strong.tit",
+            "date": "-1",
+            "description": "span.cont",
+            "images": "img",
+            "aid": lambda soup: re.sub(r".*ud=([0-9]*).*", "\\1", extra_select(soup, "/a")[0]["href"])[10:],
+            "html": True
         }
     ]
 
@@ -1030,14 +1059,14 @@ def get_articles(config, myjson, soup):
         return []
 
     for a in parenttag:
-        if not a.select(selector["link"]):
+        if not extra_select(a, selector["link"]):
             sys.stderr.write("couldn't find link\n")
             # print warning?
             continue
 
         entry = {}
 
-        link = get_article_url(urllib.parse.urljoin(myjson["url"], clean_url(a.select(selector["link"])[0]["href"])))
+        link = get_article_url(urllib.parse.urljoin(myjson["url"], clean_url(extra_select(a, selector["link"])[0]["href"])))
         entry["url"] = link
 
         if not link.strip():
@@ -1195,6 +1224,9 @@ def get_max_quality(url, data=None):
 
     if "yonhapnews.co.kr" in url:
         url = re.sub(r"(.*/[^/]*)_T(\.[^/]*)$", "\\1_P4\\2", url)
+
+    if "cgeimage.commutil.kr" in url:
+        url = re.sub(r"setimgmake\.php\?.*?simg=", "allidxmake.php?idx=3&simg=", url)
 
     return url
 
