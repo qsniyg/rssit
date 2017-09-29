@@ -218,3 +218,27 @@ def parse_date(date):
     if not date:
         return None
     return rssit.util.localize_datetime(parse(date))
+
+
+def get_selector(soup, selectors):
+    tag = None
+
+    data = None
+    for selector in selectors:
+        if type(selector) in [list, tuple]:
+            data = selector[1]
+            selector = selector[0]
+        else:
+            data = None
+
+        tag = soup.select(selector)
+        if tag and len(tag) > 0:
+            #print(selector)
+            break
+        else:
+            tag = None
+
+    if data:
+        return (tag, data)
+
+    return tag

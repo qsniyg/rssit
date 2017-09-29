@@ -16,6 +16,7 @@ import rssit.generators.news
 import rssit.generators.xe
 import rssit.generators.naverblog
 import rssit.generators.reddit
+import rssit.generators.livedoor
 
 
 generator_list = [
@@ -31,7 +32,8 @@ generator_list = [
     rssit.generators.news,
     rssit.generators.xe,
     rssit.generators.naverblog,
-    rssit.generators.reddit
+    rssit.generators.reddit,
+    rssit.generators.livedoor
 ]
 
 generator_dict = {}
