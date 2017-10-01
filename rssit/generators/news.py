@@ -298,6 +298,11 @@ def get_date(myjson, soup):
         if datetag:
             return parse_date(datetag[0]["content"])
 
+    if myjson["author"] == "mydaily":
+        newsid = re.sub(".*newsid=([0-9]*).*", "\\1", myjson["url"])
+        newdate = newsid[0:4] + "-" + newsid[4:6] + "-" + newsid[6:8] + " " + newsid[8:10] + ":" + newsid[10:12]
+        return parse_date(newdate)
+
     datetag = get_selector(soup, [
         ".article_info .author em",
         ".article_tit .write_info .write",
@@ -305,7 +310,7 @@ def get_date(myjson, soup):
         "font.read_time",  # chicnews
         ".gisacopyright",
         "#content-title > h2",  # koreastardaily
-        ".read_view_wrap .read_view_date",  # mydaily
+        #".read_view_wrap .read_view_date",  # mydaily
         ".date_ctrl_2011 #date_text",  # chosun
         "#_article font.read_time",  # tvdaily
         ".article_head > .clearfx > .data",  # segye
