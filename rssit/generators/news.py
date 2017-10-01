@@ -510,7 +510,13 @@ def get_description(myjson, soup):
         return
 
     #return "\n".join(list(desc_tag[0].strings))
-    return str(desc_tag[0])
+    desc = str(desc_tag[0])
+
+    if myjson["author"] == "hotkorea":
+        desc = re.sub(r"</a>[)] [[] [0-9]*hit []]", "</a>)", desc)  # not regular spaces!
+
+    return desc
+
 
 def get_nextpage(myjson, soup):
     if myjson["author"] == "hotkorea" and "photobook" in myjson["url"]:
