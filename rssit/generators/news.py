@@ -76,7 +76,8 @@ def get_url(url):
         "search.mbn.co.kr",
         "newsen\.com",
         "xportsnews\.com",
-        "munhwanews\.com"
+        "munhwanews\.com",
+        "dispatch.co.kr",
     ]
 
     found = False
@@ -91,7 +92,7 @@ def get_url(url):
     return base + url
 
 
-def get_selector(soup, selectors):
+def get_selector(soup, selectors, *args, **kwargs):
     tag = None
 
     data = None
@@ -104,7 +105,8 @@ def get_selector(soup, selectors):
 
         tag = soup.select(selector)
         if tag and len(tag) > 0:
-            #print(selector)
+            if "debug" in kwargs:
+                sys.stderr.write(str(selector) + "\n")
             break
         else:
             tag = None
@@ -209,6 +211,8 @@ def get_author(url):
         return "getnews"
     if "hot-korea.net" in url:
         return "hotkorea"
+    if "dispatch.co.kr" in url:
+        return "dispatch"
     return None
 
 
@@ -274,13 +278,22 @@ def get_date(myjson, soup):
             ]:
         return parse_date(-1)
 
+    if myjson["author"] in ["topstarnews"]:
+        datetag = soup.select("meta[name='sailthru.date']")
+        if datetag:
+            return parse_date(datetag[0]["content"])
+
     if "sbs.co.kr" in myjson["url"]:
         datetag = soup.select(".date > meta[itemprop='datePublished']")
         if datetag:
             return parse_date(datetag[0]["content"])
 
     if "star.fnnews.com" in myjson["url"] or myjson["author"] in [
-            "breaknews", "getnews", "hotkorea"]:
+            "breaknews",
+            "getnews",
+            "hotkorea",
+            "dispatch"
+    ]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
             return parse_date(datetag[0]["content"])
@@ -307,7 +320,7 @@ def get_date(myjson, soup):
         ".arl_view_writer > .arl_view_date",  # spotvnews
         ".news_title_author > ul > li.lasttime",  # mk
         "#main-content .gn_rsmall",  # hotkorea
-        ".xpress-post-footer"  # hotkorea
+        ".xpress-post-footer",  # hotkorea
     ])
 
     if not datetag:
@@ -383,6 +396,8 @@ def get_images(myjson, soup):
         ".articletext img",  # heraldpop
         ".post-content-right > .post-content > div[align='center'] a > img.aligncenter",  # fnnews
         "#arl_view_content > div[itemprop='articleBody'] .news_photo_table td > img",  # spotvnews
+        ".article_outer .main_image p > img, .article_outer .post_body p img",  # dispatch
+        #".post_body strong > img, .main_image img"  # dispatch
         ".article img",
         "#article img",
         ".articletext img",
@@ -416,7 +431,7 @@ def get_images(myjson, soup):
         "#__newsBody__ .he22 td > img",
         ".article_image > img",
         "#CmAdContent img",
-        ".article_outer .main_image p > img, .article_outer .post_body p img",
+        #".article_outer .main_image p > img, .article_outer .post_body p img",
         ".article-img img",
         ".portlet .thumbnail img",
         "#news_textArea img",
@@ -443,7 +458,7 @@ def get_images(myjson, soup):
         "#content .atend_center img[alt='이미지']",  # sbscnbc
         ".ngg-gallery-thumbnail > a > img",  # hotkorea photobook
         ".gn_file > a > img",  # hotkorea
-        ".xpress-post-entry .main-text p > a > img.aligncenter"  # hotkorea
+        ".xpress-post-entry .main-text p > a > img.aligncenter",  # hotkorea
     ])
 
     if not imagestag:
@@ -487,7 +502,8 @@ def get_description(myjson, soup):
         "#CLtag",  # breaknews
         ".detailWrap > .detailCont",  # getnews
         ".xpress-post-entry",  # hotkorea photobook
-        "#center_contents > #main-content" # hotkorea
+        "#center_contents > #main-content",  # hotkorea
+        ".post_body"  # dispatch
     ])
 
     if not desc_tag:
@@ -681,7 +697,7 @@ def get_articles(config, myjson, soup):
     if myjson["author"] == "joins":
         if "isplusSearch" not in myjson["url"]:
             return
-    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24", "mk", "getnews"]:
+    elif myjson["author"] in ["news1", "topstarnews", "hankooki", "heraldpop", "inews24", "mk", "getnews", "dispatch"]:
         if "search.php" not in myjson["url"]:
             return
     elif myjson["author"] in ["starnews", "osen", "mydaily", "mbn", "fnnews"]:
@@ -1067,11 +1083,30 @@ def get_articles(config, myjson, soup):
             "link": "/a",
             "caption": "/a",
             "date": "-1"
+        },
+        # dispatch
+        {
+            "parent": ".page_wrap > .contents_body_wrap > .row > a",
+            "parent_valid": lambda parent, myjson, osup: myjson["author"] == "dispatch",
+            "link": "/",
+            "caption": "div > h6",
+            "date": "-1",
+            "description": "div > p",
+            "images": lambda soup: re.sub(".*url\\((.*?)\\);.*", "\\1", extra_select(soup, ".img-back-center")[0]["style"]),
+            "aid": lambda soup: re.sub(r".*/([0-9]*).*", "\\1", soup["href"]),
+            "html": True
         }
     ]
 
     def extra_select(el, selector):
         root = False
+
+        if type(selector) == type(lambda x: x):  # XXX ugly
+            return [selector(el)]
+
+        if selector == "/":
+            return [el]
+
         if selector[0] == "/":
             root = True
             selector = selector[1:]
@@ -1170,9 +1205,13 @@ def get_articles(config, myjson, soup):
 
         images = []
         if "images" in selector:
-            image_tags = a.select(selector["images"])
+            image_tags = extra_select(a, selector["images"])
             for image in image_tags:
-                image_full_url = urllib.parse.urljoin(myjson["url"], image["src"])
+                if type(image) is str:
+                    image_src = image
+                else:
+                    image_src = image["src"]
+                image_full_url = urllib.parse.urljoin(myjson["url"], image_src)
                 image_max_url = get_max_quality(image_full_url, imagedata)
                 images.append(image_max_url)
 
@@ -1321,7 +1360,7 @@ def do_article_list(config, articles, myjson):
         try:
             newjson = do_url(config, article_url, article)
         except Exception as e:
-            sys.stderr.write("exception: " + e)
+            sys.stderr.write("exception: " + str(e) + "\n")
             pass
         if not newjson:
             sys.stderr.write("url: " + article_url + " is invalid\n")
