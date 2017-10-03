@@ -159,7 +159,7 @@ def generate_user(config, user):
 
         caption = "[STORY]"
 
-        if "caption" in item and "text" in item["caption"]:
+        if "caption" in item and item["caption"] and "text" in item["caption"]:
             caption = "[STORY] " + str(item["caption"]["text"])
 
         date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
