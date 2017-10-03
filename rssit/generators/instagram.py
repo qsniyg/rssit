@@ -148,6 +148,7 @@ def generate_user(config, user):
     for item in storiesjson["reel"]["items"]:
         #print(item)
         image = item["image_versions2"]["candidates"][0]["url"]
+        url = image
         images = [image]
         videos = []
         if "video_versions" in item and item["video_versions"]:
@@ -155,6 +156,7 @@ def generate_user(config, user):
                 "image": image,
                 "video": item["video_versions"][0]["url"]
             }]
+            url = videos[0]["video"]
             images = []
 
         caption = "[STORY]"
@@ -165,7 +167,7 @@ def generate_user(config, user):
         date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
 
         feed["entries"].append({
-            "url": image,
+            "url": url,
             "caption": caption,
             "author": user,
             "date": date,
