@@ -9,6 +9,9 @@ import sys
 from dateutil.tz import *
 
 
+instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
+
+
 def get_url(url):
     match = re.match(r"^(https?://)?(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
 
@@ -120,6 +123,49 @@ def generate_user(config, user):
 
         feed["entries"].append({
             "url": "https://www.instagram.com/p/%s/" % node["code"],
+            "caption": caption,
+            "author": user,
+            "date": date,
+            "images": images,
+            "videos": videos
+        })
+
+    storiesurl = "https://i.instagram.com/api/v1/feed/user/" + decoded_user["id"] + "/story/"
+    config["httpheader_User-Agent"] = instagram_ua
+    config["httpheader_x-ig-capabilities"] = "36oD"
+    config["httpheader_accept"] = "*/*"
+    #config["httpheader_accept-encoding"] = "gzip, deflate, br"
+    config["httpheader_accept-language"] = "en-US,en;q=0.8"
+    stories_data = rssit.util.download(storiesurl, config=config, http_noextra=True)
+    #print(stories_data)
+
+    storiesjson = ujson.decode(stories_data)
+    if "reel" not in storiesjson or not storiesjson["reel"]:
+        return ("social", feed)
+
+    #print(storiesjson)
+
+    for item in storiesjson["reel"]["items"]:
+        #print(item)
+        image = item["image_versions2"]["candidates"][0]["url"]
+        images = [image]
+        videos = []
+        if "video_versions" in item and item["video_versions"]:
+            videos = [{
+                "image": image,
+                "video": item["video_versions"][0]["url"]
+            }]
+            images = []
+
+        caption = "[STORY]"
+
+        if "caption" in item and "text" in item["caption"]:
+            caption = "[STORY] " + str(item["caption"]["text"])
+
+        date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
+
+        feed["entries"].append({
+            "url": image,
             "caption": caption,
             "author": user,
             "date": date,

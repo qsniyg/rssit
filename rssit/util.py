@@ -15,6 +15,9 @@ import pprint
 import http.cookiejar
 
 
+instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
+
+
 def quote_url(link):
     link = urllib.parse.unquote(link).strip()
     scheme, netloc, path, query, fragment = urllib.parse.urlsplit(link)
@@ -43,12 +46,22 @@ def download(url, *args, **kwargs):
     else:
         request = urllib.request.Request(url)
 
-    request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
-    request.add_header('Pragma', 'no-cache')
-    request.add_header('Cache-Control', 'max-age=0')
-    request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
+    if "http_noextra" not in kwargs:
+        request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
+        request.add_header('Pragma', 'no-cache')
+        request.add_header('Cache-Control', 'max-age=0')
+        request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
 
+    httpheaders = {}
     for key in config:
+        if key.startswith("httpheader_"):
+            httpheaders[key] = config[key]
+
+    for key in kwargs:
+        if key.startswith("httpheader_"):
+            httpheaders[key] = kwargs[key]
+
+    for key in httpheaders:
         if key.startswith("httpheader_"):
             headername = list(key[len("httpheader_"):])
 
@@ -62,7 +75,7 @@ def download(url, *args, **kwargs):
 
             headername = "".join(headername)
 
-            request.add_header(headername, config[key])
+            request.add_header(headername, httpheaders[key])
 
     if "proxy" in config:
         proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
