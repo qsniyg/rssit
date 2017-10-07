@@ -6,6 +6,7 @@ import rssit.util
 import ujson
 import datetime
 import sys
+import pprint
 from dateutil.tz import *
 
 
@@ -57,6 +58,28 @@ def get_node_media(node, images, videos):
     else:
         if normalized not in images:
             images.append(normalized)
+
+
+def get_app_headers(config):
+    config["httpheader_User-Agent"] = instagram_ua
+    config["httpheader_x-ig-capabilities"] = "36oD"
+    config["httpheader_accept"] = "*/*"
+    #config["httpheader_accept-encoding"] = "gzip, deflate, br"
+    config["httpheader_accept-language"] = "en-US,en;q=0.8"
+    return config
+
+
+def get_stories(config, userid):
+    storiesurl = "https://i.instagram.com/api/v1/feed/user/" + userid + "/story/"
+    #config["httpheader_User-Agent"] = instagram_ua
+    #config["httpheader_x-ig-capabilities"] = "36oD"
+    #config["httpheader_accept"] = "*/*"
+    ##config["httpheader_accept-encoding"] = "gzip, deflate, br"
+    #config["httpheader_accept-language"] = "en-US,en;q=0.8"
+    config = get_app_headers(config)
+    stories_data = rssit.util.download(storiesurl, config=config, http_noextra=True)
+    storiesjson = ujson.decode(stories_data)
+    return storiesjson
 
 
 def generate_user(config, user):
@@ -130,7 +153,7 @@ def generate_user(config, user):
             "videos": videos
         })
 
-    storiesurl = "https://i.instagram.com/api/v1/feed/user/" + decoded_user["id"] + "/story/"
+    """storiesurl = "https://i.instagram.com/api/v1/feed/user/" + decoded_user["id"] + "/story/"
     config["httpheader_User-Agent"] = instagram_ua
     config["httpheader_x-ig-capabilities"] = "36oD"
     config["httpheader_accept"] = "*/*"
@@ -139,9 +162,15 @@ def generate_user(config, user):
     stories_data = rssit.util.download(storiesurl, config=config, http_noextra=True)
     #print(stories_data)
 
-    storiesjson = ujson.decode(stories_data)
+    storiesjson = ujson.decode(stories_data)"""
+    storiesjson = get_stories(config, decoded_user["id"])
+
     if "reel" not in storiesjson or not storiesjson["reel"]:
-        return ("social", feed)
+        storiesjson["reel"] = {"items": []}
+
+    if "post_live_item" not in storiesjson or not storiesjson["post_live_item"]:
+        storiesjson["post_live_item"] = {"broadcasts": []}
+        #return ("social", feed)
 
     #print(storiesjson)
 
@@ -167,13 +196,34 @@ def generate_user(config, user):
         date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
 
         feed["entries"].append({
-            "url": url,
+            "url": "http://guid.instagram.com/" + item["id"],#url,
             "caption": caption,
             "author": user,
             "date": date,
             "images": images,
             "videos": videos
         })
+
+    for item in storiesjson["post_live_item"]["broadcasts"]:
+        date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
+
+        feed["entries"].append({
+            "url": "http://guid.instagram.com/" + item["media_id"],
+            "caption": "[LIVE REPLAY]",
+            "author": user,
+            "date": date,
+            "images": [],
+            "videos": [{
+                "image": item["cover_frame_url"],
+                "video": rssit.util.get_local_url("/f/instagram/livereplay/" + item["media_id"])
+            }]
+        })
+        #pprint.pprint(item)
+
+    """reelsurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
+    reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
+
+    reelsjson = ujson.decode(reels_data)"""
 
     return ("social", feed)
 
@@ -192,12 +242,35 @@ def generate_video(config, server, id):
     return True
 
 
+def generate_livereplay(config, server, id):
+    reelsurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
+    config = get_app_headers(config)
+    reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
+
+    reelsjson = ujson.decode(reels_data)
+
+    for live in reelsjson["post_live"]["post_live_items"]:
+        for broadcast in live["broadcasts"]:
+            if id == broadcast["media_id"]:
+                server.send_response(200, "OK")
+                server.send_header("Content-type", "application/xml")
+                server.end_headers()
+                server.wfile.write(broadcast["dash_manifest"].encode('utf-8'))
+                return True
+
+    sys.stderr.write("Unable to find media id %s\n" % id)
+    return None
+
+
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, path[len("/u/"):])
 
     if path.startswith("/v/"):
         return generate_video(config, server, path[len("/v/"):])
+
+    if path.startswith("/livereplay/"):
+        return generate_livereplay(config, server, path[len("/livereplay/"):])
 
     return None
 
