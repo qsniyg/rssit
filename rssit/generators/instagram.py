@@ -100,17 +100,6 @@ def do_app_request(config, endpoint):
 
 def get_stories(config, userid):
     storiesurl = "https://i.instagram.com/api/v1/feed/user/" + userid + "/story/"
-    #config["httpheader_User-Agent"] = instagram_ua
-    #config["httpheader_x-ig-capabilities"] = "36oD"
-    #config["httpheader_accept"] = "*/*"
-    ##config["httpheader_accept-encoding"] = "gzip, deflate, br"
-    #config["httpheader_accept-language"] = "en-US,en;q=0.8"
-
-    #config = get_app_headers(config)
-    #stories_data = rssit.util.download(storiesurl, config=config, http_noextra=True)
-    #storiesjson = ujson.decode(stories_data)
-    #return storiesjson
-
     return do_app_request(config, storiesurl)
 
 
@@ -278,7 +267,6 @@ def get_feed(config, userinfo):
 
 def generate_uid(config, uid):
     userinfo = get_user_info(config, uid)
-    #pprint.pprint(userinfo)
     feed = get_feed(config, userinfo["user"])
 
     username = userinfo["user"]["username"]
@@ -286,11 +274,9 @@ def generate_uid(config, uid):
 
     count = config["count"]
     times = 1
-    #print(config["count"])
-    #print(type(config["count"]))
     if config["count"] == -1:
         maxcount = 500
-        if mediacount < maxcount:
+        if mediacount <= maxcount:
             count = mediacount
             times = 1
         else:
@@ -300,19 +286,15 @@ def generate_uid(config, uid):
     i = 0
     after_cursor = None
     while i < times:
-        #after!!!
         sys.stderr.write("\rLoading media (%i/%i)... " % (i, math.ceil(times)))
         nodes = generate_nodes_from_uid(config, uid, first=count, after=after_cursor)
-        #pprint.pprint(nodes)
         edges = nodes["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
         pageinfo = nodes["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
         after_cursor = pageinfo["end_cursor"]
 
-        #sys.stderr.write(str(len(edges)) + "\n")
         for node in edges:
             node = node["node"]
             feed["entries"].append(get_entry_from_node(config, node, username))
-        sys.stderr.write(str(len(edges)) + "\n")
 
         i += 1
 
@@ -331,7 +313,7 @@ def generate_user(config, user):
     data = rssit.util.download(url, config=config)
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
-    if jsondatare == None:
+    if jsondatare is None:
         sys.stderr.write("No sharedData!\n")
         return None
 
@@ -340,133 +322,16 @@ def generate_user(config, user):
 
     decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]
 
-    author = "@" + user
-
-    if not config["author_username"]:
-        if "full_name" in decoded_user and type(decoded_user["full_name"]) == str and len(decoded_user["full_name"]) > 0:
-            author = decoded_user["full_name"]
-
-    feed = {
-        "title": author,
-        "description": "%s's instagram" % user,
-        "url": url,
-        "author": user,
-        "entries": []
-    }
+    feed = get_feed(config, decoded_user)
 
     nodes = decoded_user["media"]["nodes"]
     for node in reversed(nodes):
-        if "caption" in node:
-            caption = node["caption"]
-        else:
-            caption = None
+        feed["entries"].append(get_entry_from_node(config, node, user))
+        continue
 
-        date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
-
-        images = []
-        videos = []
-
-        get_node_media(config, node, images, videos)
-
-        #if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
-        #    videos = [{
-        #        "image": normalize_image(node["display_src"]),
-        #        "video": rssit.util.get_local_url("/f/instagram/v/" + node["code"])
-        #    }]
-        #else:
-        #    images = [normalize_image(node["display_src"])]
-
-        if "__typename" in node and node["__typename"] == "GraphSidecar":
-            sidecar_url = "http://www.instagram.com/p/" + node["code"] + "/?__a=1"
-            newdl = rssit.util.download("http://www.instagram.com/p/" + node["code"] + "/?__a=1", config=config)
-            newnodes = ujson.decode(newdl)
-
-            if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
-                sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
-            else:
-                for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
-                    get_node_media(config, newnode["node"], images, videos)
-
-        feed["entries"].append({
-            "url": "https://www.instagram.com/p/%s/" % node["code"],
-            "caption": caption,
-            "author": user,
-            "date": date,
-            "images": images,
-            "videos": videos
-        })
-
-    """storiesurl = "https://i.instagram.com/api/v1/feed/user/" + decoded_user["id"] + "/story/"
-    config["httpheader_User-Agent"] = instagram_ua
-    config["httpheader_x-ig-capabilities"] = "36oD"
-    config["httpheader_accept"] = "*/*"
-    #config["httpheader_accept-encoding"] = "gzip, deflate, br"
-    config["httpheader_accept-language"] = "en-US,en;q=0.8"
-    stories_data = rssit.util.download(storiesurl, config=config, http_noextra=True)
-    #print(stories_data)
-
-    storiesjson = ujson.decode(stories_data)"""
-    storiesjson = get_stories(config, decoded_user["id"])
-
-    if "reel" not in storiesjson or not storiesjson["reel"]:
-        storiesjson["reel"] = {"items": []}
-
-    if "post_live_item" not in storiesjson or not storiesjson["post_live_item"]:
-        storiesjson["post_live_item"] = {"broadcasts": []}
-        #return ("social", feed)
-
-    #print(storiesjson)
-
-    for item in storiesjson["reel"]["items"]:
-        #print(item)
-        image = item["image_versions2"]["candidates"][0]["url"]
-        url = image
-        images = [image]
-        videos = []
-        if "video_versions" in item and item["video_versions"]:
-            videos = [{
-                "image": image,
-                "video": item["video_versions"][0]["url"]
-            }]
-            url = videos[0]["video"]
-            images = []
-
-        caption = "[STORY]"
-
-        if "caption" in item and item["caption"] and "text" in item["caption"]:
-            caption = "[STORY] " + str(item["caption"]["text"])
-
-        date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
-
-        feed["entries"].append({
-            "url": "http://guid.instagram.com/" + item["id"],#url,
-            "caption": caption,
-            "author": user,
-            "date": date,
-            "images": images,
-            "videos": videos
-        })
-
-    for item in storiesjson["post_live_item"]["broadcasts"]:
-        date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
-
-        feed["entries"].append({
-            "url": "http://guid.instagram.com/" + item["media_id"],
-            "caption": "[LIVE REPLAY]",
-            "author": user,
-            "date": date,
-            "images": [],
-            "videos": [{
-                "image": item["cover_frame_url"],
-                "video": rssit.util.get_local_url("/f/instagram/livereplay/" + item["media_id"])
-            }]
-        })
-        #pprint.pprint(item)
-
-    """reelsurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
-    reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
-
-    reelsjson = ujson.decode(reels_data)"""
+    story_entries = get_story_entries(config, decoded_user["id"], user)
+    for entry in story_entries:
+        feed["entries"].append(entry)
 
     return ("social", feed)
 
