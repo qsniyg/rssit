@@ -11,7 +11,7 @@ import urllib.parse
 import isodate
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?soundcloud\.com/(?P<user>[^/]*)", url)
 
     if match == None:

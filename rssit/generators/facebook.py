@@ -13,7 +13,7 @@ graphs = {}
 #albums = {}
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?facebook.com/(?P<user>[^/]*)/?(?P<photos>photos)?(/.*?)?$", url)
 
     if match is None:

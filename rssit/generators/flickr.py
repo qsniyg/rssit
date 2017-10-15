@@ -20,7 +20,7 @@ def get_modelExport(data):
     return ujson.loads(jsondata)
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)/*", url)
 
     if match == None:

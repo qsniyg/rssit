@@ -11,7 +11,7 @@ import html
 import datetime
 
 
-def get_url(url):
+def get_url(config, url):
     if "reddit.com" not in url or ".json" not in url:
         return None
 

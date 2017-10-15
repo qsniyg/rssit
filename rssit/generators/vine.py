@@ -8,7 +8,7 @@ import bs4
 from dateutil.parser import parse
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?vine.co/.*", url)
 
     if match == None:

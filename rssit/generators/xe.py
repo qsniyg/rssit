@@ -12,7 +12,7 @@ import isodate
 import sys
 
 
-def get_url(url):
+def get_url(config, url):
     base = "/qurl/" # for now
 
     good = False

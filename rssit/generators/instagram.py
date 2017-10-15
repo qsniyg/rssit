@@ -17,11 +17,14 @@ instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
 
-    if match == None:
+    if match is None:
         return
+
+    if config["prefer_uid"]:
+        return "/uid/" + get_user_page(config, match.group("user"))["id"]
 
     return "/u/" + match.group("user")
 
@@ -105,6 +108,22 @@ def get_stories(config, userid):
 
 def get_user_info(config, userid):
     return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
+
+
+def get_user_page(config, username):
+    url = "https://www.instagram.com/" + username + "/"  # / to avoid redirect
+
+    data = rssit.util.download(url, config=config)
+
+    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    if jsondatare is None:
+        sys.stderr.write("No sharedData!\n")
+        return None
+
+    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    decoded = ujson.decode(jsondata)
+
+    return decoded["entry_data"]["ProfilePage"][0]["user"]
 
 
 def generate_nodes_from_uid(config, uid, *args, **kwargs):
@@ -308,7 +327,7 @@ def generate_uid(config, uid):
 
 
 def generate_user(config, user):
-    url = "https://www.instagram.com/" + user + "/"  # / to avoid redirect
+    """url = "https://www.instagram.com/" + user + "/"  # / to avoid redirect
 
     data = rssit.util.download(url, config=config)
 
@@ -320,7 +339,8 @@ def generate_user(config, user):
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = ujson.decode(jsondata)
 
-    decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]
+    decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
+    decoded_user = get_user_page(config, user)
 
     feed = get_feed(config, decoded_user)
 
@@ -395,6 +415,12 @@ infos = [{
             "name": "Author = Username",
             "description": "Set the author's name to be their username",
             "value": False
+        },
+
+        "prefer_uid": {
+            "name": "Prefer user ID",
+            "description": "Prefer user IDs over usernames",
+            "value": True
         }
     },
 

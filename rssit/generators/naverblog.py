@@ -13,7 +13,7 @@ import rssit.util
 import demjson
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?P<url>blog.naver.com.*)", url)
 
     if match is None:

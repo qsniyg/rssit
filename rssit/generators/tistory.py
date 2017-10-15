@@ -12,7 +12,7 @@ import html
 import rssit.util
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?P<url>[^./]*.tistory.[a-z]*.*)", url)
 
     if match is None:

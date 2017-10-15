@@ -13,7 +13,7 @@ import html
 import rssit.util
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?P<url>blog.livedoor.jp/.*)", url)
 
     if match is None:

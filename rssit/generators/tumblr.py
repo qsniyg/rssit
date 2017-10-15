@@ -12,7 +12,7 @@ import pprint
 import rssit.util
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?(?P<url>[^./]*.tumblr.com.*)", url)
 
     if match is None:

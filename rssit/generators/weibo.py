@@ -26,7 +26,7 @@ def get_string(element):
         return string
 
 
-def get_url(url):
+def get_url(config, url):
     match = re.match(r"^(https?://)?weibo.wbdacdn.com/user/(?P<user>[0-9]*)", url)
 
     if match == None:

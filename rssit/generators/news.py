@@ -47,7 +47,7 @@ def get_redirect(myjson, soup):
     return None
 
 
-def get_url(url):
+def get_url(config, url):
     base = "/url/"
     if url.startswith("quick:"):
         base = "/qurl/"

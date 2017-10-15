@@ -34,7 +34,8 @@ def get_urls(url):
     gd = rssit.generators.all.generator_dict
 
     for i in gd:
-        newurl = gd[i]["get_url"](url)
+        config = get_config(i + "/")
+        newurl = gd[i]["get_url"](config, url)
 
         if newurl:
             fullpath = "/f/" + gd[i]["name"] + "/" + newurl
