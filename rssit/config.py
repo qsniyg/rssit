@@ -50,7 +50,7 @@ def parse_value_simple(value):
     elif value.lower() == "false":
         return False
 
-    if re.search(r"[^0-9.]", value) or len(value) > 10:
+    if re.search(r"[^0-9.-]", value) or len(value) > 10:
         return value
 
     try:

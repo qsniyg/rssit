@@ -38,9 +38,15 @@ def generate_json(config, url):
         node = node_["data"]
         kind = node_["kind"]
 
-        #pprint.pprint(node)
+        subject = ""
+        if node["subject"]:
+            subject = " " + node["subject"]
 
-        title = "[/u/" + node["author"] + "] " + node["subject"]
+        author = "[no author]"
+        if node["author"]:
+            author = "[/u/" + node["author"] + "]"
+
+        title = author + subject
         if "link_title" in node:
             title += ": " + node["link_title"]
 
