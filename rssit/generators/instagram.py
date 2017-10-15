@@ -305,7 +305,8 @@ def generate_uid(config, uid):
     i = 0
     after_cursor = None
     while i < times:
-        sys.stderr.write("\rLoading media (%i/%i)... " % (i, math.ceil(times)))
+        if times > 1:
+            sys.stderr.write("\rLoading media (%i/%i)... " % (i, math.ceil(times)))
         nodes = generate_nodes_from_uid(config, uid, first=count, after=after_cursor)
         edges = nodes["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
         pageinfo = nodes["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
@@ -317,7 +318,8 @@ def generate_uid(config, uid):
 
         i += 1
 
-    sys.stderr.write("Loading media... done       \n")
+    if times > 1:
+        sys.stderr.write("\rLoading media... done       \n")
 
     story_entries = get_story_entries(config, uid, username)
     for entry in story_entries:
@@ -341,6 +343,8 @@ def generate_user(config, user):
 
     decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
     decoded_user = get_user_page(config, user)
+    if config["force_api"]:
+        return generate_uid(config, str(decoded_user["id"]))
 
     feed = get_feed(config, decoded_user)
 
@@ -421,6 +425,12 @@ infos = [{
             "name": "Prefer user ID",
             "description": "Prefer user IDs over usernames",
             "value": True
+        },
+
+        "force_api": {
+            "name": "Forces API",
+            "description": "Forces the usage of the API",
+            "value": False
         }
     },
 
