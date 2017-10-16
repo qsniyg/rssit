@@ -32,6 +32,8 @@ def get_url(config, url):
 def normalize_image(url):
     url = url.replace(".com/l/", ".com/")
     url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
+    url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
+    url = re.sub(r"/p[0-9]*x[0-9]*/", "/", url)
     return url
 
 
@@ -39,13 +41,22 @@ def base_image(url):
     return re.sub(r"\?[^/]*$", "", url)
 
 
-def get_node_info(config, code):
-    url = "http://www.instagram.com/p/" + code + "/?__a=1"
+def do_a1_request(config, endpoint):
+    url = "http://www.instagram.com/" + endpoint.strip("/") + "/?__a=1"
     newdl = rssit.util.download(url, config=config)
     return ujson.decode(newdl)
 
 
+def get_node_info(config, code):
+    return do_a1_request(config, "/p/" + code)
+    #url = "http://www.instagram.com/p/" + code + "/?__a=1"
+    #newdl = rssit.util.download(url, config=config)
+    #return ujson.decode(newdl)
+
+
 def get_node_media(config, node, images, videos):
+    node = normalize_node(node)
+
     image_src = None
     if "display_src" in node:
         image_src = node["display_src"]
@@ -84,6 +95,26 @@ def get_node_media(config, node, images, videos):
         if ok:
             images.append(normalized)
 
+    if node["type"] == "carousel":
+        def carousel_has_nonimage_member(carousel):
+            for i in carousel:
+                if "display_url" not in normalize_node(i):
+                    return True
+            return False
+
+        if "carousel_media" in node and not carousel_has_nonimage_member(node["carousel_media"]):
+            for i in node["carousel_media"]:
+                get_node_media(config, i, images, videos)
+        else:
+            newnodes = get_node_info(config, node["code"])
+            get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
+
+            #if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
+            #    sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
+            #else:
+            #    for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
+            #        get_node_media(config, newnode["node"], images, videos)
+
 
 def get_app_headers(config):
     config = rssit.util.simple_copy(config)
@@ -108,6 +139,14 @@ def get_stories(config, userid):
 
 def get_user_info(config, userid):
     return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
+
+
+def get_user_info_by_username(config, username):
+    return do_a1_request(config, username)["user"]
+
+
+def get_user_media_by_username(config, username):
+    return do_a1_request(config, username + "/media")["items"]
 
 
 def get_user_page(config, username):
@@ -147,6 +186,26 @@ def generate_nodes_from_uid(config, uid, *args, **kwargs):
     return decoded
 
 
+def force_array(obj):
+    if type(obj) == dict:
+        a = []
+        for i in obj:
+            a.append(obj[i])
+        return a
+    return a
+
+
+def get_largest_url(items):
+    max_ = 0
+    url = None
+    for item in force_array(items):
+        total = item["height"] + item["width"]
+        if total > max_:
+            max_ = total
+            url = item["url"]
+    return url
+
+
 def normalize_node(node):
     node = rssit.util.simple_copy(node)
     if "caption" not in node:
@@ -156,13 +215,54 @@ def normalize_node(node):
             firstedge = node["edge_media_to_caption"]["edges"][0]
             node["caption"] = firstedge["node"]["text"]
 
+    if "caption" in node and type(node["caption"]) == dict:
+        node["caption"] = node["caption"]["text"]
+
     if "date" not in node:
         if "taken_at_timestamp" in node:
             node["date"] = node["taken_at_timestamp"]
+        elif "created_time" in node:
+            node["date"] = int(node["created_time"])
 
     if "code" not in node:
         if "shortcode" in node:
             node["code"] = node["shortcode"]
+
+    if "type" not in node:
+        if "__typename" in node:
+            if node["__typename"] == "GraphImage":
+                node["type"] = "image"
+            elif node["__typename"] == "GraphVideo":
+                node["type"] = "video"
+            elif node["__typename"] == "GraphSidecar":
+                node["type"] = "carousel"
+
+    if "is_video" not in node:
+        node["is_video"] = node["type"] == "video"
+
+    if "video_url" not in node:
+        if "videos" in node:
+            new_url = get_largest_url(node["videos"])
+            if new_url:
+                node["video_url"] = new_url
+            """max_ = 0
+            for video in node["videos"]:
+                total = video["height"] + video["width"]
+                if total > max_:
+                    max_ = total
+                    node["video_url"] = video["url"]"""
+
+    if "display_url" not in node:
+        if "images" in node:
+            new_url = get_largest_url(node["images"])
+            if new_url:
+                node["display_url"] = new_url
+
+    if node["type"] == "carousel" and "carousel_media" not in node:
+        if "edge_sidecar_to_children" in node:
+            node["carousel_media"] = []
+            for newnode in node["edge_sidecar_to_children"]["edges"]:
+                node["carousel_media"].append(newnode["node"])
 
     return node
 
@@ -182,7 +282,7 @@ def get_entry_from_node(config, node, user):
 
     get_node_media(config, node, images, videos)
 
-    if "__typename" in node and node["__typename"] == "GraphSidecar":
+    if "__typename" in node and node["__typename"] == "GraphSidecar" and False:
         newnodes = get_node_info(config, node["code"])
 
         if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
@@ -342,16 +442,18 @@ def generate_user(config, user):
     decoded = ujson.decode(jsondata)
 
     decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
-    decoded_user = get_user_page(config, user)
+
+    #decoded_user = get_user_page(config, user)
+    decoded_user = get_user_info_by_username(config, user)
     if config["force_api"]:
         return generate_uid(config, str(decoded_user["id"]))
 
     feed = get_feed(config, decoded_user)
 
-    nodes = decoded_user["media"]["nodes"]
+    #nodes = decoded_user["media"]["nodes"]
+    nodes = get_user_media_by_username(config, user)
     for node in reversed(nodes):
         feed["entries"].append(get_entry_from_node(config, node, user))
-        continue
 
     story_entries = get_story_entries(config, decoded_user["id"], user)
     for entry in story_entries:
