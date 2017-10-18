@@ -127,7 +127,8 @@ def get_title(myjson, soup):
             "ettoday",
             "koreastardaily",
             "chosun",
-            "hotkorea"
+            "hotkorea",
+            "donga"
     ]) or (
         "sbscnbc.sbs.co.kr" in myjson["url"]
     )):
@@ -136,7 +137,8 @@ def get_title(myjson, soup):
             "#content-title > h1",  # koreastardaily
             ".title_author_2011 #title_text",  # chosun
             ".atend_top .atend_title",  # sbscnbc
-            ".xpress-post-title > h1"  # hotkorea
+            ".xpress-post-title > h1",  # hotkorea
+            ".article_tit > h3",  # sports donga
         ])
         if title and len(title) > 0:
             return title[0].text
@@ -213,6 +215,8 @@ def get_author(url):
         return "hotkorea"
     if "dispatch.co.kr" in url:
         return "dispatch"
+    if ".donga.com" in url:
+        return "donga"
     return None
 
 
@@ -326,6 +330,7 @@ def get_date(myjson, soup):
         ".news_title_author > ul > li.lasttime",  # mk
         "#main-content .gn_rsmall",  # hotkorea
         ".xpress-post-footer",  # hotkorea
+        ".article_tit > p",  # sports donga
     ])
 
     if not datetag:
@@ -404,6 +409,7 @@ def get_images(myjson, soup):
         ".article_outer .main_image p > img, .article_outer .post_body p img",  # dispatch
         #".post_body strong > img, .main_image img"  # dispatch
         "#article div[align='center'] > img",  # mydaily
+        ".article_word > .articlePhoto img",  # donga
         ".article img",
         "#article img",
         ".articletext img",
@@ -467,6 +473,9 @@ def get_images(myjson, soup):
         ".xpress-post-entry .main-text p > a > img.aligncenter",  # hotkorea
     ])
 
+    if myjson["author"] == "donga":
+        imagestag = soup.select(".article_word > .articlePhoto img")
+
     if not imagestag:
         return
 
@@ -509,7 +518,8 @@ def get_description(myjson, soup):
         ".detailWrap > .detailCont",  # getnews
         ".xpress-post-entry",  # hotkorea photobook
         "#center_contents > #main-content",  # hotkorea
-        ".post_body"  # dispatch
+        ".post_body",  # dispatch
+        ".article_cont #articleBody"  # sports donga
     ])
 
     if not desc_tag:
@@ -748,6 +758,9 @@ def get_articles(config, myjson, soup):
         return get_yonhap_photos(config, myjson, soup)
     elif myjson["author"] == "breaknews":
         if "search.html" not in myjson["url"]:
+            return
+    elif myjson["author"] == "donga":
+        if "/Search" not in myjson["url"]:
             return
     else:
         if "news/articleList" not in myjson["url"]:
@@ -1107,6 +1120,17 @@ def get_articles(config, myjson, soup):
             "images": lambda soup: re.sub(".*url\\((.*?)\\);.*", "\\1", extra_select(soup, ".img-back-center")[0]["style"]),
             "aid": lambda soup: re.sub(r".*/([0-9]*).*", "\\1", soup["href"]),
             "html": True
+        },
+        # sports donga
+        {
+            "parent": ".sub_contents > ul.list_news > li",
+            "link": "dl > dt > a",
+            "caption": "dl > dt > a",
+            "date": "dd.date",
+            "description": "dd.txt",
+            "images": ".thum_img > a > img",
+            "aid": lambda soup: re.sub(r".*/([0-9]*)/[0-9]$", "\\1", extra_select(soup, "dl > dt > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -1329,6 +1353,9 @@ def get_max_quality(url, data=None):
 
     if "hot-korea.net" in url:
         url = url.replace("thumbs/thumbs_", "")
+
+    if "dimg.donga.com" in url:
+        url = re.sub(r"/i/[0-9]*/[0-9]*/[0-9]*/wps", "/wps", url)
 
     return url
 

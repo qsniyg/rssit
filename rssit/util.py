@@ -77,7 +77,7 @@ def download(url, *args, **kwargs):
 
             request.add_header(headername, httpheaders[key])
 
-    if "proxy" in config:
+    if "proxy" in config and config["proxy"]:
         proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
         opener = urllib.request.build_opener(proxy_support)
         openf = opener.open
