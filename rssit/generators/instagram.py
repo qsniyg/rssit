@@ -385,9 +385,36 @@ def get_feed(config, userinfo):
     }
 
 
+def get_profilepic_entry(config, userinfo):
+    url = None
+    if "profile_pic_url_hd" in userinfo:
+        url = userinfo["profile_pic_url_hd"]
+    elif "profile_pic_url" in userinfo:
+        url = userinfo["profile_pic_url"]
+    else:
+        sys.stderr.write("No profile pic!\n")
+        return
+
+    newurl = normalize_image(url)
+    id_ = re.sub(r".*/([^.]*)\.[^/]*$", "\\1", newurl)
+
+    return {
+        "url": newurl,
+        "caption": "[DP] " + str(id_),
+        "author": userinfo["username"],
+        "date": rssit.util.parse_date(-1),
+        "images": [newurl],
+        "videos": []
+    }
+
+
 def generate_uid(config, uid):
     userinfo = get_user_info(config, uid)
     feed = get_feed(config, userinfo["user"])
+
+    ppentry = get_profilepic_entry(config, userinfo["user"])
+    if ppentry:
+        feed["entries"].append(ppentry)
 
     username = userinfo["user"]["username"]
     mediacount = userinfo["user"]["media_count"]
@@ -446,10 +473,15 @@ def generate_user(config, user):
 
     #decoded_user = get_user_page(config, user)
     decoded_user = get_user_info_by_username(config, user)
+
     if config["force_api"]:
         return generate_uid(config, str(decoded_user["id"]))
 
     feed = get_feed(config, decoded_user)
+
+    ppentry = get_profilepic_entry(config, decoded_user)
+    if ppentry:
+        feed["entries"].append(ppentry)
 
     #nodes = decoded_user["media"]["nodes"]
     nodes = get_user_media_by_username(config, user)
