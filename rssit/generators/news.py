@@ -403,6 +403,7 @@ def get_images(myjson, soup):
         "#arl_view_content > div[itemprop='articleBody'] .news_photo_table td > img",  # spotvnews
         ".article_outer .main_image p > img, .article_outer .post_body p img",  # dispatch
         #".post_body strong > img, .main_image img"  # dispatch
+        "#article div[align='center'] > img",  # mydaily
         ".article img",
         "#article img",
         ".articletext img",

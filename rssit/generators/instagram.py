@@ -34,6 +34,7 @@ def normalize_image(url):
     url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
     url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
     url = re.sub(r"/p[0-9]*x[0-9]*/", "/", url)
+    url = re.sub(r"/e[0-9]*/", "/", url)
     return url
 
 
@@ -316,7 +317,7 @@ def get_story_entries(config, uid, username):
 
     for item in storiesjson["reel"]["items"]:
         #print(item)
-        image = item["image_versions2"]["candidates"][0]["url"]
+        image = normalize_image(item["image_versions2"]["candidates"][0]["url"])
         url = image
         images = [image]
         videos = []
@@ -526,7 +527,7 @@ infos = [{
         "prefer_uid": {
             "name": "Prefer user ID",
             "description": "Prefer user IDs over usernames",
-            "value": True
+            "value": False
         },
 
         "force_api": {
