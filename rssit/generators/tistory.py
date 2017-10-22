@@ -29,6 +29,8 @@ def download(url):
 
 
 def get_full_image(page_url, img):
+    if "daumcdn.net/thumb/" in img:
+        img = urllib.parse.unquote(re.sub(".*fname=([^&]*).*", "\\1", img))
     return urllib.parse.urljoin(page_url, img.replace("/image/", "/original/").replace("/attach/", "/original/").replace("/media/", "/original/"))
 
 
