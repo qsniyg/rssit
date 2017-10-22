@@ -127,7 +127,17 @@ def get_app_headers(config):
     return config
 
 
+def has_cookie(config):
+    for key in config:
+        if key.lower() == "httpheader_cookie" and config[key]:
+            return True
+    return False
+
+
 def do_app_request(config, endpoint):
+    if not has_cookie(config):
+        return None
+
     config = get_app_headers(config)
     data = rssit.util.download(endpoint, config=config, http_noextra=True)
     return ujson.decode(data)
@@ -304,6 +314,10 @@ def get_entry_from_node(config, node, user):
 
 def get_story_entries(config, uid, username):
     storiesjson = get_stories(config, uid)
+
+    if not storiesjson:
+        sys.stderr.write("Warning: not logged in, so no stories\n")
+        return []
 
     if "reel" not in storiesjson or not storiesjson["reel"]:
         storiesjson["reel"] = {"items": []}

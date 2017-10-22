@@ -217,6 +217,8 @@ def get_author(url):
         return "dispatch"
     if ".donga.com" in url:
         return "donga"
+    if ".ilyoseoul.co.kr" in url:
+        return "ilyoseoul"
     return None
 
 
@@ -296,9 +298,15 @@ def get_date(myjson, soup):
             "breaknews",
             "getnews",
             "hotkorea",
-            "dispatch"
+            "dispatch",
+            "ilyoseoul"
     ]:
         datetag = soup.select("meta[property='article:published_time']")
+        if datetag:
+            return parse_date(datetag[0]["content"])
+
+    if "m.post.naver.com" in myjson["url"]:
+        datetag = soup.select("meta[property='nv:news:date']")
         if datetag:
             return parse_date(datetag[0]["content"])
 
@@ -378,6 +386,12 @@ def end_getimages(myjson, soup, oldimages):
     return images
 
 
+def get_soup_body(myjson, soup):
+    if "m.post.naver.com" in myjson["url"]:
+        return bs4.BeautifulSoup(soup.select("script[type='x-clip-content']")[0].text, 'lxml')
+    return soup
+
+
 def get_images(myjson, soup):
     if myjson["author"] == "hankooki" and "mm_view.php" in myjson["url"]:
         jsondatare = re.search(r"var *arrView *= *(?P<json>.*?) *;\n", str(soup))
@@ -398,6 +412,8 @@ def get_images(myjson, soup):
         if jsondatare:
             return end_getimages(myjson, soup, jsondatare)
 
+    soup = get_soup_body(myjson, soup)
+
     imagestag = get_selector(soup, [
         "#adiContents img",
         "#article_body_content div[itemprop='articleBody'] td > img",  # news1
@@ -410,6 +426,7 @@ def get_images(myjson, soup):
         #".post_body strong > img, .main_image img"  # dispatch
         "#article div[align='center'] > img",  # mydaily
         ".article_word > .articlePhoto img",  # donga
+        "a.se_mediaArea > img.se_mediaImage",  # naver mobile post
         ".article img",
         "#article img",
         ".articletext img",
@@ -519,7 +536,8 @@ def get_description(myjson, soup):
         ".xpress-post-entry",  # hotkorea photobook
         "#center_contents > #main-content",  # hotkorea
         ".post_body",  # dispatch
-        ".article_cont #articleBody"  # sports donga
+        ".article_cont #articleBody",  # sports donga
+        ".se_component_wrap.sect_dsc"  # naver mobile post
     ])
 
     if not desc_tag:
@@ -830,14 +848,14 @@ def get_articles(config, myjson, soup):
             "images": "a > img",
             "aid": lambda soup: re.sub(r".*/([0-9A-Za-z]*)", "\\1", soup.select("a")[0]["href"])
         },
-        # liveen
+        # liveen, ilyoseoul
         {
             "parent": "table#article-list > tr > td > table > tr > td > table",
             "link": "td.list-titles a",
             "caption": "td.list-titles a",
             "description": "td.list-summary a",
             "date": "td.list-times",
-            "images": ".list-photos img",
+            "images": ".list-photos img, a > img.border-box",
             "html": True,
             "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("td.list-titles a")[0]["href"])
         },
@@ -1293,7 +1311,10 @@ def get_max_quality(url, data=None):
     if "thumb.mtstarnews.com/" in url:
         url = re.sub(r"\.com/[0-9][0-9]/", ".com/06/", url)
 
-    if "stardailynews.co.kr" in url or "liveen.co.kr" in url or "munhwanews.com" in url:
+    if ("stardailynews.co.kr" in url
+        or "liveen.co.kr" in url
+        or "munhwanews.com" in url
+        or "ilyoseoul.co.kr" in url):
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
         baseurl = url
