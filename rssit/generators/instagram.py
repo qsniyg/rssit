@@ -350,9 +350,27 @@ def get_story_entries(config, uid, username):
 
         date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
 
+        extra = ""
+        if "story_cta" in item and item["story_cta"]:
+            links = []
+            for cta in item["story_cta"]:
+                for thing in cta:
+                    if thing == "links":
+                        for link in cta["links"]:
+                            links.append(link["webUri"])
+                    else:
+                        sys.stderr.write("Unhandled story_cta: " + str(thing) + "!\n")
+
+            if len(links) > 0:
+                extra += "Links:\n"
+                for link in links:
+                    extra += str(link) + "\n"
+
+
         entries.append({
             "url": "http://guid.instagram.com/" + item["id"],#url,
             "caption": caption,
+            "extratext": extra,
             "author": username,
             "date": date,
             "images": images,

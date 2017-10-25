@@ -4,6 +4,10 @@
 import rssit.util
 
 
+def htmlify(text):
+    return rssit.util.link_urls(text).replace("\n", "<br />\n")
+
+
 def process(result, config):
     feed = {}
 
@@ -20,9 +24,13 @@ def process(result, config):
             caption = "(n/a)"
 
         if "description" in entry and entry["description"] is not None:
-            basecontent = rssit.util.link_urls(entry["description"]).replace("\n", "<br />\n")
+            basecontent = htmlify(entry["description"])
         else:
-            basecontent = rssit.util.link_urls(caption).replace("\n", "<br />\n")
+            basecontent = htmlify(caption)
+
+        if "extratext" in entry and entry["extratext"]:
+            basecontent += "\n<hr />\n"
+            basecontent += htmlify(entry["extratext"])
 
         basetitle = caption.replace("\n", " ")
 
