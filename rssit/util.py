@@ -137,8 +137,14 @@ def good_timezone_converter(input_dt, current_tz='UTC', target_tz='US/Eastern'):
     return target_tz.normalize(target_dt)
 
 
+def need_timezone(dt):
+    return dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None
+
 def localize_datetime(dt):
-    return dt.replace(tzinfo=tzlocal())
+    if need_timezone(dt):
+        return dt.replace(tzinfo=tzlocal())
+    else:
+        return dt.astimezone(tzlocal())
 
 def utc_datetime(dt):
     return dt.replace(tzinfo=tzutc()).astimezone(tzlocal())

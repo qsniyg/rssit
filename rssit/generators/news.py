@@ -277,10 +277,19 @@ def parse_date(date, *args, **kwargs):
     #print("")
     if not date:
         return None
-    if "tz" in kwargs:
+    if "tz" in kwargs and kwargs["tz"]:
         return rssit.util.good_timezone_converter(parse(date), kwargs["tz"])
     else:
         return rssit.util.localize_datetime(parse(date))
+
+
+def parse_date_tz(myjson, soup, newdate):
+    if (myjson["author"] == "mydaily" or
+        myjson["author"] == "xportsnews" or
+        myjson["author"] == "zenithnews"):
+        return parse_date(newdate, tz="Etc/GMT-9")
+    else:
+        return parse_date(newdate)
 
 
 def get_date(myjson, soup):
@@ -292,12 +301,12 @@ def get_date(myjson, soup):
     if myjson["author"] in ["topstarnews"]:
         datetag = soup.select("meta[name='sailthru.date']")
         if datetag:
-            return parse_date(datetag[0]["content"])
+            return parse_date_tz(myjson, soup, datetag[0]["content"])
 
     if "sbs.co.kr" in myjson["url"]:
         datetag = soup.select(".date > meta[itemprop='datePublished']")
         if datetag:
-            return parse_date(datetag[0]["content"])
+            return parse_date_tz(myjson, soup, datetag[0]["content"])
 
     if "star.fnnews.com" in myjson["url"] or myjson["author"] in [
             "breaknews",
@@ -309,17 +318,17 @@ def get_date(myjson, soup):
     ]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
-            return parse_date(datetag[0]["content"])
+            return parse_date_tz(myjson, soup, datetag[0]["content"])
 
     if "m.post.naver.com" in myjson["url"]:
         datetag = soup.select("meta[property='nv:news:date']")
         if datetag:
-            return parse_date(datetag[0]["content"])
+            return parse_date_tz(myjson, soup, datetag[0]["content"])
 
     if myjson["author"] == "mydaily":
         newsid = re.sub(".*newsid=([0-9]*).*", "\\1", myjson["url"])
         newdate = newsid[0:4] + "-" + newsid[4:6] + "-" + newsid[6:8] + " " + newsid[8:10] + ":" + newsid[10:12]
-        return parse_date(newdate, tz="Etc/GMT-9")
+        return parse_date_tz(myjson, soup, newdate)
 
     datetag = get_selector(soup, [
         ".article_info .author em",
@@ -355,9 +364,9 @@ def get_date(myjson, soup):
     for date_tag in datetag:
         try:
             if myjson["author"] == "koreastardaily":
-                date = parse_date(date_tag.contents[0])
+                date = parse_date_tz(myjson, soup, date_tag.contents[0])
             else:
-                date = parse_date(date_tag.text)
+                date = parse_date_tz(myjson, soup, date_tag.text)
         except:
             if date:
                 sys.stderr.write("error parsing date (but already found ok date)\n")
@@ -1235,7 +1244,7 @@ def get_articles(config, myjson, soup):
             else:
                 for date_tag in extra_select(a, selector["date"]):#a.select(selector["date"]):
                     try:
-                        date = parse_date(date_tag.text)
+                        date = parse_date_tz(myjson, soup, date_tag.text)
                         if date:
                             break
                     except Exception as e:
