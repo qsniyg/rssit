@@ -285,8 +285,7 @@ def parse_date(date, *args, **kwargs):
 
 def parse_date_tz(myjson, soup, newdate):
     if (myjson["author"] == "mydaily" or
-        myjson["author"] == "xportsnews" or
-        myjson["author"] == "zenithnews"):
+        myjson["author"] == "xportsnews"):
         return parse_date(newdate, tz="Etc/GMT-9")
     else:
         return parse_date(newdate)

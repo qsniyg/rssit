@@ -144,7 +144,7 @@ def localize_datetime(dt):
     if need_timezone(dt):
         return dt.replace(tzinfo=tzlocal())
     else:
-        return dt.astimezone(tzlocal())
+        return dt.astimezone(get_localzone())
 
 def utc_datetime(dt):
     return dt.replace(tzinfo=tzutc()).astimezone(tzlocal())
