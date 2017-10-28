@@ -3,6 +3,8 @@
 
 import urllib.request
 from dateutil.tz import *
+from tzlocal import get_localzone
+import pytz
 import datetime
 from dateutil.parser import parse
 import re
@@ -125,6 +127,14 @@ def fix_surrogates(string):
             new_string += ch
 
     return new_string
+
+
+# https://stackoverflow.com/q/27531718
+def good_timezone_converter(input_dt, current_tz='UTC', target_tz='US/Eastern'):
+    current_tz = pytz.timezone(current_tz)
+    target_tz = get_localzone()  #pytz.timezone(target_tz)
+    target_dt = current_tz.localize(input_dt).astimezone(target_tz)
+    return target_tz.normalize(target_dt)
 
 
 def localize_datetime(dt):

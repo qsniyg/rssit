@@ -219,6 +219,8 @@ def get_author(url):
         return "donga"
     if ".ilyoseoul.co.kr" in url:
         return "ilyoseoul"
+    if ".zenithnews.com" in url:
+        return "zenithnews"
     return None
 
 
@@ -226,7 +228,7 @@ def ascii_only(string):
     return ''.join([i if ord(i) < 128 else ' ' for i in string])
 
 
-def parse_date(date):
+def parse_date(date, *args, **kwargs):
     if type(date) in [int, float]:
         return rssit.util.localize_datetime(datetime.datetime.utcfromtimestamp(date))
     #print(date)
@@ -275,7 +277,10 @@ def parse_date(date):
     #print("")
     if not date:
         return None
-    return rssit.util.localize_datetime(parse(date))
+    if "tz" in kwargs:
+        return rssit.util.good_timezone_converter(parse(date), kwargs["tz"])
+    else:
+        return rssit.util.localize_datetime(parse(date))
 
 
 def get_date(myjson, soup):
@@ -299,7 +304,8 @@ def get_date(myjson, soup):
             "getnews",
             "hotkorea",
             "dispatch",
-            "ilyoseoul"
+            "ilyoseoul",
+            "zenithnews"
     ]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
@@ -313,7 +319,7 @@ def get_date(myjson, soup):
     if myjson["author"] == "mydaily":
         newsid = re.sub(".*newsid=([0-9]*).*", "\\1", myjson["url"])
         newdate = newsid[0:4] + "-" + newsid[4:6] + "-" + newsid[6:8] + " " + newsid[8:10] + ":" + newsid[10:12]
-        return parse_date(newdate)
+        return parse_date(newdate, tz="Etc/GMT-9")
 
     datetag = get_selector(soup, [
         ".article_info .author em",
@@ -1149,6 +1155,17 @@ def get_articles(config, myjson, soup):
             "images": ".thum_img > a > img",
             "aid": lambda soup: re.sub(r".*/([0-9]*)/[0-9]$", "\\1", extra_select(soup, "dl > dt > a")[0]["href"]),
             "html": True
+        },
+        # zenithnews
+        {
+            "parent": "#ND_Warp > table > tr > td > table > tr > td > table > tr > td > table",
+            "link": ".ArtList_Title > a",
+            "caption": ".ArtList_Title",
+            "date": "tr > td > table > tr > td > font.FontEng",
+            "description": "tr > td > table > tr:nth-of-type(2) > td > a",
+            "images": "tr > td > div > a > img",
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select(".ArtList_Title > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -1314,7 +1331,8 @@ def get_max_quality(url, data=None):
     if ("stardailynews.co.kr" in url
         or "liveen.co.kr" in url
         or "munhwanews.com" in url
-        or "ilyoseoul.co.kr" in url):
+        or "ilyoseoul.co.kr" in url
+        or "zenithnews.com" in url):
         url = re.sub("/thumbnail/", "/photo/", url)
         url = re.sub(r"_v[0-9]*\.", ".", url)
         baseurl = url
