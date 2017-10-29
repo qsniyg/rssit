@@ -159,7 +159,7 @@ def generate_posts(graph, config, user_info):
 
         url = None  # post["permalink_url"]
         if "permalink_url" not in post or not url or len(url) <= 0:
-            url = "https://www.facebook.com/" + user_info["username"] + "/posts/" + post["id"].split("_")[1]
+            url = "https://www.facebook.com/" + username + "/posts/" + post["id"].split("_")[1]
         else:
             url = post["permalink_url"]
 
