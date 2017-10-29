@@ -157,9 +157,11 @@ def generate_posts(graph, config, user_info):
 
         media_caption = "[POST] " + caption
 
-        url = post["permalink_url"]
+        url = None  # post["permalink_url"]
         if "permalink_url" not in post or not url or len(url) <= 0:
             url = "https://www.facebook.com/" + user_info["username"] + "/posts/" + post["id"].split("_")[1]
+        else:
+            url = post["permalink_url"]
 
         date = parse(post["created_time"])
         updated_date = parse(post["updated_time"])

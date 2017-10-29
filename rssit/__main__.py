@@ -11,6 +11,7 @@ import rssit.update
 import rssit.args
 import rssit.cli
 import gc
+import lxml.etree
 
 
 config_model = {
@@ -86,6 +87,8 @@ def update():
 def main():
     gc.enable()
     #gc.set_debug(gc.DEBUG_LEAK)
+
+    lxml.etree.set_default_parser(lxml.etree.XMLParser(dtd_validation=False, collect_ids=False))
 
     rssit.update.update()
 
