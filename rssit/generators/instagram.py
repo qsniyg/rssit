@@ -392,6 +392,23 @@ def get_story_entries(config, uid, username):
             }]
         })
 
+    if "broadcast" in storiesjson and storiesjson["broadcast"]:
+        item = storiesjson["broadcast"]
+        date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
+
+        entries.append({
+            "url": "http://guid.instagram.com/" + item["media_id"],
+            "caption": "[LIVE]",
+            "author": username,
+            "date": date,
+            "images": [],
+            "videos": [{
+                "image": item["cover_frame_url"],
+                "video": item["dash_playback_url"],
+                "live": True
+            }]
+        })
+
     return entries
 
 
