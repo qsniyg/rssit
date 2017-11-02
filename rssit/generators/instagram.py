@@ -405,7 +405,8 @@ def get_story_entries(config, uid, username):
             "videos": [{
                 "image": item["cover_frame_url"],
                 "video": item["dash_playback_url"],
-                "live": True
+                "live": True,
+                "type": "dash"
             }]
         })
 

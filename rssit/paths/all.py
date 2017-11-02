@@ -6,6 +6,7 @@ import rssit.paths.home
 import rssit.paths.reload
 import rssit.paths.update
 import rssit.paths.feed
+import rssit.paths.player
 import rssit.paths.notfound
 
 
@@ -14,6 +15,7 @@ paths_list = [
     rssit.paths.reload,
     rssit.paths.update,
     rssit.paths.feed,
+    rssit.paths.player,
     rssit.paths.notfound
 ]
 

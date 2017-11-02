@@ -54,7 +54,7 @@ def process(result, config):
                     content += "<p><em>Click to watch video</em></p>"
 
                     content += "<a href='%s'><img src='%s'/></a>" % (
-                        video["video"],
+                        rssit.util.get_local_url("/player/" + video["video"]),
                         video["image"]
                     )
                 else:
