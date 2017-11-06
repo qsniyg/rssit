@@ -34,6 +34,7 @@ def normalize_image(url):
     url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
     url = re.sub(r"/p[0-9]*x[0-9]*/", "/", url)
     url = re.sub(r"/e[0-9]*/", "/", url)
+    url = url.replace("/fr/", "/")
     return url
 
 
