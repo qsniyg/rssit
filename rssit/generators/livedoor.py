@@ -2,7 +2,6 @@
 
 
 import bs4
-import ujson
 import demjson
 import sys
 import urllib.request

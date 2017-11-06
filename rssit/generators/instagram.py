@@ -3,7 +3,6 @@
 
 import re
 import rssit.util
-import ujson
 import datetime
 import sys
 import pprint
@@ -45,7 +44,7 @@ def base_image(url):
 def do_a1_request(config, endpoint):
     url = "http://www.instagram.com/" + endpoint.strip("/") + "/?__a=1"
     newdl = rssit.util.download(url, config=config)
-    return ujson.decode(newdl)
+    return rssit.util.json_loads(newdl)
 
 
 def get_node_info(config, code):
@@ -140,7 +139,7 @@ def do_app_request(config, endpoint):
 
     config = get_app_headers(config)
     data = rssit.util.download(endpoint, config=config, http_noextra=True)
-    return ujson.decode(data)
+    return rssit.util.json_loads(data)
 
 
 def get_stories(config, userid):
@@ -171,7 +170,7 @@ def get_user_page(config, username):
         return None
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
-    decoded = ujson.decode(jsondata)
+    decoded = rssit.util.json_loads(jsondata)
 
     return decoded["entry_data"]["ProfilePage"][0]["user"]
 
@@ -186,13 +185,13 @@ def generate_nodes_from_uid(config, uid, *args, **kwargs):
         if kwargs[arg] is not None:
             variables[arg] = kwargs[arg]
 
-    jsondumped = ujson.dumps(variables)
+    jsondumped = rssit.util.json_dumps(variables)
     url = endpoint_getentries + urllib.parse.quote(jsondumped)
     config = get_app_headers(config)
     data = rssit.util.download(url, config=config, http_noextra=True)
     #jsondata = bytes(str(data), 'utf-8').decode('unicode-escape')
     #print(jsondata)
-    decoded = ujson.decode(data)
+    decoded = rssit.util.json_loads(data)
     #pprint.pprint(decoded)
     return decoded
 
@@ -564,7 +563,7 @@ def generate_livereplay(config, server, id):
     config = get_app_headers(config)
     reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
 
-    reelsjson = ujson.decode(reels_data)
+    reelsjson = rssit.util.json_loads(reels_data)
 
     for live in reelsjson["post_live"]["post_live_items"]:
         for broadcast in live["broadcasts"]:

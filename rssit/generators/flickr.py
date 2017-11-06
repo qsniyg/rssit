@@ -3,7 +3,6 @@
 
 import re
 import rssit.util
-import ujson
 import datetime
 import urllib.parse
 from dateutil.tz import *
@@ -17,13 +16,13 @@ def get_modelExport(data):
     jsondata = jsondatare.group("json")
     jsondata = rssit.util.fix_surrogates(jsondata)
 
-    return ujson.loads(jsondata)
+    return rssit.util.json_loads(jsondata)
 
 
 def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?flickr\.com/photos/(?P<user>[^/]*)/*", url)
 
-    if match == None:
+    if match is None:
         return None
 
     data = rssit.util.download(url)

@@ -2,7 +2,6 @@
 
 
 import bs4
-import ujson
 import sys
 import urllib.request
 from dateutil.parser import parse

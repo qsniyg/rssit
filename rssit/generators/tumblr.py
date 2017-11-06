@@ -2,7 +2,6 @@
 
 
 import bs4
-import ujson
 import sys
 import urllib.request
 from dateutil.parser import parse
@@ -33,7 +32,7 @@ def generate_url(config, url):
     soup = bs4.BeautifulSoup(data, 'lxml')
 
     jsondata = soup.find(attrs={"type": "application/ld+json"}).text
-    jsondecode = ujson.loads(jsondata)
+    jsondecode = rssit.util.json_loads(jsondata)
 
     myjson = {
         "title": None,
@@ -61,7 +60,7 @@ def generate_url(config, url):
             data = rssit.util.download(url)
             soup = bs4.BeautifulSoup(data, 'lxml')
             jsondata = soup.find(attrs={"type": "application/ld+json"}).text
-            jsondecode = ujson.loads(jsondata)
+            jsondecode = rssit.util.json_loads(jsondata)
             sys.stderr.write("done\n")
 
         author = jsondecode["author"]

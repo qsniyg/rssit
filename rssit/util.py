@@ -15,6 +15,7 @@ import urllib.parse
 import sys
 import pprint
 import http.cookiejar
+import json
 
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
@@ -185,6 +186,29 @@ def simple_copy(data):
         return data
 
 
+def simplify_copy(data):
+    if type(data) == list:
+        mylist = []
+
+        for i in data:
+            mylist.append(simplify_copy(i))
+
+        return mylist
+    elif type(data) == dict:
+        mydict = {}
+
+        for i in data:
+            mydict[i] = simplify_copy(data[i])
+
+        return mydict
+    elif type(data) == bytes:
+        return str(data)
+    elif type(data) == datetime.datetime:
+        return int(data.timestamp())
+    else:
+        return data
+
+
 def get_host():
     core_config = rssit.config.get_section("core")
 
@@ -194,8 +218,9 @@ def get_host():
     )
 
 
-def get_local_url(path):
-    path = os.path.normpath(path)
+def get_local_url(path, *args, **kwargs):
+    if "norm" not in kwargs or kwargs["norm"]:
+        path = os.path.normpath(path)
 
     return urllib.parse.urljoin(get_host(), path)
 
@@ -271,3 +296,28 @@ def get_selector(soup, selectors):
         return (tag, data)
 
     return tag
+
+
+def json_loads(x):
+    return json.loads(x)
+
+def json_dumps(x):
+    return json.dumps(x)
+
+
+def strify(x):
+    if type(x) is list:
+        nx = []
+        for i in x:
+            nx.append(strify(i))
+        return nx
+    if type(x) is dict:
+        nx = {}
+        for i in x:
+            nx[strify(i)] = strify(x[i])
+    if type(x) in [float, int]:
+        return x
+    elif x:
+        return str(x)
+    else:
+        return x

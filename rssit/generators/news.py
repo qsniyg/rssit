@@ -1,5 +1,4 @@
 import bs4
-import ujson
 import demjson
 import sys
 import urllib.request
@@ -45,6 +44,24 @@ def get_redirect(myjson, soup):
         if url != content:
             return url
     return None
+
+
+def strify(x):
+    if type(x) is list:
+        nx = []
+        for i in x:
+            nx.append(strify(i))
+        return nx
+    if type(x) is dict:
+        nx = {}
+        for i in x:
+            nx[strify(i)] = strify(x[i])
+    if type(x) in [float, int]:
+        return x
+    elif x:
+        return str(x)
+    else:
+        return x
 
 
 def get_url(config, url):
@@ -121,7 +138,7 @@ def get_title(myjson, soup):
     if myjson["author"] == "topstarnews":
         og_title = soup.find("meta", attrs={"itemprop": "name"})
         if og_title:
-            return html.unescape(og_title["content"])
+            return strify(html.unescape(strify(og_title["content"])))
 
     if ((myjson["author"] in [
             "ettoday",
@@ -141,11 +158,11 @@ def get_title(myjson, soup):
             ".article_tit > h3",  # sports donga
         ])
         if title and len(title) > 0:
-            return title[0].text
+            return strify(title[0].text)
 
     og_title = soup.find("meta", attrs={"property": "og:title"})
     if og_title:
-        return html.unescape(og_title["content"])
+        return strify(html.unescape(strify(og_title["content"])))
     elif "search" in myjson["url"]:
         return "(search)"
 
@@ -221,6 +238,8 @@ def get_author(url):
         return "ilyoseoul"
     if ".zenithnews.com" in url:
         return "zenithnews"
+    if "saostar.vn" in url:
+        return "saostar"
     return None
 
 
@@ -313,7 +332,8 @@ def get_date(myjson, soup):
             "hotkorea",
             "dispatch",
             "ilyoseoul",
-            "zenithnews"
+            "zenithnews",
+            "saostar"
     ]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
@@ -363,9 +383,9 @@ def get_date(myjson, soup):
     for date_tag in datetag:
         try:
             if myjson["author"] == "koreastardaily":
-                date = parse_date_tz(myjson, soup, date_tag.contents[0])
+                date = parse_date_tz(myjson, soup, strify(date_tag.contents[0]))
             else:
-                date = parse_date_tz(myjson, soup, date_tag.text)
+                date = parse_date_tz(myjson, soup, strify(date_tag.text))
         except:
             if date:
                 sys.stderr.write("error parsing date (but already found ok date)\n")
@@ -395,14 +415,14 @@ def end_getimages(myjson, soup, oldimages):
         image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
         max_quality = get_max_quality(image_full_url)
         if max_quality:
-            images.append(max_quality)
+            images.append(strify(max_quality))
 
     return images
 
 
 def get_soup_body(myjson, soup):
     if "m.post.naver.com" in myjson["url"]:
-        return bs4.BeautifulSoup(soup.select("script[type='x-clip-content']")[0].text, 'lxml')
+        return bs4.BeautifulSoup(str(soup.select("script[type='x-clip-content']")[0].text), 'lxml')
     return soup
 
 
@@ -418,7 +438,7 @@ def get_images(myjson, soup):
         for img in decoded:
             max_quality = get_max_quality(img["photo"])
             if max_quality:
-                images.append(max_quality)
+                images.append(strify(max_quality))
         return images
 
     if myjson["author"] == "chosun" and "html_dir" in myjson["url"]:
@@ -518,7 +538,7 @@ def get_images(myjson, soup):
         image_full_url = urllib.parse.urljoin(myjson["url"], imagesrc)
         max_quality = get_max_quality(image_full_url)
         if max_quality:
-            images.append(max_quality)
+            images.append(strify(max_quality))
 
     return images
 
@@ -558,12 +578,12 @@ def get_description(myjson, soup):
         return
 
     #return "\n".join(list(desc_tag[0].strings))
-    desc = str(desc_tag[0])
+    desc = strify(desc_tag[0])
 
     if myjson["author"] == "hotkorea":
         desc = re.sub(r"</a>[)] [[] [0-9]*hit []]", "</a>)", desc)  # not regular spaces!
 
-    return desc
+    return strify(desc)
 
 
 def get_nextpage(myjson, soup):
@@ -575,17 +595,17 @@ def get_nextpage(myjson, soup):
         if not tag:
             return
 
-        return str(tag[0]["href"])
+        return strify(tag[0]["href"])
 
     return
 
 
 def clean_url(url):
-    return url.replace("\n", "").replace("\r", "").replace("\t", "")
+    return strify(url).replace("\n", "").replace("\r", "").replace("\t", "")
 
 
 def get_article_url(url):
-    return url
+    return strify(url)
 
 
 def get_segye_photos(myjson, soup):
@@ -657,7 +677,7 @@ def get_yonhap_photos(config, myjson, soup):
 
 
 def do_api(config, path):
-    author = re.sub(r".*?/api/([^/]*).*", "\\1", path)
+    author = str(re.sub(r".*?/api/([^/]*).*", "\\1", path))
 
     if re.match(r".*?/api/[^/]*/([^/?]+)", path):
         query = re.sub(r".*?/api/[^/]*/([^/?]+)", "\\1", path)
@@ -713,12 +733,12 @@ def do_api(config, path):
                 eurl = "http://isplus.live.joins.com/news/article/article.asp?total_id="
                 eurl += field["DOCID"]
                 articles.append({
-                    "url": eurl,
-                    "caption": remove_tags(field["ART_TITLE"]),
-                    "aid": field["DOCID"],
+                    "url": strify(eurl),
+                    "caption": strify(remove_tags(field["ART_TITLE"])),
+                    "aid": strify(field["DOCID"]),
                     "date": date,
-                    "description": remove_tags(field["ART_CONTENT"]),
-                    "images": [thumb_url],
+                    "description": strify(remove_tags(field["ART_CONTENT"])),
+                    "images": [strify(thumb_url)],
                     "videos": []
                 })
 
@@ -739,8 +759,8 @@ def fix_entry(entry):
     if "aid" in entry and entry["aid"]:
         aid = entry["aid"] + " "
     if "caption" in entry and entry["caption"]:
-        realcaption = entry["caption"].strip()
-        caption = aid + realcaption
+        realcaption = strify(entry["caption"].strip())
+        caption = strify(aid + realcaption)
     entry["media_caption"] = caption
     entry["caption"] = realcaption
     entry["similarcaption"] = realcaption
@@ -871,7 +891,7 @@ def get_articles(config, myjson, soup):
             "date": "td.list-times",
             "images": ".list-photos img, a > img.border-box",
             "html": True,
-            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("td.list-titles a")[0]["href"])
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", str(soup.select("td.list-titles a")[0]["href"]))
         },
         # stardailynews
         {
@@ -883,7 +903,7 @@ def get_articles(config, myjson, soup):
             "date": "-1",
             "images": "tr > td img",
             "html": True,
-            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select("tr > td > span > a")[0]["href"])
+            "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", str(soup.select("tr > td > span > a")[0]["href"]))
         },
         # newsen
         {
@@ -893,7 +913,7 @@ def get_articles(config, myjson, soup):
             "description": "td[colspan='2'] > a",
             "date": "td[nowrap]",
             "images": "a > img",
-            "aid": lambda soup: re.sub(r".*uid=([^&]*).*", "\\1", soup.select("td > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*uid=([^&]*).*", "\\1", str(soup.select("td > a")[0]["href"])),
             "html": True
         },
         # tvdaily
@@ -906,10 +926,10 @@ def get_articles(config, myjson, soup):
             "description": "p",
             "images": "a > img",
             "imagedata": lambda entry, soup: {
-                "date": re.sub(r"[^0-9]*", "", soup.select("span.date")[0].text),
-                "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"])
+                "date": re.sub(r"[^0-9]*", "", str(soup.select("span.date")[0].text)),
+                "aid": re.sub(r".*aid=([^&]*).*", "\\1", str(soup.select("a.sublist")[0]["href"]))
             },
-            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", soup.select("a.sublist")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", str(soup.select("a.sublist")[0]["href"])),
             "html": True
         },
         # hankyung
@@ -930,7 +950,7 @@ def get_articles(config, myjson, soup):
             "description": "dd > a",
             "date": "dt > em",
             "images": ".thumb img",
-            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", str(soup.select("dt > a")[0]["href"])),
             "html": True
         },
         # new chosun
@@ -941,7 +961,7 @@ def get_articles(config, myjson, soup):
             "description": ".desc",
             "date": ".date",
             "images": ".thumb img",
-            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", soup.select("dt > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*/([^/.?&]*).html$", "\\1", str(soup.select("dt > a")[0]["href"])),
             "html": True
         },
         # mydaily
@@ -952,7 +972,7 @@ def get_articles(config, myjson, soup):
             "description": ".section_list_text > dd",
             "date": ".section_list_text > dd > p",
             "images": ".section_list_img > a > img",
-            "aid": lambda soup: re.sub(r".*newsid=([^&]*).*", "\\1", soup.select(".section_list_text > dt > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*newsid=([^&]*).*", "\\1", str(soup.select(".section_list_text > dt > a")[0]["href"])),
             "html": True
         },
         # mbn
@@ -963,7 +983,7 @@ def get_articles(config, myjson, soup):
             "description": "p.desc",
             "date": ".write_time",
             "images": ".thumb img",
-            "aid": lambda soup: re.sub(r".*news_seq_no=([^&]*).*", "\\1", soup.select("a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*news_seq_no=([^&]*).*", "\\1", str(soup.select("a")[0]["href"])),
             "html": True
         },
         # chicnews
@@ -975,10 +995,10 @@ def get_articles(config, myjson, soup):
             "date": "span.date",
             "images": ".img img",
             "imagedata": lambda entry, soup: {
-                "date": re.sub(r"[^0-9]*", "", soup.select("span.date")[0].text),
-                "aid": re.sub(r".*aid=([^&]*).*", "\\1", soup.select(".tit > a")[0]["href"])
+                "date": re.sub(r"[^0-9]*", "", str(soup.select("span.date")[0].text)),
+                "aid": re.sub(r".*aid=([^&]*).*", "\\1", str(soup.select(".tit > a")[0]["href"]))
             },
-            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", soup.select(".tit > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*aid=([^&]*).*", "\\1", str(soup.select(".tit > a")[0]["href"])),
             "html": True
         },
         # hankooki
@@ -989,7 +1009,7 @@ def get_articles(config, myjson, soup):
             "description": "li.con > a",
             "date": "li.source",
             "images": ".thumb > a > img",
-            "aid": lambda soup: re.sub(r".*/[a-zA-Z]*([^/]*)\.htm[^/]*$", "\\1", soup.select("li.title > a")[0]["href"]),
+            "aid": lambda soup: re.sub(r".*/[a-zA-Z]*([^/]*)\.htm[^/]*$", "\\1", str(soup.select("li.title > a")[0]["href"])),
             "html": True,
             "is_valid": lambda soup: soup.select("li.title > a")[0]["href"].strip()
         },
@@ -1228,7 +1248,7 @@ def get_articles(config, myjson, soup):
 
         entry = {}
 
-        link = get_article_url(urllib.parse.urljoin(myjson["url"], clean_url(extra_select(a, selector["link"])[0]["href"])))
+        link = get_article_url(urllib.parse.urljoin(myjson["url"], clean_url(strify(extra_select(a, selector["link"])[0]["href"]))))
         entry["url"] = link
 
         if not link.strip():
@@ -1243,7 +1263,7 @@ def get_articles(config, myjson, soup):
             else:
                 for date_tag in extra_select(a, selector["date"]):#a.select(selector["date"]):
                     try:
-                        date = parse_date_tz(myjson, soup, date_tag.text)
+                        date = parse_date_tz(myjson, soup, strify(date_tag.text))
                         if date:
                             break
                     except Exception as e:
@@ -1254,9 +1274,9 @@ def get_articles(config, myjson, soup):
         caption = None
         aid = ""
         if "aid" in selector:
-            aid = selector["aid"](a) + " "
+            aid = strify(selector["aid"](a)) + " "
         if "caption" in selector:
-            realcaption = extra_select(a, selector["caption"])[0].text.strip()
+            realcaption = strify(extra_select(a, selector["caption"])[0].text.strip())
             caption = aid + realcaption
         entry["media_caption"] = caption
         entry["caption"] = realcaption
@@ -1268,7 +1288,7 @@ def get_articles(config, myjson, soup):
             description = ""
             for tag in description_tag:
                 if len(tag.text)  > len(description):
-                    description = tag.text
+                    description = strify(tag.text)
         else:
             description = realcaption
             if not "html" in selector:
@@ -1287,12 +1307,12 @@ def get_articles(config, myjson, soup):
             image_tags = extra_select(a, selector["images"])
             for image in image_tags:
                 if type(image) is str:
-                    image_src = image
+                    image_src = strify(image)
                 else:
-                    image_src = image["src"]
+                    image_src = strify(image["src"])
                 image_full_url = urllib.parse.urljoin(myjson["url"], image_src)
                 image_max_url = get_max_quality(image_full_url, imagedata)
-                images.append(image_max_url)
+                images.append(strify(image_max_url))
 
         entry["images"] = images
         entry["videos"] = []
@@ -1312,6 +1332,8 @@ def get_articles(config, myjson, soup):
 
 
 def get_max_quality(url, data=None):
+    url = strify(url)
+
     if "cp.news.search.daum.net/api/publish.json" in url:
         return None
 
@@ -1403,6 +1425,10 @@ def get_max_quality(url, data=None):
 
     if "dimg.donga.com" in url:
         url = re.sub(r"/i/[0-9]*/[0-9]*/[0-9]*/wps", "/wps", url)
+
+    if "img.saostar.vn" in url:
+        url = re.sub(r"saostar.vn/[a-z][0-9]+/", "saostar.vn/", url)
+        url = re.sub(r"saostar.vn/[0-9]+x[0-9]+/", "saostar.vn/", url)
 
     return url
 
@@ -1556,12 +1582,12 @@ def do_url(config, url, oldarticle=None):
         ourentry = {}
 
     ourentry.update({
-        "caption": title,
-        "description": description,
-        "album": album,
-        "url": url,
+        "caption": strify(title),
+        "description": strify(description),
+        "album": strify(album),
+        "url": strify(url),
         "date": date,
-        "author": author,
+        "author": strify(author),
         "images": images,
         "videos": [] # for now
     })

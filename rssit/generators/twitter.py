@@ -5,11 +5,11 @@ import datetime
 import re
 import rssit.util
 import bs4
-import ujson
 import tweepy
 import pprint
 from calendar import timegm
 import xml.sax.saxutils
+import sys
 
 from email.utils import parsedate_tz, mktime_tz
 #try:
@@ -62,7 +62,7 @@ def generate_html(user, config, path):
         init_data = init_data[0]
 
         if "value" in init_data.attrs:
-            init_json = ujson.loads(init_data.attrs["value"])
+            init_json = rssit.util.json_loads(init_data.attrs["value"])
 
             if not config["author_username"]:
                 if len(init_json["profile_user"]["name"]) > 0:
@@ -193,7 +193,21 @@ def generate_api(user, config, path):
     }
 
 
-    tl = api.user_timeline(id=user, count=config["count"])
+    tl = []
+    if config["count"] == -1:
+        maxid = None
+
+        while True:
+            temp_tl = api.user_timeline(id=user, max_id=maxid, count=200)
+            if not temp_tl:
+                break
+
+            tl = tl + temp_tl
+            maxid = tl[-1].id - 1
+
+            sys.stderr.write("\r" + str(len(tl)) + " / " + str(user_info.statuses_count))
+    else:
+        tl = api.user_timeline(id=user, count=config["count"])
 
     if not tl:
         return None

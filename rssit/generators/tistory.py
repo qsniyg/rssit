@@ -2,7 +2,6 @@
 
 
 import bs4
-import ujson
 import sys
 import urllib.request
 import urllib.parse
@@ -29,6 +28,7 @@ def download(url):
 
 
 def get_full_image(page_url, img):
+    img = rssit.util.strify(img)
     if "daumcdn.net/thumb/" in img:
         img = urllib.parse.unquote(re.sub(".*fname=([^&]*).*", "\\1", img))
     return urllib.parse.urljoin(page_url, img.replace("/image/", "/original/").replace("/attach/", "/original/").replace("/media/", "/original/"))
@@ -115,7 +115,7 @@ def generate_url(config, url):
         soup = bs4.BeautifulSoup(data, 'lxml')
 
         jsondata = soup.find(attrs={"type": "application/ld+json"}).text
-        jsondecode = ujson.loads(jsondata)
+        jsondecode = rssit.util.json_loads(jsondata)
 
         sitetitle = html.unescape(soup.find("meta", attrs={"property": "og:site_name"})["content"])
         myjson["title"] = sitetitle

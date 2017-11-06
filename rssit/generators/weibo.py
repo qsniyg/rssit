@@ -14,7 +14,7 @@ def get_string(element):
     if type(element) is bs4.element.NavigableString:
         return str(element.string)
     elif element.name == "img":
-        return element["title"]
+        return rssit.util.strify(element["title"])
     elif element.name == "a" and "longtext" in element.get("class", []):
         return ""
     else:
@@ -45,11 +45,11 @@ def generate_user(config, user):
 
     soup = bs4.BeautifulSoup(data, 'lxml')
 
-    username = soup.select("h3.username")[0].text
+    username = rssit.util.strify(soup.select("h3.username")[0].text)
 
     descriptionel = soup.select("div.info .glyphicon-user")
     if descriptionel and len(descriptionel) > 0:
-        description = descriptionel[0].parent.text
+        description = rssit.util.strify(descriptionel[0].parent.text)
     else:
         description = username + "'s weibo"
 
@@ -87,9 +87,9 @@ def generate_user(config, user):
         dateel = dateels[0]
         datetext = dateel["title"]
 
-        posturl = urllib.parse.urljoin(url, dateel["href"])
+        posturl = urllib.parse.urljoin(url, rssit.util.strify(dateel["href"]))
 
-        author = status.select(".screen_name")[0].text
+        author = rssit.util.strify(status.select(".screen_name")[0].text)
 
         try:
             date = parse(datetext)
@@ -113,11 +113,13 @@ def generate_user(config, user):
         if lotspic and len(lotspic) > 0:
             for pic in lotspic[0].select("img"):
                 if pic.has_attr("data-o"):
-                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/", pic["data-o"]))
+                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/",
+                                         rssit.util.strify(pic["data-o"])))
                 elif pic.has_attr("data-rel"):
-                    images.append(pic["data-rel"])
+                    images.append(rssit.util.strify(pic["data-rel"]))
                 else:
-                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/", pic["src"]))
+                    images.append(re.sub(r"(//[^/]*\.cn/)[a-z]*/", "\\1large/",
+                                         rssit.util.strify(pic["src"])))
 
         feed["entries"].append({
             "url": posturl,

@@ -86,6 +86,25 @@ def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, path[len("/u/"):])
 
+    feed = {
+        "title": "test",
+        "description": "test",
+        "url": "http://test.test/",
+        "author": "test",
+        "entries": []
+    }
+
+    for i in range(5000):
+        feed["entries"].append({
+            "url": "http://test.test/%i" % i,
+            "title": "test",
+            "content": "test",
+            "author": "test",
+            "date": rssit.util.localize_datetime(rssit.util.parse("-1"))
+        })
+
+    return ("feed", feed)
+
     return None
 
 

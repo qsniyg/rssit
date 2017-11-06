@@ -3,7 +3,6 @@
 
 import re
 import rssit.util
-import ujson
 import pprint
 import sys
 import urllib.parse
@@ -21,7 +20,7 @@ def get_url(config, url):
 def generate_json(config, url):
     data = rssit.util.download(url, config=config)
     #print(data)
-    jsondata = ujson.loads(data)
+    jsondata = rssit.util.json_loads(data)
 
     myjson = {
         "title": "reddit", # FIXME

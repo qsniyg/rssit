@@ -2,11 +2,11 @@
 
 
 import rssit.generator
+import rssit.serializer
 import rssit.formats
 import re
 import io
 import traceback
-import ujson
 
 
 def process(server, path, normpath, options):
@@ -32,7 +32,7 @@ def process(server, path, normpath, options):
         server.wfile.write(bytes("An unknown error occurred while trying to generate feed", "UTF-8"))
         return
 
-    if result == True:
+    if result is True:
         return
 
     server.send_response(200, "OK")
@@ -48,9 +48,13 @@ def process(server, path, normpath, options):
     str_result = result[1]
 
     if type(str_result) not in [str, bytes]:
-        str_result = ujson.dumps(str_result).encode('utf-8')
+        str_result = rssit.serializer.process(config, str_result, result_format).encode('utf-8')
+        #str_result = ujson.dumps(str_result).encode('utf-8')
 
     server.wfile.write(str_result)
+
+    import gc
+    gc.collect()
 
 
 infos = [{
