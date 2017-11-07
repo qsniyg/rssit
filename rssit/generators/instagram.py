@@ -42,8 +42,10 @@ def base_image(url):
     return re.sub(r"\?[^/]*$", "", url)
 
 
-def do_a1_request(config, endpoint):
+def do_a1_request(config, endpoint, *args, **kwargs):
     url = "http://www.instagram.com/" + endpoint.strip("/") + "/?__a=1"
+    if "extra" in kwargs and kwargs["extra"]:
+        url += "&" + kwargs["extra"]
     newdl = rssit.util.download(url, config=config)
     return rssit.util.json_loads(newdl)
 
@@ -152,8 +154,11 @@ def get_user_info(config, userid):
     return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
 
 
-def get_user_info_by_username(config, username):
-    return do_a1_request(config, username)["user"]
+def get_user_info_by_username(config, username, *args, **kwargs):
+    extra = None
+    if "max_id" in kwargs and kwargs["max_id"]:
+        extra = "max_id=" + str(kwargs["max_id"])
+    return do_a1_request(config, username, extra=extra)["user"]
 
 
 def get_user_media_by_username(config, username):
@@ -533,15 +538,35 @@ def generate_user(config, user):
     if ppentry:
         feed["entries"].append(ppentry)
 
+    def paginate(f):
+        total = config["count"]
+        if config["count"] == -1:
+            total = decoded_user["media"]["count"]
+
+        maxid = None
+        nodes = []
+        console = False
+
+        while len(nodes) < total:
+            nodes.extend(f(maxid))
+            if len(nodes) < total:
+                sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
+                console = True
+            maxid = nodes[-1]["id"]
+
+        if console:
+            sys.stderr.write("\n")
+
+        return nodes
+
     #nodes = decoded_user["media"]["nodes"]
     if config["use_media"]:
         nodes = get_user_media_by_username(config, user)
-        for node in reversed(nodes):
-            feed["entries"].append(get_entry_from_node(config, node, user))
     else:
-        nodes = decoded_user["media"]["nodes"]
-        for node in reversed(nodes):
-            feed["entries"].append(get_entry_from_node(config, node, user))
+        nodes = paginate(lambda max_id: decoded_user["media"]["nodes"] if not max_id else get_user_info_by_username(config, user, max_id=max_id)["media"]["nodes"])
+
+    for node in reversed(nodes):
+        feed["entries"].append(get_entry_from_node(config, node, user))
 
     story_entries = get_story_entries(config, decoded_user["id"], user)
     for entry in story_entries:

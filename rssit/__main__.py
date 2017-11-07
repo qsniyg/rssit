@@ -53,8 +53,8 @@ config_model = {
 
             "count": {
                 "name": "Count",
-                "value": 20,
-                "description": "Minimum amount of items to return"
+                "value": 1,
+                "description": "Minimum amount of items to return (1 for default, 0 for none, -1 for all)"
             },
 
             "brackets": {
