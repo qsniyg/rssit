@@ -534,9 +534,14 @@ def generate_user(config, user):
         feed["entries"].append(ppentry)
 
     #nodes = decoded_user["media"]["nodes"]
-    nodes = get_user_media_by_username(config, user)
-    for node in reversed(nodes):
-        feed["entries"].append(get_entry_from_node(config, node, user))
+    if config["use_media"]:
+        nodes = get_user_media_by_username(config, user)
+        for node in reversed(nodes):
+            feed["entries"].append(get_entry_from_node(config, node, user))
+    else:
+        nodes = decoded_user["media"]["nodes"]
+        for node in reversed(nodes):
+            feed["entries"].append(get_entry_from_node(config, node, user))
 
     story_entries = get_story_entries(config, decoded_user["id"], user)
     for entry in story_entries:
@@ -615,6 +620,12 @@ infos = [{
         "force_api": {
             "name": "Forces API",
             "description": "Forces the usage of the API",
+            "value": False
+        },
+
+        "use_media": {
+            "name": "Use /media/ endpoint",
+            "description": "Uses the now-removed /media/?__a=1, which provides 20 feeds",
             "value": False
         }
     },
