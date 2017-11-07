@@ -548,11 +548,13 @@ def generate_user(config, user):
         console = False
 
         while len(nodes) < total:
-            nodes.extend(f(maxid))
+            output = f(maxid)
+            nodes.extend(output[0])
+            #nodes.extend(f(maxid))
             if len(nodes) < total:
                 sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
                 console = True
-            maxid = nodes[-1]["id"]
+            maxid = output[1]  #nodes[-1]["id"]
 
         if console:
             sys.stderr.write("\n")
@@ -563,7 +565,15 @@ def generate_user(config, user):
     if config["use_media"]:
         nodes = get_user_media_by_username(config, user)
     else:
-        nodes = paginate(lambda max_id: decoded_user["media"]["nodes"] if not max_id else get_user_info_by_username(config, user, max_id=max_id)["media"]["nodes"])
+        def get_nodes(max_id):
+            media = decoded_user["media"]
+            if max_id:
+                media = get_user_info_by_username(config, user, max_id=max_id)["media"]
+            nodes = media["nodes"]
+            page_info = media["page_info"]
+            return (nodes, page_info["end_cursor"], page_info["has_next_page"])
+        #nodes = paginate(lambda max_id: decoded_user["media"]["nodes"] if not max_id else get_user_info_by_username(config, user, max_id=max_id)["media"]["nodes"])
+        nodes = paginate(get_nodes)
 
     for node in reversed(nodes):
         feed["entries"].append(get_entry_from_node(config, node, user))
