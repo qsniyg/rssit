@@ -409,7 +409,7 @@ def get_story_entries(config, uid, username):
             "images": [],
             "videos": [{
                 "image": item["cover_frame_url"],
-                "video": item["dash_playback_url"],
+                "video": item.get("dash_abr_playback_url") or item["dash_playback_url"],
                 "live": True,
                 "type": "dash"
             }]

@@ -571,7 +571,8 @@ def get_description(myjson, soup):
         "#center_contents > #main-content",  # hotkorea
         ".post_body",  # dispatch
         ".article_cont #articleBody",  # sports donga
-        ".se_component_wrap.sect_dsc"  # naver mobile post
+        ".se_component_wrap.sect_dsc",  # naver mobile post
+        ".page-wrap > main article #content_detail"  # saostar
     ])
 
     if not desc_tag:
@@ -813,6 +814,9 @@ def get_articles(config, myjson, soup):
             return
     elif myjson["author"] == "donga":
         if "/Search" not in myjson["url"]:
+            return
+    elif myjson["author"] == "saostar":
+        if "/?s=" not in myjson["url"]:
             return
     else:
         if "news/articleList" not in myjson["url"]:
@@ -1194,6 +1198,17 @@ def get_articles(config, myjson, soup):
             "images": "tr > td > div > a > img",
             "aid": lambda soup: re.sub(r".*idxno=([0-9]*).*", "\\1", soup.select(".ArtList_Title > a")[0]["href"]),
             "html": True
+        },
+        # saostar
+        {
+            "parent": ".list_cat_news > .box_vertical.pkg",
+            "link": ".info_vertical_news > h3 > a",
+            "caption": ".info_vertical_news > h3 > a",
+            "date": lambda soup: strify(extra_select(soup, "time.time-ago")[0]["datetime"]),
+            "description": ".sapo_news",
+            "images": ".module-thumb > a > img",
+            "aid": lambda soup: re.sub(r".*-([0-9]*)\.html$", "\\1", soup.select(".info_vertical_news > h3 > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -1261,13 +1276,17 @@ def get_articles(config, myjson, soup):
             if selector["date"] == "-1":
                 date = parse_date(-1)
             else:
-                for date_tag in extra_select(a, selector["date"]):#a.select(selector["date"]):
-                    try:
-                        date = parse_date_tz(myjson, soup, strify(date_tag.text))
-                        if date:
-                            break
-                    except Exception as e:
-                        pass
+                date_tags = extra_select(a, selector["date"])
+                if len(date_tags) == 1 and type(date_tags[0]) == str:
+                    date = parse_date(date_tags[0])
+                else:
+                    for date_tag in date_tags:#a.select(selector["date"]):
+                        try:
+                            date = parse_date_tz(myjson, soup, strify(date_tag.text))
+                            if date:
+                                break
+                        except Exception as e:
+                            pass
         entry["date"] = date
 
         realcaption = None
