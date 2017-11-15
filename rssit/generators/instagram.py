@@ -29,13 +29,28 @@ def get_url(config, url):
 
 
 def normalize_image(url):
-    url = url.replace(".com/l/", ".com/")
+    """url = url.replace(".com/l/", ".com/")
     url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
     url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
     url = re.sub(r"/p[0-9]*x[0-9]*/", "/", url)
     url = re.sub(r"/e[0-9]*/", "/", url)
     url = url.replace("/fr/", "/")
-    return url
+    url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)"""
+
+    urlsplit = urllib.parse.urlsplit(url)
+    urlstart = urlsplit.scheme + "://" + urlsplit.netloc + "/"
+
+    pathsplit = urlsplit.path.split("/")
+
+    for i in pathsplit:
+        if re.match(r"^t[0-9]+\.[0-9]+-[0-9]+$", i):
+            urlstart += i + "/"
+        elif re.match(r"^[0-9_]*_[a-z]+\.[a-z0-9]+$", i):
+            urlstart += i
+
+    return urlstart
+    #url = url.replace(r"(cdninstagram\.com/).*/t[0-9]+\.[0-9]+-[0-9]+/.*
+    #return url
 
 
 def base_image(url):

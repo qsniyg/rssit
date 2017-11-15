@@ -52,6 +52,7 @@ def generate_url(config, url):
         parent_selectors = [
             "#searchList li a",
             ".searchList ol li a",
+            ".searchList ul li a",  # qpid
             ".list_box li > a",
             "ol.article_post li a",
             "#masonry ul li.box > a",

@@ -53,7 +53,7 @@ def process(result, config):
                 if "image" in video and video["image"]:
                     content += "<p><em>Click to watch video</em></p>"
 
-                    content += "<a href='%s'><img src='%s'/></a>" % (
+                    content += "<a href='%s'><img src='%s' alt='(thumbnail)'/></a>" % (
                         rssit.util.get_local_url("/player/" + video["video"], norm=False),
                         video["image"]
                     )
@@ -66,7 +66,7 @@ def process(result, config):
                     image = [image]
 
                 for theimage in image:
-                    content += "<p><img src='%s'/></p>" % theimage
+                    content += "<p><img src='%s' alt='(image)'/></p>" % theimage
 
         thisentry = {
             "url": entry["url"],
