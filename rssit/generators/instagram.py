@@ -68,7 +68,7 @@ class Cache():
 
 
 post_cache = Cache(60*60, 20)
-
+uid_to_username_cache = Cache(6*60*60, 100)
 
 def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
@@ -603,10 +603,10 @@ def generate_user(config, user):
 
     decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
 
-    #decoded_user = get_user_page(config, user)
-
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
-    decoded_user = get_user_info_by_username(config, user)
+
+    decoded_user = get_user_page(config, user)
+    #decoded_user = get_user_info_by_username(config, user)
 
     if config["force_api"]:
         return generate_uid(config, str(decoded_user["id"]))
@@ -719,15 +719,93 @@ def id_to_url(id):
     return "https://www.instagram.com/p/" + shortcode + "/"
 
 
+def get_uid_from_id(id):
+    return id.split("_")[1]
+
+
+def uid_to_username(config, uid):
+    real_uid = uid
+
+    if type(uid) == dict:
+        real_uid = uid["uid"]
+
+    username = uid_to_username_cache.get(real_uid)
+    if not username:
+        if type(uid) == dict:
+            username = uid["name"]
+        else:
+            userinfo = get_user_info(config, real_uid)
+            username = userinfo["user"]["username"]
+        uid_to_username_cache.add(real_uid, username)
+    return username
+
+
+def username_to_url(username):
+    return "https://www.instagram.com/" + username + "/"
+
+
+def uid_to_url(config, uid):
+    return username_to_url(uid_to_username(config, uid))
+
+
 def generate_convert(config, server, url):
     if url.startswith("uid/"):
-        userinfo = get_user_info(config, url[len("uid/"):])
+        username = uid_to_username(config, url[len("uid/"):])
 
         server.send_response(301, "Moved")
-        server.send_header("Location", "https://www.instagram.com/" + userinfo["user"]["username"])
+        server.send_header("Location", "https://www.instagram.com/" + username)
         server.end_headers()
 
     return True
+
+
+def generate_news_media(medias):
+    content = ""
+    for media in medias:
+        content += "<p><a href='%s'><img src='%s' alt='(image)' /></a></p>" % (
+            id_to_url(media["id"]),
+            normalize_image(media["image"]),
+        )
+
+    return content
+
+
+def generate_simple_news(config, story):
+    args = story["args"]
+    caption = args["text"]
+
+    if "links" not in args:
+        content = "<p>" + caption + "</p>"
+    else:
+        caption_parts = []
+        last_end = 0
+
+    for link in args["links"]:
+        caption_parts.append(caption[last_end:link["start"]])
+
+        if link["type"] == "user":
+            caption_parts.append("<a href='%s'>%s</a>" % (
+                uid_to_url(config, link["id"]),
+                #rssit.util.get_local_url("/f/instagram/convert/uid/" + link["id"]),
+                caption[link["start"]:link["end"]]
+            ))
+        else:
+            sys.stderr.write("Unhandled news type: " + link["type"] + "\n")
+            caption_parts.append(caption[link["start"]:link["end"]])
+
+        last_end = link["end"]
+
+        caption_parts.append(caption[last_end:])
+
+        content = "".join(caption_parts)
+        content = "<p>" + content + "</p>"
+
+    if "media" not in args:
+        args["media"] = []
+
+    content += generate_news_media(args["media"])
+
+    return (caption, content)
 
 
 def generate_news(config):
@@ -751,42 +829,150 @@ def generate_news(config):
     for story in newsreq["stories"]:
         args = story["args"]
 
+        story_type = story["story_type"]
         caption = args["text"]
         date = datetime.datetime.fromtimestamp(int(args["timestamp"]), None).replace(tzinfo=tzlocal())
 
-        if "links" not in args:
-            content = "<p>" + caption + "</p>"
-        else:
-            caption_parts = []
-            last_end = 0
+        # story_type:
+        # 12 = leave a comment
+        # 13 = like comment
+        # 60 = like post
+        # 101 = started following
 
-            for link in args["links"]:
-                caption_parts.append(caption[last_end:link["start"]])
+        # type:
+        # 1 = 1 person likes 1 post, or leave a comment on 1 post
+        # 2 = 1 person likes n posts
+        # 4 = 1 person starts following 1 other person
+        # 14 = 1 person likes 1 comment
 
-                if link["type"] == "user":
-                    caption_parts.append("<a href='%s'>%s</a>" % (
-                        rssit.util.get_local_url("/f/instagram/convert/uid/" + link["id"]),
-                        caption[link["start"]:link["end"]]
-                    ))
+        subjs = []
+        objs = []
+        comment = None
+
+        link_users = []
+        for link in args["links"]:
+            if link["type"] == "user":
+                link_users.append({
+                    "uid": link["id"],
+                    "name": caption[link["start"]:link["end"]]
+                })
+
+        if "media" in args and len(args["media"]) > 0:
+            if len(args["media"]) > 1:
+                for user in link_users:
+                    subjs.append(user)
+                for media in args["media"]:
+                    objs.append(get_uid_from_id(media["id"]))
+            else:
+                for user in link_users[:-1]:
+                    subjs.append(user)
+                objs.append(link_users[-1])
+
+        def add_simple():
+            caption, content = generate_simple_news(config, story)
+            feed["entries"].append({
+                "url": "http://tuuid.instagram.com/tuuid:" + args["tuuid"],
+                "title": caption,
+                "author": author,
+                "date": date,
+                "content": content
+            })
+
+        if ((story_type != 12 and story_type != 13 and story_type != 60) or
+            len(subjs) == 0 or
+            len(objs) == 0 or
+            ((story_type == 12 or story_type == 13) and len(args["media"]) > 1)):
+            if story_type != 101:
+                sys.stderr.write("Possibly unhandled story_type: " + str(story_type) + "\n")
+                if len(subjs) == 0 or len(objs) == 0:
+                    sys.stderr.write("Unable to find subject(s) or object(s): " + pprint.pformat(story) + "\n")
+            add_simple()
+            continue
+
+        if story_type == 12 or story_type == 13:
+            lastpos = args["links"][-1]["end"]
+            newcaption = caption[lastpos:]
+            comment = newcaption[newcaption.index(":") + 1:].strip()
+
+        formatted = {
+            12: "1 left a comment on 2's post: ",
+            13: "1 liked 2's comment: ",
+            60: "1 liked 2's post."
+        }
+
+        def uids_to_names(uids):
+            if type(uids) != list:
+                uids = [uids]
+
+            links = []
+            for uid in uids:
+                username = uid_to_username(config, uid)
+                links.append(username)
+
+            return links
+
+        def uids_to_links(uids):
+            if type(uids) != list:
+                uids = [uids]
+
+            links = []
+            for uid in uids:
+                username = uid_to_username(config, uid)
+                links.append("<a href='%s'>%s</a>" % (username_to_url(username), username))
+
+            return links
+
+        def english_array(array):
+            if len(array) == 0:
+                return ""
+
+            if len(array) == 1:
+                return array[0]
+
+            text = ""
+            for i in range(len(array)):
+                if i == 0:
+                    text += array[i]
+                elif i + 1 == len(array):
+                    text += " and " + array[i]
                 else:
-                    sys.stderr.write("Unhandled news type: " + link["type"] + "\n")
-                    caption_parts.append(caption[link["start"]:link["end"]])
+                    text += ", " + array[i]
 
-                last_end = link["end"]
+            return text
 
-            caption_parts.append(caption[last_end:])
+        def do_format(func, subj, media):
+            text = formatted[story_type]
+            text = text.replace("1", english_array(func(subj)))
+            text = text.replace("2", english_array(func(get_uid_from_id(media["id"]))))
 
-            content = "".join(caption_parts)
-            content = "<p>" + content + "</p>"
+            if comment:
+                text += comment
 
-        if "media" not in args:
-            args["media"] = []
+            return text
 
-        for media in args["media"]:
-            content += "<p><a href='%s'><img src='%s' alt='(image)' /></a></p>" % (
-                id_to_url(media["id"]),
-                normalize_image(media["image"]),
-            )
+        for subj in subjs:
+            for media in args["media"]:
+                caption = do_format(uids_to_names, subj, media)
+                content = "<p>%s</p>" % do_format(uids_to_links, subj, media)
+
+                content += generate_news_media([media])
+
+                tuuid = "timestamp:%s/story_type:%s/subject:%s/media:%s" % (
+                    args["timestamp"],
+                    story_type,
+                    subj["uid"],
+                    media["id"]
+                )
+
+                feed["entries"].append({
+                    "url": "http://tuuid.instagram.com/" + tuuid,
+                    "title": caption,
+                    "author": author,
+                    "date": date,
+                    "content": content
+                })
+
+        continue
 
         tuuid = args["tuuid"]
         tuuid += "/" + str(story["story_type"])
