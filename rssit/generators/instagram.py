@@ -542,6 +542,8 @@ def generate_user(config, user):
     decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
 
     #decoded_user = get_user_page(config, user)
+
+    config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
     decoded_user = get_user_info_by_username(config, user)
 
     if config["force_api"]:
@@ -634,6 +636,104 @@ def generate_livereplay(config, server, id):
     return None
 
 
+shortcode_arr = [chr(x) for x in range(ord('A'), ord('Z') + 1)]
+shortcode_arr.extend([chr(x) for x in range(ord('a'), ord('z') + 1)])
+shortcode_arr.extend([chr(x) for x in range(ord('0'), ord('9') + 1)])
+shortcode_arr.extend(['-', '_'])
+
+
+def to_shortcode(n):
+    if n < 64:
+        return shortcode_arr[n]
+    else:
+        return to_shortcode(n // 64) + shortcode_arr[n % 64]
+
+
+def id_to_url(id):
+    if "_" in id:
+        id = id.split("_")[0]
+
+    shortcode = to_shortcode(int(id))
+    return "https://www.instagram.com/p/" + shortcode + "/"
+
+
+def generate_convert(config, server, url):
+    if url.startswith("uid/"):
+        userinfo = get_user_info(config, url[len("uid/"):])
+
+        server.send_response(301, "Moved")
+        server.send_header("Location", "https://www.instagram.com/" + userinfo["user"]["username"])
+        server.end_headers()
+
+    return True
+
+
+def generate_news(config):
+    newsreq = do_app_request(config, "https://i.instagram.com/api/v1/news")
+
+    config["no_dl"] = True
+
+    feed = {
+        "title": "News",
+        "description": "Events happening in your Instagram feed",
+        "url": "https://news.instagram.com/",  # fake url for now
+        "author": "instagram",
+        "entries": []
+    }
+
+    author = "instagram"
+
+    for story in newsreq["stories"]:
+        args = story["args"]
+
+        caption = args["text"]
+        date = datetime.datetime.fromtimestamp(int(args["timestamp"]), None).replace(tzinfo=tzlocal())
+
+        if "links" not in args:
+            content = "<p>" + caption + "</p>"
+        else:
+            caption_parts = []
+            last_end = 0
+
+            for link in args["links"]:
+                caption_parts.append(caption[last_end:link["start"]])
+
+                if link["type"] == "user":
+                    caption_parts.append("<a href='%s'>%s</a>" % (
+                        rssit.util.get_local_url("/f/instagram/convert/uid/" + link["id"]),
+                        caption[link["start"]:link["end"]]
+                    ))
+                else:
+                    sys.stderr.write("Unhandled news type: " + link["type"] + "\n")
+                    caption_parts.append(caption[link["start"]:link["end"]])
+
+                last_end = link["end"]
+
+            caption_parts.append(caption[last_end:])
+
+            content = "".join(caption_parts)
+            content = "<p>" + content + "</p>"
+
+        if "media" not in args:
+            args["media"] = []
+
+        for media in args["media"]:
+            content += "<p><a href='%s'><img src='%s' alt='(image)' /></a></p>" % (
+                id_to_url(media["id"]),
+                normalize_image(media["image"]),
+            )
+
+        feed["entries"].append({
+            "url": "http://tuuid.instagram.com/" + args["tuuid"],
+            "title": caption,
+            "author": author,
+            "date": date,
+            "content": content
+        })
+
+    return ("feed", feed)
+
+
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, path[len("/u/"):])
@@ -646,6 +746,12 @@ def process(server, config, path):
 
     if path.startswith("/uid/"):
         return generate_uid(config, path[len("/uid/"):])
+
+    if path.startswith("/convert/"):
+        return generate_convert(config, server, path[len("/convert/"):])
+
+    if path.startswith("/news"):
+        return generate_news(config)
 
     return None
 
