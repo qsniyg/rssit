@@ -895,9 +895,9 @@ def generate_news(config):
             comment = newcaption[newcaption.index(":") + 1:].strip()
 
         formatted = {
-            12: "1 left a comment on 2's post: ",
-            13: "1 liked 2's comment: ",
-            60: "1 liked 2's post."
+            12: "##1## left a comment on ##2##'s post: ",
+            13: "##1## liked ##2##'s comment: ",
+            60: "##1## liked ##2##'s post."
         }
 
         def uids_to_names(uids):
@@ -942,8 +942,8 @@ def generate_news(config):
 
         def do_format(func, subj, media):
             text = formatted[story_type]
-            text = text.replace("1", english_array(func(subj)))
-            text = text.replace("2", english_array(func(get_uid_from_id(media["id"]))))
+            text = text.replace("##1##", english_array(func(subj)))
+            text = text.replace("##2##", english_array(func(get_uid_from_id(media["id"]))))
 
             if comment:
                 text += comment
