@@ -723,8 +723,14 @@ def generate_news(config):
                 normalize_image(media["image"]),
             )
 
+        tuuid = args["tuuid"]
+        tuuid += "/" + str(story["story_type"])
+
+        if "comment_ids" in args and len(args["comment_ids"]):
+            tuuid += "/" + str(args["comment_ids"][0])
+
         feed["entries"].append({
-            "url": "http://tuuid.instagram.com/" + args["tuuid"],
+            "url": "http://tuuid.instagram.com/" + tuuid,
             "title": caption,
             "author": author,
             "date": date,
