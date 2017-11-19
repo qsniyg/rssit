@@ -780,20 +780,20 @@ def generate_simple_news(config, story):
         caption_parts = []
         last_end = 0
 
-    for link in args["links"]:
-        caption_parts.append(caption[last_end:link["start"]])
+        for link in args["links"]:
+            caption_parts.append(caption[last_end:link["start"]])
 
-        if link["type"] == "user":
-            caption_parts.append("<a href='%s'>%s</a>" % (
-                uid_to_url(config, link["id"]),
-                #rssit.util.get_local_url("/f/instagram/convert/uid/" + link["id"]),
-                caption[link["start"]:link["end"]]
-            ))
-        else:
-            sys.stderr.write("Unhandled news type: " + link["type"] + "\n")
-            caption_parts.append(caption[link["start"]:link["end"]])
+            if link["type"] == "user":
+                caption_parts.append("<a href='%s'>%s</a>" % (
+                    uid_to_url(config, link["id"]),
+                    #rssit.util.get_local_url("/f/instagram/convert/uid/" + link["id"]),
+                    caption[link["start"]:link["end"]]
+                ))
+            else:
+                sys.stderr.write("Unhandled news type: " + link["type"] + "\n")
+                caption_parts.append(caption[link["start"]:link["end"]])
 
-        last_end = link["end"]
+            last_end = link["end"]
 
         caption_parts.append(caption[last_end:])
 
@@ -838,10 +838,11 @@ def generate_news(config):
         # 13 = like comment
         # 60 = like post
         # 101 = started following
+        # 128 = taking a video at n
 
         # type:
         # 1 = 1 person likes 1 post, or leave a comment on 1 post
-        # 2 = 1 person likes n posts
+        # 2 = 1 person likes n posts, or 'took n videos at n'
         # 4 = 1 person starts following 1 other person
         # 14 = 1 person likes 1 comment
 
