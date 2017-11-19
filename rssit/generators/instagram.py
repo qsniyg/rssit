@@ -10,10 +10,64 @@ import math
 import urllib.parse
 from dateutil.tz import *
 
+import sortedcontainers
+import random
+
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
 
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
+
+
+class Cache():
+    def __init__(self, timeout, rand=0):
+        self.db = {}
+        self.timestamps = sortedcontainers.SortedDict()
+        self.timeout = timeout
+        self.rand = rand
+
+    def now(self):
+        return int(datetime.datetime.now().timestamp())
+
+    def add(self, key, value):
+        if key in self.db:
+            timestamp = self.db[key]["timestamp"]
+            if timestamp in self.timestamps:
+                del self.timestamps[timestamp]
+
+        self.collect()
+
+        now = self.now()
+        self.timestamps[now] = key
+        self.db[key] = {
+            "value": value,
+            "timestamp": now
+        }
+
+    def get(self, key):
+        self.collect()
+
+        if key not in self.db:
+            return None
+
+        if self.rand > 0 and random.randint(0, self.rand) == 0:
+            return None
+
+        return self.db[key]["value"]
+
+    def collect(self):
+        now = self.now()
+        time_id = self.timestamps.bisect_left(now - self.timeout)
+
+        if time_id > 0:
+            for i in reversed(range(0, time_id)):
+                timestamp = self.timestamps.iloc[i]
+                key = self.timestamps[timestamp]
+                del self.db[key]
+                del self.timestamps[timestamp]
+
+
+post_cache = Cache(60*60, 20)
 
 
 def get_url(config, url):
@@ -66,7 +120,15 @@ def do_a1_request(config, endpoint, *args, **kwargs):
 
 
 def get_node_info(config, code):
-    return do_a1_request(config, "/p/" + code)
+    info = post_cache.get(code)
+    if info:
+        return info
+    else:
+        req = do_a1_request(config, "/p/" + code)
+        post_cache.add(code, req)
+        return req
+
+    #return do_a1_request(config, "/p/" + code)
     #url = "http://www.instagram.com/p/" + code + "/?__a=1"
     #newdl = rssit.util.download(url, config=config)
     #return ujson.decode(newdl)
@@ -670,6 +732,9 @@ def generate_convert(config, server, url):
 
 def generate_news(config):
     newsreq = do_app_request(config, "https://i.instagram.com/api/v1/news")
+
+    if "raw" in config and config["raw"]:
+        return ("feed", newsreq)
 
     config["no_dl"] = True
 
