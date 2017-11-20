@@ -313,10 +313,14 @@ def get_stories(config, userid):
         stories = get_stories_app(config, userid)
     else:
         oldstories = get_stories_graphql(config, userid)
+        reels_media = oldstories["data"]["reels_media"]
 
-        stories = {
-            "reel": oldstories["data"]["reels_media"][0]
-        }
+        if len(reels_media) > 0:
+            stories = {
+                "reel": oldstories["data"]["reels_media"][0]
+            }
+        else:
+            stories = {"reel": None}
     return stories
 
 
@@ -645,16 +649,30 @@ def generate_uid(config, uid):
     return ("social", feed)
 
 
-def generate_user(config, user):
+def generate_user(config, *args, **kwargs):
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
 
-    if not config["use_profile_a1"]:
-        decoded_user = get_user_page(config, user)
-    else:
-        decoded_user = get_user_info_by_username(config, user)
+    if "username" in kwargs:
+        username = kwargs["username"]
+
+        if not config["use_profile_a1"]:
+            decoded_user = get_user_page(config, username)
+        else:
+            decoded_user = get_user_info_by_username(config, username)
+
+        uid = decoded_user["id"]
+        mediacount = decoded_user["media"]["count"]
+        medianodes = decoded_user["media"]["nodes"]
+    elif "uid" in kwargs:
+        uid = kwargs["uid"]
+        decoded_user = get_user_info(config, uid)["user"]
+        username = decoded_user["username"]
+
+        mediacount = decoded_user["media_count"]
+        medianodes = []
 
     if config["force_api"]:
-        return generate_uid(config, str(decoded_user["id"]))
+        return generate_uid(config, str(uid))
 
     feed = get_feed(config, decoded_user)
 
@@ -665,41 +683,70 @@ def generate_user(config, user):
     def paginate(f):
         total = config["count"]
         if config["count"] == -1:
-            total = decoded_user["media"]["count"]
+            total = mediacount
 
         maxid = None
         nodes = []
         console = False
+        has_next_page = True
 
-        while len(nodes) < total:
+        while (len(nodes) < total) and has_next_page:
             output = f(maxid)
             nodes.extend(output[0])
             if len(nodes) < total:
                 sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
+                sys.stderr.flush()
                 console = True
             maxid = output[1]
+            has_next_page = output[2]
 
         if console:
             sys.stderr.write("\n")
+            sys.stderr.flush()
 
         return nodes
 
+    count = config["count"]
+
+    if count < 0:
+        count = mediacount
+
     if config["use_media"]:
-        nodes = get_user_media_by_username(config, user)
+        nodes = get_user_media_by_username(config, username)
+    elif config["use_graphql_entries"] and count > len(medianodes):
+        # there doesn't seem to be a limit, but let's impose one just in case
+        if count > 500:
+            count = 500
+        elif count == 1:
+            count = 20
+
+        def get_nodes(cursor):
+            media = generate_nodes_from_uid(config, uid, first=count, after=cursor)
+            edges = media["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
+            pageinfo = media["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
+
+            nodes = []
+            for node in edges:
+                nodes.append(node["node"])
+
+            return (nodes, pageinfo["end_cursor"], pageinfo["has_next_page"])
+
+        nodes = paginate(get_nodes)
     else:
         def get_nodes(max_id):
-            media = decoded_user["media"]
-            if max_id:
-                media = get_user_info_by_username(config, user, max_id=max_id)["media"]
+            if max_id or "media" not in decoded_user:
+                media = get_user_info_by_username(config, username, max_id=max_id)["media"]
+            else:
+                media = decoded_user["media"]
             nodes = media["nodes"]
             page_info = media["page_info"]
             return (nodes, page_info["end_cursor"], page_info["has_next_page"])
         nodes = paginate(get_nodes)
 
     for node in reversed(nodes):
-        feed["entries"].append(get_entry_from_node(config, node, user))
+        feed["entries"].append(get_entry_from_node(config, node, username))
 
-    story_entries = get_story_entries(config, decoded_user["id"], user)
+    story_entries = get_story_entries(config, uid, username)
     for entry in story_entries:
         feed["entries"].append(entry)
 
@@ -1042,7 +1089,7 @@ def generate_news(config):
 
 def process(server, config, path):
     if path.startswith("/u/"):
-        return generate_user(config, path[len("/u/"):])
+        return generate_user(config, username=path[len("/u/"):])
 
     if path.startswith("/v/"):
         return generate_video(config, server, path[len("/v/"):])
@@ -1051,7 +1098,7 @@ def process(server, config, path):
         return generate_livereplay(config, server, path[len("/livereplay/"):])
 
     if path.startswith("/uid/"):
-        return generate_uid(config, path[len("/uid/"):])
+        return generate_user(config, uid=path[len("/uid/"):])  # generate_uid(config, path[len("/uid/"):])
 
     if path.startswith("/convert/"):
         return generate_convert(config, server, path[len("/convert/"):])
@@ -1101,6 +1148,12 @@ infos = [{
             "name": "Use graphql stories",
             "description": "Uses graphql for stories instead of the app API. Less rate-limited, but less features (no livestreams, no caption, no click-to-action).",
             "value": False
+        },
+
+        "use_graphql_entries": {
+            "name": "Use graphql entries",
+            "description": "Uses graphql for entries if needed, recommended",
+            "value": True
         }
     },
 
