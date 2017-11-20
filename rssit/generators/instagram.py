@@ -961,12 +961,15 @@ def generate_news(config):
 
                 content += generate_news_media([media])
 
-                tuuid = "tuuid:%s/story_type:%s/subject:%s/media:%s" % (
-                    args["tuuid"],
+                tuuid = "story_type:%s/subject:%s/media:%s" % (
+                    #args["tuuid"],
                     story_type,
                     subj["uid"],
                     media["id"]
                 )
+
+                if comment:
+                    tuuid += "/comment_id:%s" % str(args["comment_id"])
 
                 feed["entries"].append({
                     "url": "http://tuuid.instagram.com/" + tuuid,
