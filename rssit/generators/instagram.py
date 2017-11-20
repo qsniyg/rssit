@@ -961,8 +961,8 @@ def generate_news(config):
 
                 content += generate_news_media([media])
 
-                tuuid = "timestamp:%s/story_type:%s/subject:%s/media:%s" % (
-                    args["timestamp"],
+                tuuid = "tuuid:%s/story_type:%s/subject:%s/media:%s" % (
+                    args["tuuid"],
                     story_type,
                     subj["uid"],
                     media["id"]
