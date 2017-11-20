@@ -19,6 +19,48 @@ instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
 endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=17873473675158481&variables="
 
+# others:
+# descriptions are from personal observation only, could be wrong
+#
+# homepage items + stories
+#   https://www.instagram.com/graphql/query/?query_id=17842794232208280&fetch_media_item_count=10&has_stories=true
+#
+# user suggestions based off another user
+#   https://www.instagram.com/graphql/query/?query_id=17845312237175864&id=[uid]
+#
+# user suggestions
+#   https://www.instagram.com/graphql/query/?query_id=17847560125201451&fetch_media_count=20
+#
+# stories?
+#   https://www.instagram.com/graphql/query/?query_id=17890626976041463
+#
+# likes
+#   https://www.instagram.com/graphql/query/?query_id=17864450716183058&shortcode=[shortcode]&first=20
+#
+# user followed by
+#   https://www.instagram.com/graphql/query/?query_id=17851374694183129&id=[uid]&first=20
+#
+# user following
+#   https://www.instagram.com/graphql/query/?query_id=17874545323001329&id=[uid]&first=20
+#
+# comments
+#   https://www.instagram.com/graphql/query/?query_id=17852405266163336&shortcode=[shortcode]&first=20
+#
+# edge_web_discover_media
+#   https://www.instagram.com/graphql/query/?query_id=17863787143139595
+#
+# hashtag search
+#   https://www.instagram.com/graphql/query/?query_id=17875800862117404&tag_name=[hashtag]&first=20
+#
+# get location info (+media & top posts)
+#   https://www.instagram.com/graphql/query/?query_id=17865274345132052&id=[location id]&first=20
+#
+# saved media
+#   https://www.instagram.com/graphql/query/?query_id=17885113105037631&id=[uid]&first=20
+#
+# contact_history
+#   https://www.instagram.com/graphql/query/?query_id=17884116436028098
+
 
 class Cache():
     def __init__(self, timeout, rand=0):
@@ -119,12 +161,24 @@ def do_a1_request(config, endpoint, *args, **kwargs):
     return rssit.util.json_loads(newdl)
 
 
+def get_node_info_a1(config, code):
+    return do_a1_request(config, "/p/" + code)
+
+
+def get_node_info_webpage(config, code):
+    req = do_website_request(config, "http://www.instagram.com/p/" + code)
+    return req["entry_data"]["PostPage"][0]
+
+
 def get_node_info(config, code):
     info = post_cache.get(code)
     if info:
         return info
     else:
-        req = do_a1_request(config, "/p/" + code)
+        if config["use_shortcode_a1"]:
+            req = get_node_info_a1(config, code)
+        else:
+            req = get_node_info_webpage(config, code)
         post_cache.add(code, req)
         return req
 
@@ -244,9 +298,7 @@ def get_user_media_by_username(config, username):
     return do_a1_request(config, username + "/media")["items"]
 
 
-def get_user_page(config, username):
-    url = "https://www.instagram.com/" + username + "/"  # / to avoid redirect
-
+def do_website_request(config, url):
     data = rssit.util.download(url, config=config)
 
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
@@ -257,10 +309,27 @@ def get_user_page(config, username):
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
 
+    return decoded
+
+def get_user_page(config, username):
+    url = "https://www.instagram.com/" + username + "/"  # / to avoid redirect
+
+    """data = rssit.util.download(url, config=config)
+
+    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    if jsondatare is None:
+        sys.stderr.write("No sharedData!\n")
+        return None
+
+    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    decoded = rssit.util.json_loads(jsondata)"""
+
+    decoded = do_website_request(config, url)
+
     return decoded["entry_data"]["ProfilePage"][0]["user"]
 
 
-def generate_nodes_from_uid(config, uid, *args, **kwargs):
+def get_nodes_from_uid_graphql(config, uid, *args, **kwargs):
     variables = {
         "id": uid,
         "first": 12
@@ -279,6 +348,13 @@ def generate_nodes_from_uid(config, uid, *args, **kwargs):
     decoded = rssit.util.json_loads(data)
     #pprint.pprint(decoded)
     return decoded
+
+
+def get_nodes_from_uid_app(config, uid, *args, **kwargs):
+    url = "https://i.instagram.com/api/v1/feed/user/" + uid + "/"
+    if "max_id" in kwargs and kwargs["max_id"]:
+        url += "?max_id=" + kwargs["max_id"]
+    return do_app_request(config, url)
 
 
 def force_array(obj):
@@ -357,6 +433,10 @@ def normalize_node(node):
             elif node["__typename"] == "GraphSidecar":
                 node["type"] = "carousel"
 
+    if (("carousel_media" in node and type(node["carousel_media"]) == list and len(node["carousel_media"]) > 0)
+        and ("type" in node and node["type"] != "carousel")):
+        node["type"] = "carousel"
+
     if "video_url" not in node:
         base = None
 
@@ -404,6 +484,9 @@ def normalize_node(node):
             """new_url = get_largest_url(node["images"])
             if new_url:
                 node["display_url"] = new_url"""
+
+    if ("display_url" not in node) and ("carousel_media" in node):
+        node["display_url"] = normalize_node(node["carousel_media"][0])["display_url"]
 
     if "display_url" in node:
         node["display_url"] = normalize_image(node["display_url"])
@@ -628,7 +711,7 @@ def generate_uid(config, uid):
     while i < times:
         if times > 1:
             sys.stderr.write("\rLoading media (%i/%i)... " % (i, math.ceil(times)))
-        nodes = generate_nodes_from_uid(config, uid, first=count, after=after_cursor)
+        nodes = get_nodes_from_uid_graphql(config, uid, first=count, after=after_cursor)
         edges = nodes["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
         pageinfo = nodes["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
         after_cursor = pageinfo["end_cursor"]
@@ -721,7 +804,7 @@ def generate_user(config, *args, **kwargs):
             count = 20
 
         def get_nodes(cursor):
-            media = generate_nodes_from_uid(config, uid, first=count, after=cursor)
+            media = get_nodes_from_uid_graphql(config, uid, first=count, after=cursor)
             edges = media["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
             pageinfo = media["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
 
@@ -731,6 +814,12 @@ def generate_user(config, *args, **kwargs):
 
             return (nodes, pageinfo["end_cursor"], pageinfo["has_next_page"])
 
+        nodes = paginate(get_nodes)
+    elif config["use_api_entries"] and count > len(medianodes):
+        def get_nodes(cursor):
+            media = get_nodes_from_uid_app(config, uid, max_id=cursor)
+
+            return (media["items"], media["next_max_id"], media["more_available"])
         nodes = paginate(get_nodes)
     else:
         def get_nodes(max_id):
@@ -1144,6 +1233,12 @@ infos = [{
             "value": False
         },
 
+        "use_shortcode_a1": {
+            "name": "Use /p/[shortcode]/?__a=1 endpoint",
+            "description": "Uses the /p/[shortcode]/?__a=1 endpoint, faster, but possibly more prone to rate-limiting",
+            "value": True
+        },
+
         "use_graphql_stories": {
             "name": "Use graphql stories",
             "description": "Uses graphql for stories instead of the app API. Less rate-limited, but less features (no livestreams, no caption, no click-to-action).",
@@ -1152,8 +1247,14 @@ infos = [{
 
         "use_graphql_entries": {
             "name": "Use graphql entries",
-            "description": "Uses graphql for entries if needed, recommended",
+            "description": "Uses graphql for entries if needed, rate-limited",
             "value": True
+        },
+
+        "use_api_entries": {
+            "name": "Use API entries",
+            "description": "Uses API for entries if needed, rate-limited, but very fast",
+            "value": False
         }
     },
 
