@@ -941,10 +941,10 @@ def generate_news(config):
 
             return text
 
-        def do_format(func, subj, media):
+        def do_format(func, subj, obj):
             text = formatted[story_type]
             text = text.replace("##1##", english_array(func(subj)))
-            text = text.replace("##2##", english_array(func(get_uid_from_id(media["id"]))))
+            text = text.replace("##2##", english_array(func(obj)))
 
             if comment:
                 text += comment
@@ -952,9 +952,12 @@ def generate_news(config):
             return text
 
         for subj in subjs:
-            for media in args["media"]:
-                caption = do_format(uids_to_names, subj, media)
-                content = "<p>%s</p>" % do_format(uids_to_links, subj, media)
+            for media_i in range(len(args["media"])):
+                media = args["media"][media_i]
+                obj = objs[media_i]
+
+                caption = do_format(uids_to_names, subj, obj)
+                content = "<p>%s</p>" % do_format(uids_to_links, subj, obj)
 
                 content += generate_news_media([media])
 
