@@ -17,6 +17,7 @@ import random
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
 
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
+endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=17873473675158481&variables="
 
 
 class Cache():
@@ -222,9 +223,23 @@ def do_app_request(config, endpoint):
     return rssit.util.json_loads(data)
 
 
-def get_stories(config, userid):
+def do_graphql_request(config, endpoint):
+    data = rssit.util.download(endpoint, config=config)
+    return rssit.util.json_loads(data)
+
+
+def get_stories_app(config, userid):
     storiesurl = "https://i.instagram.com/api/v1/feed/user/" + userid + "/story/"
     return do_app_request(config, storiesurl)
+
+
+def get_stories_graphql(config, userid):
+    variables = {
+        "reel_ids": [userid],
+        "precomposed_overlay": False
+    }
+    storiesurl = endpoint_getstories + urllib.parse.quote(rssit.util.json_dumps(variables))
+    return do_graphql_request(config, storiesurl)
 
 
 def get_user_info(config, userid):
@@ -285,18 +300,37 @@ def force_array(obj):
         for i in obj:
             a.append(obj[i])
         return a
-    return a
+    return obj
 
 
 def get_largest_url(items):
     max_ = 0
     url = None
     for item in force_array(items):
-        total = item["height"] + item["width"]
+        if "height" in item:
+            total = item["height"] + item["width"]
+        elif "config_height" in item:
+            total = item["config_height"] + item["config_width"]
         if total > max_:
             max_ = total
-            url = item["url"]
+
+            if "url" in item:
+                url = item["url"]
+            else:
+                url = item["src"]
     return url
+
+
+def get_stories(config, userid):
+    if not config["use_graphql_stories"]:
+        stories = get_stories_app(config, userid)
+    else:
+        oldstories = get_stories_graphql(config, userid)
+
+        stories = {
+            "reel": oldstories["data"]["reels_media"][0]
+        }
+    return stories
 
 
 def normalize_node(node):
@@ -316,6 +350,8 @@ def normalize_node(node):
             node["date"] = node["taken_at_timestamp"]
         elif "created_time" in node:
             node["date"] = int(node["created_time"])
+        elif "taken_at" in node:
+            node["date"] = node["taken_at"]
 
     if "code" not in node:
         if "shortcode" in node:
@@ -323,21 +359,28 @@ def normalize_node(node):
 
     if "type" not in node:
         if "__typename" in node:
-            if node["__typename"] == "GraphImage":
+            if node["__typename"] in ["GraphImage", "GraphStoryImage"]:
                 node["type"] = "image"
-            elif node["__typename"] == "GraphVideo":
+            elif node["__typename"] in ["GraphVideo", "GraphStoryVideo"]:
                 node["type"] = "video"
             elif node["__typename"] == "GraphSidecar":
                 node["type"] = "carousel"
 
-    if "is_video" not in node:
-        node["is_video"] = node["type"] == "video"
-
     if "video_url" not in node:
+        base = None
+
         if "videos" in node:
-            new_url = get_largest_url(node["videos"])
+            base = node["videos"]
+        elif "video_resources" in node:
+            base = node["video_resources"]
+        elif "video_versions" in node:
+            base = node["video_versions"]
+
+        if base:
+            new_url = get_largest_url(base)
             if new_url:
                 node["video_url"] = new_url
+
             """max_ = 0
             for video in node["videos"]:
                 total = video["height"] + video["width"]
@@ -345,11 +388,37 @@ def normalize_node(node):
                     max_ = total
                     node["video_url"] = video["url"]"""
 
+    if "video_url" in node:
+        node["video_url"] = normalize_image(node["video_url"])
+
+    if "type" not in node:
+        if "video_url" not in node:
+            node["type"] = "image"
+        else:
+            node["type"] = "video"
+
     if "display_url" not in node:
+        base = None
+
         if "images" in node:
-            new_url = get_largest_url(node["images"])
+            base = node["images"]
+        elif "image_versions2" in node:
+            base = node["image_versions2"]["candidates"]
+
+        if base:
+            new_url = get_largest_url(base)
             if new_url:
                 node["display_url"] = new_url
+
+            """new_url = get_largest_url(node["images"])
+            if new_url:
+                node["display_url"] = new_url"""
+
+    if "display_url" in node:
+        node["display_url"] = normalize_image(node["display_url"])
+
+    if "is_video" not in node:
+        node["is_video"] = node["type"] == "video"
 
     if node["type"] == "carousel" and "carousel_media" not in node:
         if "edge_sidecar_to_children" in node:
@@ -413,24 +482,39 @@ def get_story_entries(config, uid, username):
 
     for item in storiesjson["reel"]["items"]:
         #print(item)
-        image = normalize_image(item["image_versions2"]["candidates"][0]["url"])
+        item = normalize_node(item)
+
+        #image = normalize_image(item["image_versions2"]["candidates"][0]["url"])
+        image = normalize_image(item["display_url"])
+
         url = image
         images = [image]
         videos = []
-        if "video_versions" in item and item["video_versions"]:
+
+        if "video_url" in item and item["video_url"]:
+            videos = [{
+                "image": image,
+                "video": item["video_url"]
+            }]
+            url = videos[0]["video"]
+            images = []
+        """if "video_versions" in item and item["video_versions"]:
             videos = [{
                 "image": image,
                 "video": item["video_versions"][0]["url"]
             }]
             url = videos[0]["video"]
-            images = []
+            images = []"""
 
         caption = "[STORY]"
 
-        if "caption" in item and item["caption"] and "text" in item["caption"]:
-            caption = "[STORY] " + str(item["caption"]["text"])
+        if "caption" in item and item["caption"]:
+            caption = "[STORY] " + item["caption"]
+        """if "caption" in item and item["caption"] and "text" in item["caption"]:
+            caption = "[STORY] " + str(item["caption"]["text"])"""
 
-        date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
+        #date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
+        date = datetime.datetime.fromtimestamp(int(item["date"]), None).replace(tzinfo=tzlocal())
 
         extra = ""
         if "story_cta" in item and item["story_cta"]:
@@ -605,8 +689,10 @@ def generate_user(config, user):
 
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
 
-    decoded_user = get_user_page(config, user)
-    #decoded_user = get_user_info_by_username(config, user)
+    if not config["use_profile_a1"]:
+        decoded_user = get_user_page(config, user)
+    else:
+        decoded_user = get_user_info_by_username(config, user)
 
     if config["force_api"]:
         return generate_uid(config, str(decoded_user["id"]))
@@ -1046,6 +1132,18 @@ infos = [{
         "use_media": {
             "name": "Use /media/ endpoint",
             "description": "Uses the now-removed /media/?__a=1, which provides 20 feeds",
+            "value": False
+        },
+
+        "use_profile_a1": {
+            "name": "Use [profile]/?__a=1 endpoint",
+            "description": "Uses the [profile]/?__a=1 endpoint, more prone to rate-limiting",
+            "value": False
+        },
+
+        "use_graphql_stories": {
+            "name": "Use graphql stories",
+            "description": "Uses graphql for stories instead of the app API. Less rate-limited, but less features (no livestreams, no caption, no click-to-action).",
             "value": False
         }
     },
