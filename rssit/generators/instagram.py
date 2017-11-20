@@ -684,54 +684,6 @@ def get_profilepic_entry(config, userinfo):
     }
 
 
-def generate_uid(config, uid):
-    userinfo = get_user_info(config, uid)
-    feed = get_feed(config, userinfo["user"])
-
-    ppentry = get_profilepic_entry(config, userinfo["user"])
-    if ppentry:
-        feed["entries"].append(ppentry)
-
-    username = userinfo["user"]["username"]
-    mediacount = userinfo["user"]["media_count"]
-
-    count = config["count"]
-    times = 1
-    if config["count"] == -1:
-        maxcount = 500
-        if mediacount <= maxcount:
-            count = mediacount
-            times = 1
-        else:
-            count = maxcount
-            times = mediacount / maxcount
-
-    i = 0
-    after_cursor = None
-    while i < times:
-        if times > 1:
-            sys.stderr.write("\rLoading media (%i/%i)... " % (i, math.ceil(times)))
-        nodes = get_nodes_from_uid_graphql(config, uid, first=count, after=after_cursor)
-        edges = nodes["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
-        pageinfo = nodes["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
-        after_cursor = pageinfo["end_cursor"]
-
-        for node in edges:
-            node = node["node"]
-            feed["entries"].append(get_entry_from_node(config, node, username))
-
-        i += 1
-
-    if times > 1:
-        sys.stderr.write("\rLoading media... done       \n")
-
-    story_entries = get_story_entries(config, uid, username)
-    for entry in story_entries:
-        feed["entries"].append(entry)
-
-    return ("social", feed)
-
-
 def generate_user(config, *args, **kwargs):
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
 
@@ -753,9 +705,6 @@ def generate_user(config, *args, **kwargs):
 
         mediacount = decoded_user["media_count"]
         medianodes = []
-
-    if config["force_api"]:
-        return generate_uid(config, str(uid))
 
     feed = get_feed(config, decoded_user)
 
@@ -1187,7 +1136,7 @@ def process(server, config, path):
         return generate_livereplay(config, server, path[len("/livereplay/"):])
 
     if path.startswith("/uid/"):
-        return generate_user(config, uid=path[len("/uid/"):])  # generate_uid(config, path[len("/uid/"):])
+        return generate_user(config, uid=path[len("/uid/"):])
 
     if path.startswith("/convert/"):
         return generate_convert(config, server, path[len("/convert/"):])
@@ -1212,12 +1161,6 @@ infos = [{
         "prefer_uid": {
             "name": "Prefer user ID",
             "description": "Prefer user IDs over usernames",
-            "value": False
-        },
-
-        "force_api": {
-            "name": "Forces API",
-            "description": "Forces the usage of the API",
             "value": False
         },
 
