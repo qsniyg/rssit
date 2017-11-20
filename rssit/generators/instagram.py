@@ -90,7 +90,8 @@ def normalize_image(url):
     url = re.sub(r"/p[0-9]*x[0-9]*/", "/", url)
     url = re.sub(r"/e[0-9]*/", "/", url)
     url = url.replace("/fr/", "/")
-    url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)"""
+    url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
+    return url"""
 
     urlsplit = urllib.parse.urlsplit(url)
     urlstart = urlsplit.scheme + "://" + urlsplit.netloc + "/"
@@ -104,8 +105,6 @@ def normalize_image(url):
             urlstart += i
 
     return urlstart
-    #url = url.replace(r"(cdninstagram\.com/).*/t[0-9]+\.[0-9]+-[0-9]+/.*
-    #return url
 
 
 def base_image(url):
@@ -129,11 +128,6 @@ def get_node_info(config, code):
         post_cache.add(code, req)
         return req
 
-    #return do_a1_request(config, "/p/" + code)
-    #url = "http://www.instagram.com/p/" + code + "/?__a=1"
-    #newdl = rssit.util.download(url, config=config)
-    #return ujson.decode(newdl)
-
 
 def get_node_media(config, node, images, videos):
     node = normalize_node(node)
@@ -144,7 +138,6 @@ def get_node_media(config, node, images, videos):
     elif "display_url" in node:
         image_src = node["display_url"]
     else:
-        #pprint.pprint(node)
         sys.stderr.write("No image!!\n")
     normalized = normalize_image(image_src)
 
@@ -189,12 +182,6 @@ def get_node_media(config, node, images, videos):
         else:
             newnodes = get_node_info(config, node["code"])
             get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
-
-            #if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
-            #    sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
-            #else:
-            #    for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
-            #        get_node_media(config, newnode["node"], images, videos)
 
 
 def get_app_headers(config):
@@ -475,16 +462,12 @@ def get_story_entries(config, uid, username):
 
     if "post_live_item" not in storiesjson or not storiesjson["post_live_item"]:
         storiesjson["post_live_item"] = {"broadcasts": []}
-        #return ("social", feed)
 
-    #print(storiesjson)
     entries = []
 
     for item in storiesjson["reel"]["items"]:
-        #print(item)
         item = normalize_node(item)
 
-        #image = normalize_image(item["image_versions2"]["candidates"][0]["url"])
         image = normalize_image(item["display_url"])
 
         url = image
@@ -498,22 +481,12 @@ def get_story_entries(config, uid, username):
             }]
             url = videos[0]["video"]
             images = []
-        """if "video_versions" in item and item["video_versions"]:
-            videos = [{
-                "image": image,
-                "video": item["video_versions"][0]["url"]
-            }]
-            url = videos[0]["video"]
-            images = []"""
 
         caption = "[STORY]"
 
         if "caption" in item and item["caption"]:
             caption = "[STORY] " + item["caption"]
-        """if "caption" in item and item["caption"] and "text" in item["caption"]:
-            caption = "[STORY] " + str(item["caption"]["text"])"""
 
-        #date = datetime.datetime.fromtimestamp(int(item["taken_at"]), None).replace(tzinfo=tzlocal())
         date = datetime.datetime.fromtimestamp(int(item["date"]), None).replace(tzinfo=tzlocal())
 
         extra = ""
@@ -673,20 +646,6 @@ def generate_uid(config, uid):
 
 
 def generate_user(config, user):
-    """url = "https://www.instagram.com/" + user + "/"  # / to avoid redirect
-
-    data = rssit.util.download(url, config=config)
-
-    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
-    if jsondatare is None:
-        sys.stderr.write("No sharedData!\n")
-        return None
-
-    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
-    decoded = ujson.decode(jsondata)
-
-    decoded_user = decoded["entry_data"]["ProfilePage"][0]["user"]"""
-
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
 
     if not config["use_profile_a1"]:
@@ -715,18 +674,16 @@ def generate_user(config, user):
         while len(nodes) < total:
             output = f(maxid)
             nodes.extend(output[0])
-            #nodes.extend(f(maxid))
             if len(nodes) < total:
                 sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
                 console = True
-            maxid = output[1]  #nodes[-1]["id"]
+            maxid = output[1]
 
         if console:
             sys.stderr.write("\n")
 
         return nodes
 
-    #nodes = decoded_user["media"]["nodes"]
     if config["use_media"]:
         nodes = get_user_media_by_username(config, user)
     else:
@@ -737,7 +694,6 @@ def generate_user(config, user):
             nodes = media["nodes"]
             page_info = media["page_info"]
             return (nodes, page_info["end_cursor"], page_info["has_next_page"])
-        #nodes = paginate(lambda max_id: decoded_user["media"]["nodes"] if not max_id else get_user_info_by_username(config, user, max_id=max_id)["media"]["nodes"])
         nodes = paginate(get_nodes)
 
     for node in reversed(nodes):
