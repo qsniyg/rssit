@@ -152,6 +152,36 @@ def fix_surrogates(string):
     return new_string
 
 
+def paginate(config, mediacount, f):
+        total = config["count"]
+        if config["count"] == -1:
+            total = mediacount
+
+        maxid = None
+        nodes = []
+        console = False
+        has_next_page = True
+
+        while (len(nodes) < total) and (has_next_page is not False):
+            output = f(maxid)
+            if not output or not output[0]:
+                break
+
+            nodes.extend(output[0])
+            if len(nodes) < total:
+                sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
+                sys.stderr.flush()
+                console = True
+            maxid = output[1]
+            has_next_page = output[2]
+
+        if console:
+            sys.stderr.write("\n")
+            sys.stderr.flush()
+
+        return nodes
+
+
 # https://stackoverflow.com/q/27531718
 def good_timezone_converter(input_dt, current_tz='UTC', target_tz='US/Eastern'):
     current_tz = pytz.timezone(current_tz)

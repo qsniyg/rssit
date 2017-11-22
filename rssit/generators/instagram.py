@@ -44,7 +44,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #   https://www.instagram.com/graphql/query/?query_id=17874545323001329&id=[uid]&first=20
 #
 # comments
-#   https://www.instagram.com/graphql/query/?query_id=17852405266163336&shortcode=[shortcode]&first=20
+#   https://www.instagram.com/graphql/query/?query_id=17852405266163336&shortcode=[shortcode]&first=20&after=[commentid]
 #
 # edge_web_discover_media
 #   https://www.instagram.com/graphql/query/?query_id=17863787143139595
