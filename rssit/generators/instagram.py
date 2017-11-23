@@ -140,10 +140,15 @@ def normalize_image(url):
 
     pathsplit = urlsplit.path.split("/")
 
+    have_t = False
+
     for i in pathsplit:
         if re.match(r"^t[0-9]+\.[0-9]+-[0-9]+$", i):
             urlstart += i + "/"
+            have_t = True
         elif re.match(r"^[0-9_]*_[a-z]+\.[a-z0-9]+$", i):
+            if not have_t:
+                urlstart += "/"
             urlstart += i
 
     return urlstart
