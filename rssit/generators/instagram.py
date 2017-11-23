@@ -538,6 +538,9 @@ def get_entry_from_node(config, node, user):
 
 
 def get_story_entries(config, uid, username):
+    if not config["stories"]:
+        return []
+
     storiesjson = get_stories(config, uid)
 
     if not storiesjson:
@@ -1191,6 +1194,12 @@ infos = [{
         "use_graphql_entries": {
             "name": "Use graphql entries",
             "description": "Uses graphql for entries if needed, rate-limited",
+            "value": True
+        },
+
+        "stories": {
+            "name": "Process stories/live videos",
+            "description": "Process stories and live videos as well, requires an extra call",
             "value": True
         },
 

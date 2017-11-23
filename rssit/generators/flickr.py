@@ -131,19 +131,47 @@ def generate_photos_url(config, user):
     return feed
 
 
+websiteapikey = None
+
+
+def update_api_key():
+    global websiteapikey
+    data = rssit.util.download("https://www.flickr.com")
+    match = re.search(r"^root\.YUI_config\.flickr\.api\.site_key *= *['\"]([^['\"]*)['\"] *; *$", data, re.M)
+    websiteapikey = match.group(1)
+
+
 def do_api_call(endpoint, *args, **kwargs):
-    websiteapikey = "592e2aa9cb258d65b6a11c8e441c5cf0"  # TODO somehow dynamic?
+    if "__times" in kwargs and kwargs["__times"] > 3:
+        sys.stderr.write("Warning: >3 times called for flickr API\n")
+        return
+
+    if not websiteapikey:
+        update_api_key()
+
     url = "https://api.flickr.com/services/rest?csrf=&api_key=%s&format=json&nojsoncallback=1&method=%s" % (
         websiteapikey,
         endpoint
     )
+
+    times = 0
+    if "__times" in kwargs:
+        times = kwargs["__times"]
+        del kwargs["__times"]
 
     querystring = urllib.parse.urlencode(kwargs)
     if querystring:
         url = url + "&" + querystring
 
     data = rssit.util.download(url)
-    return rssit.util.json_loads(data)
+    ret = rssit.util.json_loads(data)
+
+    if "code" in ret and ret["code"] == 100:
+        update_api_key()
+        kwargs["__times"] = times + 1
+        return do_api_call(endpoint, *args, **kwargs)
+
+    return ret
 
 
 def get_user_info(config, user):
