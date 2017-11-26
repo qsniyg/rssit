@@ -864,9 +864,12 @@ def uid_to_username(config, uid):
     if type(uid) == dict:
         real_uid = uid["uid"]
 
+    if "debug" in config and config["debug"]:
+        return real_uid
+
     username = uid_to_username_cache.get(real_uid)
     if not username:
-        if type(uid) == dict:
+        if type(uid) == dict and "name" in uid:
             username = uid["name"]
         else:
             userinfo = get_user_info(config, real_uid)
@@ -983,7 +986,7 @@ def generate_news(config):
 
         subjs = []
         objs = []
-        comment = None
+        comments = {}
 
         link_users = []
         for link in args["links"]:
@@ -998,11 +1001,34 @@ def generate_news(config):
                 for user in link_users:
                     subjs.append(user)
                 for media in args["media"]:
-                    objs.append(get_uid_from_id(media["id"]))
+                    v = {
+                        "media": media,
+                        "uid": get_uid_from_id(media["id"])
+                    }
+                    objs.append(v)
+            elif "comment_ids" in args and len(args["comment_ids"]) > 1:
+                for user_i in range(len(link_users[1:])):
+                    v = {
+                        "comment": args["comment_ids"][user_i]
+                    }
+                    v.update(link_users[user_i])
+                    subjs.append(v)
+
+                v = {
+                    "media": media,
+                }
+                v.update(link_users[0])
+                objs.append(v)
             else:
                 for user in link_users[:-1]:
                     subjs.append(user)
-                objs.append(link_users[-1])
+                v = {
+                    "media": args["media"][0]
+                }
+                if "comment_id" in args:
+                    v["comment"] = args["comment_id"]
+                v.update(link_users[-1])
+                objs.append(v)
 
         def add_simple():
             caption, content = generate_simple_news(config, story)
@@ -1028,7 +1054,24 @@ def generate_news(config):
         if story_type == 12 or story_type == 13:
             lastpos = args["links"][-1]["end"]
             newcaption = caption[lastpos:]
-            comment = newcaption[newcaption.index(":") + 1:].strip()
+            newcaption = newcaption[newcaption.index(":") + 1:]
+
+            # There are n comments on 1's post: @2: ...\n@3: ...
+            multi = len(args["comment_ids"]) > 1
+            for comment_id_i in range(len(args["comment_ids"])):
+                if multi:
+                    newcaption = newcaption[newcaption.index(":") + 1:]
+
+                if "\n" in newcaption:
+                    curr = newcaption[:newcaption.index("\n")]
+                else:
+                    curr = newcaption
+
+                #comments.push((comment_id, curr.strip()))
+                comments[args["comment_ids"][comment_id_i]] = curr.strip()
+
+                if len(newcaption) > (len(curr) + 1):
+                    newcaption = newcaption[len(curr) + 1:]
 
         formatted = {
             12: "##1## left a comment on ##2##'s post: ",
@@ -1082,19 +1125,36 @@ def generate_news(config):
             text = text.replace("##2##", english_array(func(obj)))
 
             if comment:
-                text += comment
+                text += comments[comment]
 
             return text
 
+        comment = None
+        media = None
+
         for subj in subjs:
-            for media_i in range(len(args["media"])):
-                media = args["media"][media_i]
-                obj = objs[media_i]
+            if "media" in subj:
+                media = subj["media"]
+            if "comment" in subj:
+                comment = subj["comment"]
+
+            for obj_i in range(len(objs)):
+            #for media_i in range(len(args["media"])):
+                obj = objs[obj_i]
+
+                if "media" in obj:
+                    media = obj["media"]
+                if "comment" in obj:
+                    comment = obj["comment"]
+
+                #media = args["media"][obj_i]
+                #obj = objs[obj_i]
 
                 caption = do_format(uids_to_names, subj, obj)
                 content = "<p>%s</p>" % do_format(uids_to_links, subj, obj)
 
-                content += generate_news_media([media])
+                if media:
+                    content += generate_news_media([media])
 
                 tuuid = "story_type:%s/subject:%s/media:%s" % (
                     #args["tuuid"],
@@ -1104,7 +1164,7 @@ def generate_news(config):
                 )
 
                 if comment:
-                    tuuid += "/comment_id:%s" % str(args["comment_id"])
+                    tuuid += "/comment_id:%s" % str(comment) #str(args["comment_id"])
 
                 feed["entries"].append({
                     "url": "http://tuuid.instagram.com/" + tuuid,
