@@ -998,14 +998,32 @@ def generate_news(config):
 
         if "media" in args and len(args["media"]) > 0:
             if len(args["media"]) > 1:
-                for user in link_users:
-                    subjs.append(user)
+                # for "1 liked n of 2's posts."
+                different_uids = False
+                last_uid = None
+
                 for media in args["media"]:
                     v = {
                         "media": media,
                         "uid": get_uid_from_id(media["id"])
                     }
+
+                    if not last_uid:
+                        last_uid = v["uid"]
+                    elif v["uid"] != last_uid:
+                        different_uids = True
+
                     objs.append(v)
+
+                users = link_users
+                if (len(args["media"]) > 1 and
+                    len(link_users) > 1 and
+                    not different_uids and
+                    last_uid == link_users[-1]["uid"]):
+                    users = link_users[:-1]
+
+                for user in users:
+                    subjs.append(user)
             elif "comment_ids" in args and len(args["comment_ids"]) > 1:
                 for user_i in range(len(link_users[1:])):
                     v = {
