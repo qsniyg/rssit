@@ -288,6 +288,11 @@ def get_stories_graphql(config, userid):
     return do_graphql_request(config, storiesurl)
 
 
+def get_reelstray_app(config):
+    storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
+    return do_app_request(config, storiesurl)
+
+
 def get_user_info(config, userid):
     return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
 
@@ -542,25 +547,40 @@ def get_entry_from_node(config, node, user):
     }
 
 
-def get_story_entries(config, uid, username):
-    if not config["stories"]:
-        return []
-
-    storiesjson = get_stories(config, uid)
-
-    if not storiesjson:
-        sys.stderr.write("Warning: not logged in, so no stories\n")
-        return []
-
+def parse_story_entries(config, storiesjson, do_stories=True):
     if "reel" not in storiesjson or not storiesjson["reel"]:
         storiesjson["reel"] = {"items": []}
+
+        if "tray" in storiesjson and type(storiesjson["tray"]) == list:
+            for tray in storiesjson["tray"]:
+                if "items" not in tray:
+                    continue
+                for item in tray["items"]:
+                    storiesjson["reel"]["items"].append(item)
 
     if "post_live_item" not in storiesjson or not storiesjson["post_live_item"]:
         storiesjson["post_live_item"] = {"broadcasts": []}
 
+        if (("post_live" in storiesjson and storiesjson["post_live"])
+            and ("post_live_items" in storiesjson["post_live"]
+                 and storiesjson["post_live"]["post_live_items"])):
+            for item in storiesjson["post_live"]["post_live_items"]:
+                if "broadcasts" in item and item["broadcasts"]:
+                    for broadcast in item["broadcasts"]:
+                        storiesjson["post_live_item"]["broadcasts"].append(broadcast)
+
+    if "broadcasts" not in storiesjson or not storiesjson["broadcasts"]:
+        storiesjson["broadcasts"] = []
+
+        if "broadcast" in storiesjson and storiesjson["broadcast"]:
+            storiesjson["broadcasts"].append(storiesjson["broadcast"])
+
     entries = []
 
     for item in storiesjson["reel"]["items"]:
+        if not do_stories:
+            break
+
         item = normalize_node(item)
 
         image = normalize_image(item["display_url"])
@@ -600,12 +620,11 @@ def get_story_entries(config, uid, username):
                 for link in links:
                     extra += str(link) + "\n"
 
-
         entries.append({
             "url": "http://guid.instagram.com/" + item["id"],#url,
             "caption": caption,
             "extratext": extra,
-            "author": username,
+            "author": item["user"]["username"],
             "date": date,
             "images": images,
             "videos": videos
@@ -617,7 +636,7 @@ def get_story_entries(config, uid, username):
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE REPLAY]",
-            "author": username,
+            "author": item["broadcast_owner"]["username"],
             "date": date,
             "images": [],
             "videos": [{
@@ -626,25 +645,51 @@ def get_story_entries(config, uid, username):
             }]
         })
 
-    if "broadcast" in storiesjson and storiesjson["broadcast"]:
-        item = storiesjson["broadcast"]
+    for item in storiesjson["broadcasts"]:
         date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
 
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE]",
-            "author": username,
+            "author": item["broadcast_owner"]["username"],
             "date": date,
             "images": [],
             "videos": [{
                 "image": item["cover_frame_url"],
                 "video": item.get("dash_abr_playback_url") or item["dash_playback_url"],
                 "live": True,
-                "type": "dash"
+                "type": "instagram_live"
             }]
         })
 
     return entries
+
+
+def get_story_entries(config, uid, username):
+    if not config["stories"]:
+        return []
+
+    try:
+        storiesjson = get_stories(config, uid)
+
+        if not storiesjson:
+            sys.stderr.write("Warning: not logged in, so no stories\n")
+            return []
+    except Exception as e:  # soft error
+        sys.stderr.write(str(e) + "\n")
+        return []
+
+    return parse_story_entries(config, storiesjson)
+
+
+def get_reels_entries(config):
+    storiesjson = get_reelstray_app(config)
+
+    if not storiesjson:
+        sys.stderr.write("Warning: not logged in, so no stories\n")
+        return []
+
+    return parse_story_entries(config, storiesjson, do_stories=False)
 
 
 def get_author(config, userinfo):
@@ -795,6 +840,22 @@ def generate_user(config, *args, **kwargs):
     story_entries = get_story_entries(config, uid, username)
     for entry in story_entries:
         feed["entries"].append(entry)
+
+    return ("social", feed)
+
+
+def generate_reelstray(config):
+    config["is_index"] = True
+
+    feed = {
+        "title": "News",
+        "description": "Events happening in your Instagram feed",
+        "url": "https://news.instagram.com/",  # fake url for now
+        "author": "instagram",
+        "entries": []
+    }
+
+    feed["entries"] = get_reels_entries(config)
 
     return ("social", feed)
 
@@ -1229,6 +1290,9 @@ def process(server, config, path):
 
     if path.startswith("/news"):
         return generate_news(config)
+
+    if path.startswith("/reels_tray"):
+        return generate_reelstray(config)
 
     return None
 
