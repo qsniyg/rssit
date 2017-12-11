@@ -210,13 +210,17 @@ def generate_tw(config, user):
 
 def generate_user(config, user):
     feed = generate_social_wbda(config, user)
-    otherfeed = generate_tw(config, user)
 
-    for i in feed[1]["entries"]:
-        if i["id"] in otherfeed["entries"]:
-            #i["url"] = otherfeed["entries"][i["id"]]["url"]
-            i["date"] = otherfeed["entries"][i["id"]]["date"]
-        del i["id"]
+    try:
+        otherfeed = generate_tw(config, user)
+
+        for i in feed[1]["entries"]:
+            if i["id"] in otherfeed["entries"]:
+                #i["url"] = otherfeed["entries"][i["id"]]["url"]
+                i["date"] = otherfeed["entries"][i["id"]]["date"]
+            del i["id"]
+    except Exception:
+        pass
 
     return feed
 
