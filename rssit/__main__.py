@@ -3,7 +3,6 @@
 
 import rssit.config
 import rssit.http
-import ujson
 import sys
 import rssit.generator
 import rssit.globals
