@@ -1086,6 +1086,8 @@ def generate_news(config):
                 for user in users:
                     subjs.append(user)
             elif "comment_ids" in args and len(args["comment_ids"]) > 1:
+                # There are n comments on 1's post: @2: ...\n@3: ...
+                # problem: only one user link (1, not 2 and 3)
                 for user_i in range(len(link_users[1:])):
                     v = {
                         "comment": args["comment_ids"][user_i]

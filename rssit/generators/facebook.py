@@ -38,6 +38,7 @@ def get_user_info(graph, user):
     user_infos = {}
     if user not in user_infos:
         user_infos[user] = graph.get_object(user + "?fields=name,username,about,description,link")
+        #user_infos[user] = graph.get_object(user + "?fields=name,about,link")
 
         if "username" not in user_infos and "name" in user_infos:
             user_infos["username"] = user_infos["name"]
