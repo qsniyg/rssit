@@ -215,6 +215,15 @@ def generate_api(user, config, path):
     for obj in tl:
         #caption = xml.sax.saxutils.unescape(re.sub(" *http[^ ]*t\.co/[^ ]*", "", obj.text))
         #caption = xml.sax.saxutils.unescape(obj.text)
+        #pprint.pprint(obj.__dict__)
+
+        is_retweeted = False
+        if "retweeted_status" in obj.__dict__ and obj.retweeted_status:
+            is_retweeted = True
+
+        if is_retweeted and not config["with_retweets"]:
+            continue
+
         origcaption = obj.text.replace("\r", "\n")
         newcaption = origcaption
 
@@ -296,7 +305,12 @@ infos = [{
         },
 
         "with_replies": {
-            "name": "Include replies",
+            "name": "Include replies (requires login)",
+            "value": True
+        },
+
+        "with_retweets": {
+            "name": "Include retweets",
             "value": True
         },
 
