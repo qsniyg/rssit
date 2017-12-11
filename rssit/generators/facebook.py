@@ -2,7 +2,6 @@
 
 
 import facebook
-import requests
 import pprint
 from dateutil.parser import parse
 import re

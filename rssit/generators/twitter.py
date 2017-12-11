@@ -5,11 +5,16 @@ import datetime
 import re
 import rssit.util
 import bs4
-import tweepy
+import sys
+try:
+    import tweepy
+except ImportError:
+    tweepy = None
+    sys.stderr.write("Warning: no twitter API support (install tweepy to fix)\n")
 import pprint
 from calendar import timegm
 import xml.sax.saxutils
-import sys
+
 
 from email.utils import parsedate_tz, mktime_tz
 #try:
@@ -287,7 +292,7 @@ def generate(server, config, path):
     if path.startswith("/u/"):
         user = path[len("/u/"):]
 
-        if len(config["consumer_key"]) > 0:
+        if len(config["consumer_key"]) > 0 and tweepy:
             return ("social", generate_api(user, config, path))
         else:
             return ("social", generate_html(user, config, path))
