@@ -276,7 +276,7 @@ def generate_url(config, url):
 
 
 def category_to_id(base, category):
-    data = rssit.util.download(base + "/m/category/" + category)
+    data = rssit.util.download(base + "/m/category/" + urllib.parse.quote(category))
     soup = bs4.BeautifulSoup(data, 'lxml')
 
     scripts = soup.select("script")
