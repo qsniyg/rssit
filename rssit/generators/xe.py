@@ -8,7 +8,6 @@ import bs4
 import html
 from dateutil.parser import parse
 import urllib.parse
-import isodate
 import sys
 
 

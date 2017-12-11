@@ -14,6 +14,7 @@ except ImportError:
 import pprint
 from calendar import timegm
 import xml.sax.saxutils
+import urllib.parse
 
 
 from email.utils import parsedate_tz, mktime_tz
@@ -93,7 +94,7 @@ def generate_html(user, config, path):
 
         username = tweet["data-screen-name"]
 
-        link = tweet["data-permalink-path"]
+        link = urllib.parse.urljoin(url, tweet["data-permalink-path"])
 
         caption = ""
         urls = []
@@ -120,6 +121,10 @@ def generate_html(user, config, path):
 
             for image in image_holder:
                 image_url = image["data-image-url"]
+                if image_url.endswith(":large"):
+                    image_url = image_url.replace(":large", ":orig")
+                elif not image_url.endswith(":orig"):
+                    image_url += ":orig"
                 images.append(image_url)
         else:
             images = None
