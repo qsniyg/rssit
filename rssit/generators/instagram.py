@@ -3,15 +3,13 @@
 
 import re
 import rssit.util
+import rssit.rest
 import datetime
 import sys
 import pprint
-import math
 import urllib.parse
 from dateutil.tz import *
-
-import sortedcontainers
-import random
+import collections
 
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
@@ -62,56 +60,9 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #   https://www.instagram.com/graphql/query/?query_id=17884116436028098
 
 
-class Cache():
-    def __init__(self, timeout, rand=0):
-        self.db = {}
-        self.timestamps = sortedcontainers.SortedDict()
-        self.timeout = timeout
-        self.rand = rand
+post_cache = rssit.util.Cache(60*60, 20)
+uid_to_username_cache = rssit.util.Cache(6*60*60, 100)
 
-    def now(self):
-        return int(datetime.datetime.now().timestamp())
-
-    def add(self, key, value):
-        if key in self.db:
-            timestamp = self.db[key]["timestamp"]
-            if timestamp in self.timestamps:
-                del self.timestamps[timestamp]
-
-        self.collect()
-
-        now = self.now()
-        self.timestamps[now] = key
-        self.db[key] = {
-            "value": value,
-            "timestamp": now
-        }
-
-    def get(self, key):
-        self.collect()
-
-        if key not in self.db:
-            return None
-
-        if self.rand > 0 and random.randint(0, self.rand) == 0:
-            return None
-
-        return self.db[key]["value"]
-
-    def collect(self):
-        now = self.now()
-        time_id = self.timestamps.bisect_left(now - self.timeout)
-
-        if time_id > 0:
-            for i in reversed(range(0, time_id)):
-                timestamp = self.timestamps.iloc[i]
-                key = self.timestamps[timestamp]
-                del self.db[key]
-                del self.timestamps[timestamp]
-
-
-post_cache = Cache(60*60, 20)
-uid_to_username_cache = Cache(6*60*60, 100)
 
 def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?instagram\.com/(?P<user>[^/]*)", url)
@@ -158,6 +109,112 @@ def base_image(url):
     return re.sub(r"\?[^/]*$", "", url)
 
 
+def parse_webpage_request(data):
+    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    if jsondatare is None:
+        sys.stderr.write("No sharedData!\n")
+        return None
+
+    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    decoded = rssit.util.json_loads(jsondata)
+
+    return decoded
+
+
+web_api = rssit.rest.API({
+    "type": "json",
+    "endpoints": {
+        "webpage": {
+            "url": rssit.rest.Format("http://www.instagram.com/%s/", rssit.rest.Arg("path", 0)),
+            "parse": parse_webpage_request,
+            "type": "raw"
+        },
+
+        "a1": {
+            "url": rssit.rest.Format("http://www.instagram.com/%s/", rssit.rest.Arg("path", 0)),
+            "query": {
+                "__a": 1
+            }
+        },
+
+        "node": {
+            "base": "webpage",
+            "args": {
+                "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
+            }
+        },
+
+        "node_a1": {
+            "base": "a1",
+            "args": {
+                "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
+            }
+        }
+    }
+})
+
+graphql_api = rssit.rest.API({
+    "type": "json",
+    "url": "https://www.instagram.com/graphql/query/",
+    "endpoints": {
+        "base": {
+            "query": {
+                "variables": rssit.rest.Arg("variables", 0, parse=lambda x: rssit.util.json_dumps(x))
+            }
+        },
+
+        "entries": {
+            "base": "base",
+            "query": {
+                "query_id": "17888483320059182"
+            }
+        },
+
+        "stories": {
+            "base": "base",
+            "query": {
+                "query_id": "17873473675158481"
+            }
+        }
+    }
+})
+
+app_api = rssit.rest.API({
+    "type": "json",
+    "headers": {
+        "User-Agent": instagram_ua,
+        "x-ig-capabilities": "36oD",
+        "accept": "*/*",
+        # "accept-encoding": "gzip, deflate, br",
+        "accept-language": "en-US,en;q=0.8"
+    },
+    "endpoints": {
+        "stories": {
+            "url": rssit.rest.Format("https://i.instagram.com/api/v1/feed/user/%s/story/",
+                                     rssit.rest.Arg("uid", 0))
+        },
+        "reels_tray": {
+            "url": "https://i.instagram.com/api/v1/feed/reels_tray/"
+        },
+        "news": {
+            "url": "https://i.instagram.com/api/v1/news/"
+        },
+        "user_info": {
+            "url": rssit.rest.Format("https://i.instagram.com/api/v1/users/%s/info/",
+                                     rssit.rest.Arg("uid", 0))
+        },
+        "user_feed": {
+            "url": rssit.rest.Format("https://i.instagram.com/api/v1/feed/user/%s/",
+                                     rssit.rest.Arg("uid", 0)),
+            "query": {
+                "max_id": rssit.rest.Arg("max_id", 1)
+            }
+        }
+    }
+})
+
+
+"""
 def do_a1_request(config, endpoint, *args, **kwargs):
     url = "http://www.instagram.com/" + endpoint.strip("/") + "/?__a=1"
     if "extra" in kwargs and kwargs["extra"]:
@@ -172,6 +229,20 @@ def get_node_info_a1(config, code):
 
 def get_node_info_webpage(config, code):
     req = do_website_request(config, "http://www.instagram.com/p/" + code)
+    return req["entry_data"]["PostPage"][0]
+"""
+
+
+def do_a1_request(config, endpoint, *args, **kwargs):
+    return web_api.run(config, "a1", endpoint.strip("/"), _overlay={"query": kwargs})
+
+
+def get_node_info_a1(config, code):
+    return web_api.run(config, "node_a1", code)
+
+
+def get_node_info_webpage(config, code):
+    req = web_api.run(config, "node", code)
     return req["entry_data"]["PostPage"][0]
 
 
@@ -260,23 +331,26 @@ def has_cookie(config):
     return False
 
 
-def do_app_request(config, endpoint):
+def do_app_request(config, endpoint, **kwargs):
     if not has_cookie(config):
         return None
 
-    config = get_app_headers(config)
-    data = rssit.util.download(endpoint, config=config, http_noextra=True)
-    return rssit.util.json_loads(data)
+    return app_api.run(config, endpoint, **kwargs)
+    #config = get_app_headers(config)
+    #data = rssit.util.download(endpoint, config=config, http_noextra=True)
+    #return rssit.util.json_loads(data)
 
 
-def do_graphql_request(config, endpoint):
-    data = rssit.util.download(endpoint, config=config)
-    return rssit.util.json_loads(data)
+def do_graphql_request(config, endpoint, variables):
+    return graphql_api.run(config, endpoint, variables)
+    #data = rssit.util.download(endpoint, config=config)
+    #return rssit.util.json_loads(data)
 
 
 def get_stories_app(config, userid):
-    storiesurl = "https://i.instagram.com/api/v1/feed/user/" + userid + "/story/"
-    return do_app_request(config, storiesurl)
+    return do_app_request(config, "stories", uid=userid)
+    #storiesurl = "https://i.instagram.com/api/v1/feed/user/" + userid + "/story/"
+    #return do_app_request(config, storiesurl)
 
 
 def get_stories_graphql(config, userid):
@@ -284,24 +358,30 @@ def get_stories_graphql(config, userid):
         "reel_ids": [userid],
         "precomposed_overlay": False
     }
-    storiesurl = endpoint_getstories + urllib.parse.quote(rssit.util.json_dumps(variables))
-    return do_graphql_request(config, storiesurl)
+    return do_graphql_request(config, "stories", variables)
+    #storiesurl = endpoint_getstories + urllib.parse.quote(rssit.util.json_dumps(variables))
+    #return do_graphql_request(config, storiesurl)
 
 
 def get_reelstray_app(config):
-    storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
-    return do_app_request(config, storiesurl)
+    return do_app_request(config, "reels_tray")
+    #storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
+    #return do_app_request(config, storiesurl)
 
 
 def get_user_info(config, userid):
-    return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
+    return do_app_request(config, "user_info", uid=userid)
+    #return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
 
 
 def get_user_info_by_username(config, username, *args, **kwargs):
-    extra = None
+    extra = {}
     if "max_id" in kwargs and kwargs["max_id"]:
-        extra = "max_id=" + str(kwargs["max_id"])
-    return do_a1_request(config, username, extra=extra)["user"]
+        #extra = "max_id=" + str(kwargs["max_id"])
+        extra = {
+            "max_id": str(kwargs["max_id"])
+        }
+    return do_a1_request(config, username, **extra)["user"]
 
 
 def get_user_media_by_username(config, username):
@@ -351,20 +431,27 @@ def get_nodes_from_uid_graphql(config, uid, *args, **kwargs):
 
     jsondumped = rssit.util.json_dumps(variables)
     url = endpoint_getentries + urllib.parse.quote(jsondumped)
-    config = get_app_headers(config)
-    data = rssit.util.download(url, config=config, http_noextra=True)
-    #jsondata = bytes(str(data), 'utf-8').decode('unicode-escape')
-    #print(jsondata)
-    decoded = rssit.util.json_loads(data)
-    #pprint.pprint(decoded)
-    return decoded
+    #return do_graphql_request(config, url)
+    return do_graphql_request(config, "entries", variables)
+    #config = get_app_headers(config)
+    #data = rssit.util.download(url, config=config, http_noextra=True)
+    #decoded = rssit.util.json_loads(data)
+    #return decoded
 
 
 def get_nodes_from_uid_app(config, uid, *args, **kwargs):
-    url = "https://i.instagram.com/api/v1/feed/user/" + uid + "/"
+    newargs = {
+        "uid": uid
+    }
+
     if "max_id" in kwargs and kwargs["max_id"]:
-        url += "?max_id=" + kwargs["max_id"]
-    return do_app_request(config, url)
+        newargs["max_id"] = kwargs["max_id"]
+
+    return do_app_request(config, "user_feed", **newargs)
+    #url = "https://i.instagram.com/api/v1/feed/user/" + uid + "/"
+    #if "max_id" in kwargs and kwargs["max_id"]:
+    #    url += "?max_id=" + kwargs["max_id"]
+    #return do_app_request(config, url)
 
 
 def force_array(obj):
@@ -510,6 +597,10 @@ def normalize_node(node):
             for newnode in node["edge_sidecar_to_children"]["edges"]:
                 node["carousel_media"].append(newnode["node"])
 
+    if "user" not in node:
+        if "owner" in node:
+            node["user"] = node["owner"]
+
     return node
 
 
@@ -621,10 +712,10 @@ def parse_story_entries(config, storiesjson, do_stories=True):
                     extra += str(link) + "\n"
 
         entries.append({
-            "url": "http://guid.instagram.com/" + item["id"],#url,
+            "url": "http://guid.instagram.com/" + item["id"],  #url,
             "caption": caption,
             "extratext": extra,
-            "author": item["user"]["username"],
+            "author": uid_to_username(config, item["user"]),  #["username"],
             "date": date,
             "images": images,
             "videos": videos
@@ -636,7 +727,7 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE REPLAY]",
-            "author": item["broadcast_owner"]["username"],
+            "author": uid_to_username(config, item["broadcast_owner"]),  #["username"],
             "date": date,
             "images": [],
             "videos": [{
@@ -651,7 +742,7 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE]",
-            "author": item["broadcast_owner"]["username"],
+            "author": uid_to_username(config, item["broadcast_owner"]),  #["username"],
             "date": date,
             "images": [],
             "videos": [{
@@ -919,19 +1010,36 @@ def get_uid_from_id(id):
     return id.split("_")[1]
 
 
+def normalize_user(user):
+    if "uid" not in user:
+        if "pk" in user:
+            user["uid"] = user["pk"]
+        elif "id" in user:
+            user["uid"] = user["id"]
+
+    return user
+
+
 def uid_to_username(config, uid):
     real_uid = uid
 
     if type(uid) == dict:
-        real_uid = uid["uid"]
+        uid = normalize_user(rssit.util.simple_copy(uid))
+
+        if "uid" in uid:
+            real_uid = uid["uid"]
+        elif "username" in uid:
+            return uid["username"]
+        else:
+            return None
 
     if "debug" in config and config["debug"]:
         return real_uid
 
     username = uid_to_username_cache.get(real_uid)
     if not username:
-        if type(uid) == dict and "name" in uid:
-            username = uid["name"]
+        if type(uid) == dict and "username" in uid:
+            username = uid["username"]
         else:
             userinfo = get_user_info(config, real_uid)
             username = userinfo["user"]["username"]
@@ -1008,7 +1116,8 @@ def generate_simple_news(config, story):
 
 
 def generate_news(config):
-    newsreq = do_app_request(config, "https://i.instagram.com/api/v1/news")
+    #newsreq = do_app_request(config, "https://i.instagram.com/api/v1/news")
+    newsreq = do_app_request(config, "news")
 
     if "raw" in config and config["raw"]:
         return ("feed", newsreq)
@@ -1054,7 +1163,7 @@ def generate_news(config):
             if link["type"] == "user":
                 link_users.append({
                     "uid": link["id"],
-                    "name": caption[link["start"]:link["end"]]
+                    "username": caption[link["start"]:link["end"]]
                 })
 
         if "media" in args and len(args["media"]) > 0:
