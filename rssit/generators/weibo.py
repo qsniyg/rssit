@@ -98,7 +98,7 @@ def generate_social_wbda(config, user):
         if not status_word or len(status_word) < 1:
             caption = ""
         else:
-            caption = get_string(status_word[0])
+            caption = strip(get_string(status_word[0]))
 
         dateels = status.select("small span a")
         if not dateels or len(dateels) <= 0:
