@@ -240,6 +240,10 @@ def get_author(url):
         return "zenithnews"
     if "saostar.vn" in url:
         return "saostar"
+    if "khan.co.kr" in url:
+        return "khan"
+    if "gamechosun.co.kr" in url:
+        return "gamechosun"
     return None
 
 
@@ -253,6 +257,10 @@ def parse_date(date, *args, **kwargs):
     #print(date)
     date = date.replace("&nbsp", " ")
     date = date.strip()
+    # khan
+    if date[0] == "(" and date[-1] == ")":
+        date = date[1:-1]
+        date = date.strip()
     date = re.sub("^([0-9][0-9][0-9][0-9])\. ([0-9][0-9])\.([0-9][0-9])[(].[)]", "\\1-\\2-\\3 ", date) # tvdaily
     date = re.sub("오후 *([0-9]*:[0-9]*)", "\\1PM", date)
     date = re.sub("(^|[^0-9])([0-9][0-9])\.([0-9][0-9])\.([0-9][0-9])  *([0-9][0-9]:[0-9][0-9])",
@@ -326,6 +334,7 @@ def get_date(myjson, soup):
         if datetag:
             return parse_date_tz(myjson, soup, datetag[0]["content"])
 
+    # not khan.co.kr, it has 1999-11-30 as the date
     if "star.fnnews.com" in myjson["url"] or myjson["author"] in [
             "breaknews",
             "getnews",
@@ -333,7 +342,8 @@ def get_date(myjson, soup):
             "dispatch",
             "ilyoseoul",
             "zenithnews",
-            "saostar"
+            "saostar",
+            "gamechosun"
     ]:
         datetag = soup.select("meta[property='article:published_time']")
         if datetag:
@@ -373,6 +383,7 @@ def get_date(myjson, soup):
         "#main-content .gn_rsmall",  # hotkorea
         ".xpress-post-footer",  # hotkorea
         ".article_tit > p",  # sports donga
+        "article.wrap_news_body > div.byline > em"  # khan
     ])
 
     if not datetag:
@@ -572,7 +583,9 @@ def get_description(myjson, soup):
         ".post_body",  # dispatch
         ".article_cont #articleBody",  # sports donga
         ".se_component_wrap.sect_dsc",  # naver mobile post
-        ".page-wrap > main article #content_detail"  # saostar
+        ".page-wrap > main article #content_detail",  # saostar
+        "article.wrap_news_body > div.desc_body",  # khan
+        ".cnt_article_wrap .cnt_lef_area div[itemprop='articleBody']",  # gamechosun
     ])
 
     if not desc_tag:
@@ -809,7 +822,7 @@ def get_articles(config, myjson, soup):
         if not re.search(r"[?&]query=", myjson["url"]):
             return
         return get_yonhap_photos(config, myjson, soup)
-    elif myjson["author"] == "breaknews":
+    elif myjson["author"] in ["breaknews", "khan"]:
         if "search.html" not in myjson["url"]:
             return
     elif myjson["author"] == "donga":
@@ -1209,6 +1222,16 @@ def get_articles(config, myjson, soup):
             "images": ".module-thumb > a > img",
             "aid": lambda soup: re.sub(r".*-([0-9]*)\.html$", "\\1", soup.select(".info_vertical_news > h3 > a")[0]["href"]),
             "html": True
+        },
+        # khan.co.kr
+        {
+            "parent": "#wrap > #container > .content > .news.section > dl.phArtc",
+            "link": "dt > a",
+            "caption": "dt > a",
+            "date": "dt span.date",
+            "description": "dd.txt",
+            "aid": lambda soup: re.sub(r".*art_id=([0-9]*).*", "\\1", soup.select("dt > a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -1286,6 +1309,7 @@ def get_articles(config, myjson, soup):
                             if date:
                                 break
                         except Exception as e:
+                            sys.stderr.write("couldn't parse date\n")
                             pass
         entry["date"] = date
 
@@ -1448,6 +1472,11 @@ def get_max_quality(url, data=None):
     if "img.saostar.vn" in url:
         url = re.sub(r"saostar.vn/[a-z][0-9]+/", "saostar.vn/", url)
         url = re.sub(r"saostar.vn/[0-9]+x[0-9]+/", "saostar.vn/", url)
+
+    if ("images.sportskhan.net" in url or
+        "img.khan.co.kr" in url):
+        url = re.sub(r"\/r\/[0-9]+x[0-9]+\/", "/", url)
+        url = re.sub(r"\/[a-z]*_([0-9]+\.[a-z0-9A-Z]*)$", "/\\1", url)
 
     return url
 

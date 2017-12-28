@@ -209,6 +209,13 @@ app_api = rssit.rest.API({
             "query": {
                 "max_id": rssit.rest.Arg("max_id", 1)
             }
+        },
+        "inbox": {
+            "url": "https://i.instagram.com/api/v1/direct_v2/inbox/",
+            "query": {
+                "persistentBadging": "true",
+                "use_unified_inbox": "true"
+            }
         }
     }
 })
@@ -1383,6 +1390,55 @@ def generate_news(config):
     return ("feed", feed)
 
 
+def generate_inbox(config):
+    inboxreq = do_app_request(config, "inbox")
+
+    if "raw" in config and config["raw"]:
+        return ("feed", inboxreq)
+
+    config["no_dl"] = True
+
+    feed = {
+        "title": "Inbox",
+        "description": "Direct messages",
+        "url": "http://inbox.instagram.com/",  # fake url for now
+        "author": "instagram",
+        "entries": []
+    }
+
+    for thread in inboxreq["inbox"]["threads"]:
+        for user in thread["users"]:
+            # cache
+            uid_to_username(config, {
+                "uid": user["pk"],
+                "username": user["username"]
+            })
+
+        for item in thread["items"]:
+            guid = item["item_id"]
+            if "text" in item:
+                content = item["text"]
+            elif "link" in item:
+                content = item["link"]["text"]
+            if not content:
+                content = "(n/a)"
+            caption = "[" + thread["thread_title"] + "] " + content
+            if item["user_id"] == thread["viewer_id"]:
+                if True:
+                    continue
+            author = uid_to_username(config, item["user_id"])
+            date = datetime.datetime.fromtimestamp(int(item["timestamp"])/1000000, None).replace(tzinfo=tzlocal())
+            feed["entries"].append({
+                "url": "http://guid.instagram.com/" + guid,
+                "title": caption,
+                "author": author,
+                "date": date,
+                "content": content
+            })
+
+    return ("feed", feed)
+
+
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, username=path[len("/u/"):])
@@ -1404,6 +1460,9 @@ def process(server, config, path):
 
     if path.startswith("/reels_tray"):
         return generate_reelstray(config)
+
+    if path.startswith("/inbox"):
+        return generate_inbox(config)
 
     return None
 
