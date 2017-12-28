@@ -1226,6 +1226,9 @@ def generate_news(config):
                     v["comment"] = args["comment_id"]
                 v.update(link_users[-1])
                 objs.append(v)
+        elif story_type == 101:
+            subjs.append(link_users[0])
+            objs.extend(link_users[1:])
 
         def add_simple():
             caption, content = generate_simple_news(config, story)
@@ -1237,11 +1240,11 @@ def generate_news(config):
                 "content": content
             })
 
-        if ((story_type != 12 and story_type != 13 and story_type != 60) or
+        if ((story_type != 12 and story_type != 13 and story_type != 60 and story_type != 101) or
             len(subjs) == 0 or
             len(objs) == 0 or
             ((story_type == 12 or story_type == 13) and len(args["media"]) > 1)):
-            if story_type != 101:
+            if story_type != 101 or True:
                 sys.stderr.write("Possibly unhandled story_type: " + str(story_type) + "\n")
                 if len(subjs) == 0 or len(objs) == 0:
                     sys.stderr.write("Unable to find subject(s) or object(s): " + pprint.pformat(story) + "\n")
@@ -1273,7 +1276,8 @@ def generate_news(config):
         formatted = {
             12: "##1## left a comment on ##2##'s post: ",
             13: "##1## liked ##2##'s comment: ",
-            60: "##1## liked ##2##'s post."
+            60: "##1## liked ##2##'s post.",
+            101: "##1## started following ##2##."
         }
 
         def uids_to_names(uids):
@@ -1353,15 +1357,19 @@ def generate_news(config):
                 if media:
                     content += generate_news_media([media])
 
-                tuuid = "story_type:%s/subject:%s/media:%s" % (
+                tuuid = "story_type:%s/subject:%s" % (
                     #args["tuuid"],
                     story_type,
-                    subj["uid"],
-                    media["id"]
+                    subj["uid"]
                 )
 
-                if comment:
-                    tuuid += "/comment_id:%s" % str(comment) #str(args["comment_id"])
+                if media:
+                    tuuid += "/media:%s" % media["id"]
+
+                    if comment:
+                        tuuid += "/comment_id:%s" % str(comment) #str(args["comment_id"])
+                else:
+                    tuuid += "/object:%s" % obj["uid"]
 
                 feed["entries"].append({
                     "url": "http://tuuid.instagram.com/" + tuuid,
