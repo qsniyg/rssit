@@ -272,6 +272,8 @@ def generate_social_weibo(config, user):
                 # TODO: Properly implement sharing
                 newstatus = status.select(".WB_feed_expand .WB_expand")
                 if newstatus and len(newstatus) > 0 and len(newstatus[0].select(".WB_info")) > 0:
+                    if not config["with_reshares"]:
+                        continue
                     status = newstatus[0]
 
                 text = status.select(".WB_text")
@@ -349,7 +351,12 @@ infos = [{
     "name": "weibo",
     "display_name": "Weibo",
 
-    "config": {},
+    "config": {
+        "with_reshares": {
+            "name": "Include shared weibos",
+            "value": True
+        }
+    },
 
     "get_url": get_url,
     "process": process
