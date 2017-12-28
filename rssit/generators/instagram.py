@@ -1158,7 +1158,7 @@ def generate_news(config):
         # type:
         # 1 = 1 person likes 1 post, or leave a comment on 1 post
         # 2 = 1 person likes n posts, or 'took n videos at n'
-        # 4 = 1 person starts following 1 other person
+        # 4 = 1 person starts following 1-n other people
         # 14 = 1 person likes 1 comment
 
         subjs = []

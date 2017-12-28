@@ -8,15 +8,22 @@ from dateutil.parser import parse
 import datetime
 import rssit.util
 import re
+import pprint
+import unicodedata
 
 
 def get_string(element):
     if type(element) is bs4.element.NavigableString:
         return str(element.string)
     elif element.name == "img":
-        return rssit.util.strify(element["title"])
+        if element.has_attr("title"):
+            return rssit.util.strify(element["title"])
+        else:
+            return ""
     elif element.name == "a" and "longtext" in element.get("class", []):
         return ""
+    elif element.name == "br":
+        return "\n"
     else:
         string = ""
 
@@ -36,6 +43,20 @@ def get_url(config, url):
             return None
 
     return "/u/" + match.group("user")
+
+
+def get_max_image(url):
+    return re.sub(r"(//[^/]*\.cn/)[a-z0-9]*/", "\\1large/", url)
+
+
+def strip(text):
+    newstr = ""
+
+    for ch in text:
+        if ch == "\n" or unicodedata.category(ch)[0] != "C":
+            newstr += ch
+
+    return newstr.strip()
 
 
 def generate_social_wbda(config, user):
@@ -208,7 +229,99 @@ def generate_tw(config, user):
     return feed
 
 
+def generate_social_weibo(config, user):
+    url = "http://weibo.com/u/" + user
+
+    data = rssit.util.download(url, config=config)
+    soup = bs4.BeautifulSoup(data, 'lxml')
+
+    feed = {
+        "url": url,
+        "entries": []
+    }
+
+    username = None
+
+    for script in soup.select("script"):
+        jsondatare = re.search(r"^ *FM *\. *view *\( *(?P<json>{.*?}) *\);?$", script.text)
+        if not jsondatare:
+            continue
+
+        jsondata = str(jsondatare.group("json"))
+        decoded = rssit.util.json_loads(jsondata)
+
+        if "html" not in decoded:
+            continue
+
+        dsoup = bs4.BeautifulSoup(decoded["html"], 'lxml')
+
+        # Pl_Official_Headerv6__1
+        if "Official_Header" in decoded["domid"]:
+            username = rssit.util.strify(dsoup.select("h1.username")[0].text)
+            feed["title"] = username
+            feed["author"] = username
+
+            description = rssit.util.strify(dsoup.select("div.pf_intro")[0].text).strip()
+            if not description:
+                description = username + "'s weibo"
+
+            feed["description"] = description
+        # Pl_Official_MyProfileFeed__21
+        elif "MyProfileFeed" in decoded["domid"]:
+            for status in dsoup.select(".WB_feed_type > .WB_feed_detail .WB_detail"):
+                # TODO: Properly implement sharing
+                newstatus = status.select(".WB_feed_expand .WB_expand")
+                if newstatus and len(newstatus) > 0 and len(newstatus[0].select(".WB_info")) > 0:
+                    status = newstatus[0]
+
+                text = status.select(".WB_text")
+                if not text or len(text) < 1:
+                    caption = ""
+                else:
+                    caption = get_string(text[0])
+
+                caption = strip(caption)
+
+                dateel = status.findAll("a", attrs={"node-type": "feed_list_item_date"})[0]
+                datetext = int(rssit.util.strify(dateel["date"]).strip())/1000
+                date = rssit.util.utc_datetime(rssit.util.parse_date(datetext))
+
+                piclistel = status.select(".media_box")
+                if piclistel:
+                    picsel = piclistel[0].select("li.WB_pic")
+                else:
+                    picsel = []
+                images = []
+                for pic in picsel:
+                    images.append(get_max_image(urllib.parse.urljoin(url, pic.select("img")[0]["src"])))
+
+                posturl = re.sub(r"\?[^/]*$", "", urllib.parse.urljoin(url, dateel["href"]))
+
+                authorel = status.select(".WB_info > a.S_txt1")[0]
+                if authorel.has_attr("nick-name"):
+                    author = authorel["nick-name"]
+                elif authorel.has_attr("title"):
+                    author = authorel["title"]
+                else:
+                    author = authorel.text
+
+                author = rssit.util.strify(author)
+
+                feed["entries"].append({
+                    "url": posturl,
+                    "caption": caption,
+                    "date": date,
+                    "author": author,
+                    "images": images,
+                    "videos": []
+                })
+
+    return ("social", feed)
+
+
 def generate_user(config, user):
+    return generate_social_weibo(config, user)
+
     feed = generate_social_wbda(config, user)
 
     try:
@@ -223,6 +336,7 @@ def generate_user(config, user):
         pass
 
     return feed
+
 
 def process(server, config, path):
     if path.startswith("/u/"):
