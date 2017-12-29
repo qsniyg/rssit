@@ -49,7 +49,7 @@ def get_url(config, url):
     return "/u/" + match.group("user")
 
 
-def generate_html(user, config, path):
+def generate_html(user, config):
     url = "https://twitter.com/" + user
 
     if config["with_replies"]:
@@ -157,7 +157,7 @@ def generate_html(user, config, path):
     return feed
 
 
-def generate_api(user, config, path):
+def generate_api(user, config):
     #global user_infos
     global auths
     user_infos = {}
@@ -293,19 +293,34 @@ def generate_api(user, config, path):
     return feed
 
 
+def generate_user(server, config, user):
+    if len(config["consumer_key"]) > 0 and tweepy:
+        return ("social", generate_api(user, config))
+    else:
+        return ("social", generate_html(user, config))
+
+
 def generate(server, config, path):
     if path.startswith("/u/"):
         user = path[len("/u/"):]
 
-        if len(config["consumer_key"]) > 0 and tweepy:
-            return ("social", generate_api(user, config, path))
+        return generate_user(server, config, user)
+        """if len(config["consumer_key"]) > 0 and tweepy:
+            return ("social", generate_api(user, config))
         else:
-            return ("social", generate_html(user, config, path))
+            return ("social", generate_html(user, config))"""
 
 
 infos = [{
     "name": "twitter",
     "display_name": "Twitter",
+
+    "endpoints": {
+        "u": {
+            "name": "User's feed",
+            "process": generate_user
+        }
+    },
 
     "config": {
         "author_username": {
