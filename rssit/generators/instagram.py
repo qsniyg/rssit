@@ -1424,13 +1424,21 @@ def generate_inbox(config):
 
         for item in thread["items"]:
             guid = item["item_id"]
+            title = None
+            content = None
             if "text" in item:
                 content = item["text"]
+                title = content
             elif "link" in item:
                 content = item["link"]["text"]
+                title = content
+            elif "action_log" in item:
+                content = "<em>%s</em>" % item["action_log"]["description"]
             if not content:
                 content = "(n/a)"
-            caption = "[" + thread["thread_title"] + "] " + content
+            if not title:
+                title = ""
+            caption = "[" + thread["thread_title"] + "] " + title
             if item["user_id"] == thread["viewer_id"]:
                 if True:
                     continue
