@@ -56,11 +56,14 @@ def process(server, path, normpath, options):
         generator = rssit.generator.get_generator_for_path(newpath)
 
         endstr = ""
-        for endpoint_name in generator["endpoints"]:
-            endpoint = generator["endpoints"][endpoint_name]
-            if "internal" in endpoint and endpoint["internal"]:
-                continue
-            endstr += "<tr><td>/%s</td><td>%s</td></tr>\n" % (endpoint_name, endpoint["name"])
+        if "endpoints" in generator and generator["endpoints"]:
+            for endpoint_name in generator["endpoints"]:
+                endpoint = generator["endpoints"][endpoint_name]
+                if "internal" in endpoint and endpoint["internal"]:
+                    continue
+                endstr += "<tr><td>/%s</td><td>%s</td></tr>\n" % (endpoint_name, endpoint["name"])
+        else:
+            endstr = "(n/a)"
 
         optionstr = ""
         for option_name in generator["config"]:
