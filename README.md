@@ -5,6 +5,7 @@ RSS/Atom feed generator for various (mainly social media) websites, including Tw
 
 As of the time of writing:
 
+ * Facebook
  * Flickr
  * Instagram (images, videos, albums, stories, livestreams/replays, messages, news)
  * Livedoor
@@ -26,7 +27,7 @@ This list may change. Check https://github.com/qsniyg/rssit/tree/master/rssit/ge
 RSSit requires Python 3, and various packages outlined in requirements.txt.
 You can install them automatically via:
 
-`pip install -r requirements.txt`
+`$ pip install -r requirements.txt`
 
 ## Installation
 
@@ -36,7 +37,7 @@ None required.
 
 `$ python rssit.py`
 
-By default, it will serve at `http://localhost:8123/`
+By default, it will serve at `http://localhost:8123/`.
 
 Access it via your web browser, and submit the URL you wish to generate a feed for.
 If it's supported, it will return a link to the feed.
@@ -80,7 +81,7 @@ and would modify the previous URL's configuration accordingly:
     [twitter/u]
     output = rss
 
-If you only wish to modify the configuration per-request, you can do so by using standard GET request parameters:
+If you only wish to modify the configuration per-request, you can do so via standard GET request parameters:
 
     http://localhost:8123/f/twitter/u/Support?title=Support&output=atom
 
@@ -115,11 +116,11 @@ While each generator can have their own options, these options will modify most 
         or to a format such as social that supports generating to this)
    * `rss` - RSS
    * `atom` - Atom
- * `count` - Minimum amount of entries to return. Currently not all generators respect this. Possible values:
-   * -1 - All entries (can be very slow)
-   * 0 - No entries
-   * 1 - Minimum possible number of entries (fastest)
-   * n - Minimum of n entries
+ * `count` - Minimum amount of entries to return. Currently not all generators support this. Possible values:
+   * `-1` - All entries (can be very slow)
+   * `0` - No entries
+   * `1` - Minimum possible number of entries (fastest)
+   * `n` - Minimum of `n` entries
  * `brackets` - Adds the generator's name in brackets to the title of the feed, e.g. '[Twitter] TwitterDev'
  * `title` - Title of the feed
  * `description` - Description of the feed
