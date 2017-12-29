@@ -265,19 +265,26 @@ def generate_photos_api(config, user):
 
 def generate_photos(config, user):
     if config["prefer_api"]:
-        return generate_photos_api(config, user)
+        return ("social", generate_photos_api(config, user))
     else:
-        return generate_photos_url(config, user)
+        return ("social", generate_photos_url(config, user))
 
 
 def process(server, config, path):
     if path.startswith("/photos/"):
-        return ("social", generate_photos(config, path[len("/photos/"):]))
+        return generate_photos(config, path[len("/photos/"):])
 
 
 infos = [{
     "name": "flickr",
     "display_name": "Flickr",
+
+    "endpoints": {
+        "photos": {
+            "name": "User's feed",
+            "process": lambda server, config, path: generate_photos(config, path)
+        }
+    },
 
     "config": {
         "author_username": {
