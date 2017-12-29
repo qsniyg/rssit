@@ -34,16 +34,28 @@ def get_string(element):
 
 
 def get_url(config, url):
-    # TODO: add support for adding users by username
     match = re.match(r"^(https?://)?weibo.wbdacdn.com/user/(?P<user>[0-9]*)", url)
+    uid = None
 
     if match is None:
         match = re.match(r"^(https?://)?(www.)?weibo.com/u/(?P<user>[0-9]*)", url)
 
         if match is None:
-            return None
+            match = re.match(r"^(https?://)?(www.)?weibo.com/(?P<user>[^/?]*)", url)
+            if match is None:
+                return None
+            else:
+                username = match.group("user")
+                uid = get_userid_for_username(config, username)
+        else:
+            uid = match.group("user")
+    else:
+        uid = match.group("user")
 
-    return "/u/" + match.group("user")
+    if not uid:
+        return None
+
+    return "/u/" + uid
 
 
 def get_max_image(url):
@@ -58,6 +70,21 @@ def strip(text):
             newstr += ch
 
     return newstr.strip()
+
+
+def get_userid_for_username(config, username):
+    url = "http://weibo.com/" + username
+
+    data = rssit.util.download(url, config=config)
+    soup = bs4.BeautifulSoup(data, 'lxml')
+
+    for script in soup.select("script"):
+        match = re.search("\$CONFIG *\[ *['\"]oid['\"] *\] *= *['\"](?P<uid>[0-9]*)['\"]", script.text)
+        if not match:
+            continue
+        return match.group("uid")
+
+    return None
 
 
 def generate_social_wbda(config, user):
