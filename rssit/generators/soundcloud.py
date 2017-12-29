@@ -14,7 +14,7 @@ import isodate
 def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?soundcloud\.com/(?P<user>[^/]*)", url)
 
-    if match == None:
+    if match is None:
         return
 
     return "/u/" + match.group("user")
@@ -81,7 +81,6 @@ def generate_user(config, user):
     return ("feed", feed)
 
 
-
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, path[len("/u/"):])
@@ -92,6 +91,13 @@ def process(server, config, path):
 infos = [{
     "name": "soundcloud",
     "display_name": "Soundcloud",
+
+    "endpoints": {
+        "u": {
+            "name": "User's feed",
+            "process": lambda server, config, path: generate_user(config, path)
+        }
+    },
 
     "config": {
         "author_username": {
