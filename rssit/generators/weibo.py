@@ -352,6 +352,13 @@ infos = [{
     "name": "weibo",
     "display_name": "Weibo",
 
+    "endpoints": {
+        "u": {
+            "name": "User's feed (by UID)",
+            "process": lambda server, config, path: generate_user(config, path)
+        }
+    },
+
     "config": {
         "with_reshares": {
             "name": "Include shared weibos",
