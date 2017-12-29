@@ -44,6 +44,26 @@ def get_urls(url):
     return urls
 
 
+def get_generator_for_path(path):
+    splitted = path.split("/")
+
+    generator_name = splitted[0]
+    gd = rssit.generators.all.generator_dict
+
+    if generator_name not in gd:
+        return
+
+    return gd[generator_name]
+
+
+def process_generator(generator, server, config, splitted):
+    if len(splitted) > 1:
+        if "endpoints" in generator and generator["endpoints"] and splitted[1] in generator["endpoints"]:
+            return generator["endpoints"][splitted[1]]["process"](server, config, "/".join(splitted[2:]))
+
+    return generator["process"](server, config, "/".join(splitted[1:]))
+
+
 def process(server, config, path):
     splitted = path.split("/")
 
@@ -55,12 +75,17 @@ def process(server, config, path):
 
     generator = gd[generator_name]
 
-    if path.startswith("/"):
-        genpath = path[len(generator_name) + 1:]
+    """if len(splitted) > 1:
+        if "endpoints" in generator and generator["endpoints"] and splitted[1] in generator["endpoints"]:
+            process_result = generator["endpoints"][splitted[1]]["process"](server, config, "/".join(splitted[2:]))
     else:
-        genpath = path[len(generator_name):]
+        if path.startswith("/"):
+            genpath = path[len(generator_name) + 1:]
+        else:
+            genpath = path[len(generator_name):]
 
-    process_result = generator["process"](server, config, genpath)
+            process_result = generator["process"](server, config, genpath)"""
+    process_result = process_generator(generator, server, config, splitted)
 
     if process_result is None:
         return

@@ -87,6 +87,17 @@ def parse_value(value, model_value):
     return value
 
 
+def value_to_str(value):
+    if type(value) == bool:
+        if value:
+            return "true"
+        else:
+            return "false"
+    if value is None:
+        return "null"
+    return str(value)
+
+
 def parse_section(section, section_key):
     for key in section:
         section[key] = parse_value_simple(section[key])

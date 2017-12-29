@@ -28,10 +28,10 @@ def process(server, path, normpath, options):
     server.wfile.write(bytes(
         "<html>"
         "  <head>"
-        "    <title>rssit</title>"
+        "    <title>RSSit</title>"
         "  </head>"
         "  <body>"
-        "    <h1 style='text-align:center'>rssit</h1>"
+        "    <h1 style='text-align:center'>RSSit</h1>"
         "    <br /><br />"
         "    <center><form action=/ method=get>"
         "      <strong>External URL:</strong><br /><br />"

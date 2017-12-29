@@ -946,9 +946,9 @@ def generate_reelstray(config):
     config["is_index"] = True
 
     feed = {
-        "title": "News",
-        "description": "Events happening in your Instagram feed",
-        "url": "https://news.instagram.com/",  # fake url for now
+        "title": "Live streams",
+        "description": "Live streams/replays (reels tray)",
+        "url": "https://reelstray.instagram.com/",  # fake url for now
         "author": "instagram",
         "entries": []
     }
@@ -1478,6 +1478,44 @@ def process(server, config, path):
 infos = [{
     "name": "instagram",
     "display_name": "Instagram",
+
+    "endpoints": {
+        "u": {
+            "name": "User's feed by username",
+            "process": lambda server, config, path: generate_user(config, username=path)
+        },
+        "v": {
+            "name": "Redirect to the URL of a video",
+            "internal": True,
+            "process": lambda server, config, path: generate_user(config, server, path)
+        },
+        "livereplay": {
+            "name": "Serve a live replay's DASH manifest",
+            "internal": True,
+            "process": lambda server, config, path: generate_user(config, server, path)
+        },
+        "uid": {
+            "name": "User's feed by UID",
+            "process": lambda server, config, path: generate_user(config, uid=path)
+        },
+        "convert": {
+            "name": "Convert between formats",
+            "internal": True,
+            "process": lambda server, config, path: generate_convert(config, server, path)
+        },
+        "news": {
+            "name": "Events happening in your instagram feed",
+            "process": lambda server, config, path: generate_news(config)
+        },
+        "reels_tray": {
+            "name": "Live videos/replays",
+            "process": lambda server, config, path: generate_reelstray(config)
+        },
+        "inbox": {
+            "name": "Inbox",
+            "process": lambda server, config, path: generate_inbox(config)
+        }
+    },
 
     "config": {
         "author_username": {
