@@ -12,7 +12,7 @@ import sys
 
 
 def get_url(config, url):
-    base = "/qurl/" # for now
+    base = "/url/"  # for now
 
     good = False
 
@@ -29,7 +29,7 @@ def get_url(config, url):
         good = True
 
     if good:
-        return base + url
+        return base + urllib.parse.quote_plus(url)
     else:
         return None
 
@@ -145,6 +145,13 @@ def process(server, config, path):
 infos = [{
     "name": "xe",
     "display_name": "XE",
+
+    "endpoints": {
+        "url": {
+            "name": "URL",
+            "process": lambda server, config, path: generate_url(config, rssit.util.addhttp(urllib.parse.unquote_plus(path)))
+        }
+    },
 
     "config": {},
 
