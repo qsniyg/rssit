@@ -10,6 +10,22 @@ import io
 import traceback
 
 
+stylestr = """<style>
+      table {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 0;
+        margin: 0;
+      }
+      td, th {
+        border: 1px solid black;
+        padding: .5em;
+      }
+      hr { padding: 0; margin: 0; }
+    </style>
+"""
+
+
 def process(server, path, normpath, options):
     splitted = normpath.split("/")
 
@@ -20,20 +36,24 @@ def process(server, path, normpath, options):
         genstr = ""
         for generator_name in rssit.generators.all.generator_dict:
             generator = rssit.generators.all.generator_dict[generator_name]
-            genstr += "<li><a href='/f/%s'>%s</a></li>\n" % (generator_name, generator["display_name"])
+            genstr += "<tr><td><a href='/f/%s'>/f/%s</a></td><td>%s</td></tr>\n" % (generator_name, generator_name, generator["display_name"])
 
         respstr = """
 <html>
   <head>
     <title>RSSit - Feeds</title>
+    %s
   </head>
   <body>
     <h1 style='text-align:center'>Feeds</h1>
     <br /><br />
-    <center><ul style='list-style-type:none;padding:0;margin:0'>%s</ul></center>
+    <center><table>%s</table></center>
   </body>
 </html>
-""" % genstr
+""" % (
+    stylestr,
+    genstr
+)
 
         server.wfile.write(bytes(respstr, "UTF-8"))
         return
@@ -54,6 +74,10 @@ def process(server, path, normpath, options):
         server.end_headers()
 
         generator = rssit.generator.get_generator_for_path(newpath)
+
+        introstr = ""
+        if "intro" in generator and generator["intro"]:
+            introstr = "<br /><center><p>%s</p></center>" % rssit.util.htmlify(generator["intro"])
 
         endstr = ""
         if "endpoints" in generator and generator["endpoints"]:
@@ -83,20 +107,11 @@ def process(server, path, normpath, options):
 <html>
   <head>
     <title>RSSit - %s</title>
-    <style>
-      table {
-        border: 1px solid black;
-        border-collapse: collapse;
-      }
-      td, th {
-        border: 1px solid black;
-        padding: .5em;
-      }
-      hr { padding: 0; margin: 0; }
-    </style>
+    %s
   <head>
   <body>
     <h1 style='text-align:center'>%s</h1>
+    %s
     <br /><h2 style='text-align:center'>Endpoints</h2><br />
     <center><table style='border:1;padding:0;margin:0'>%s</table></center>
     <br /><h2 style='text-align:center'>Configuration</h2><br />
@@ -108,7 +123,9 @@ def process(server, path, normpath, options):
 </html>
 """ % (
     generator["display_name"],
+    stylestr,
     generator["display_name"],
+    introstr,
     endstr,
     optionstr
 )

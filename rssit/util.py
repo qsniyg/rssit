@@ -211,8 +211,13 @@ url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-
 def get_urls(caption):
     return re.findall(url_regex, caption)
 
+
 def link_urls(caption):
     return re.sub("(" + url_regex + ")", r'<a href="\1">\1</a>', caption)
+
+
+def htmlify(text):
+    return rssit.util.link_urls(text).replace("\n", "<br />\n")
 
 
 def build_all_dict(all_list, all_dict):

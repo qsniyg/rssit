@@ -14,7 +14,7 @@ def get_url(config, url):
     if "reddit.com" not in url or ".json" not in url:
         return None
 
-    return "/json/" + re.sub(r"^(https?://)?([a-zA-Z]*\.)?reddit\.com/", "", url)
+    return "/json/" + urllib.parse.quote_plus(re.sub(r"^(https?://)?([a-zA-Z]*\.)?reddit\.com/", "", url))
 
 
 def generate_json(config, url):
@@ -79,6 +79,7 @@ def generate_json(config, url):
     #pprint.pprint(myjson)
     return ("feed", myjson)
 
+
 def process(server, config, path):
     if path.startswith("/json/"):
         url = "http://www.reddit.com/" + re.sub(r".*?/json/", "", config["fullpath"])
@@ -88,6 +89,17 @@ def process(server, config, path):
 infos = [{
     "name": "reddit",
     "display_name": "Reddit",
+
+    "intro": ("Currently only supports direct messages.\n" +
+              "Use https://www.reddit.com/prefs/feeds/ to find your inbox feed (use JSON)"),
+
+    "endpoints": {
+        "json": {
+            "name": "JSON",
+            "process": lambda server, config, path: generate_json(config,
+                                                                  "http://www.reddit.com/" + urllib.parse.unquote_plus(path))
+        }
+    },
 
     "config": {},
 

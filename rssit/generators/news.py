@@ -1714,6 +1714,7 @@ def process(server, config, path):
     elif path.startswith("/api/"):
         return generate_api(config, path)
 
+
 infos = [{
     "name": "news",
     "display_name": "News",

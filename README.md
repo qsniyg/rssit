@@ -10,7 +10,7 @@ As of the time of writing:
  * Instagram (images, videos, albums, stories, livestreams/replays, messages, news)
  * Livedoor
  * Naver blogs (posts, search)
- * Various news websites (posts, search)
+ * Various news websites (posts, search, but it's a mess at the moment)
  * Reddit (messages only)
  * Soundcloud
  * Tistory (posts, search, categories, tags)
