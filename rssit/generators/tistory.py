@@ -22,7 +22,7 @@ def get_url(config, url):
         if match is None:
             return None
 
-    return "/url/" + match.group("url")
+    return "/url/" + urllib.parse.quote_plus(match.group("url"))
 
 
 def download(url):
@@ -390,10 +390,22 @@ infos = [{
     "name": "tistory",
     "display_name": "Tistory",
 
+    "endpoints": {
+        "url": {
+            "name": "URL",
+            "process": lambda server, config, path: generate_url(config, rssit.util.addhttp(urllib.parse.unquote_plus(path)))
+        },
+
+        "api": {
+            "name": "Mobile API",
+            "process": lambda server, config, path: generate_api(config, rssit.util.addhttp(urllib.parse.unquote_plus(path)))
+        }
+    },
+
     "config": {
         "force_api": {
             "name": "Force API",
-            "description": "Forces usage of the mobile API, works most reliably",
+            "description": "Forces usage of the mobile API (works most reliably)",
             "value": True
         }
     },
