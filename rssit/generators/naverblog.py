@@ -4,6 +4,7 @@
 import bs4
 import sys
 import urllib.request
+import urllib.parse
 from dateutil.parser import parse
 import re
 import html
@@ -21,11 +22,12 @@ def get_url(config, url):
         if match is None:
             return None
 
-    return "/url/" + match.group("url")
+    return "/url/" + urllib.parse.quote_plus(match.group("url"))
 
 
 def generate_url(config, url):
-    url = rssit.util.quote_url(url)
+    #url = rssit.util.quote_url(url)
+    url = rssit.util.addhttp(urllib.parse.unquote_plus(url))
 
     data = rssit.util.download(url)
 
@@ -144,6 +146,13 @@ def process(server, config, path):
 infos = [{
     "name": "naverblog",
     "display_name": "Naver Blog",
+
+    "endpoints": {
+        "url": {
+            "name": "URL",
+            "process": lambda server, config, path: generate_url(config, path)
+        }
+    },
 
     "config": {},
 

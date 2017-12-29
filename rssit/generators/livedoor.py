@@ -21,7 +21,7 @@ def get_url(config, url):
         if match is None:
             return None
 
-    return "/url/" + match.group("url")
+    return "/url/" + urllib.parse.quote_plus(match.group("url"))
 
 
 def download(url):
