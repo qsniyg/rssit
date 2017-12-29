@@ -34,6 +34,7 @@ def get_full_image(page_url, img):
 
 
 def generate_url(config, url):
+    url = rssit.util.addhttp(urllib.parse.unquote_plus(url))
     page_url = url
 
     #data = re.sub(r"^.*?<html", "<html", download(url), flags=re.S)
@@ -89,7 +90,7 @@ def generate_url(config, url):
         sys.stderr.flush()
         try:
             data = download(article_url)
-        except:
+        except Exception:
             sys.stderr.write("failed!\n")
             sys.stderr.flush()
             continue
@@ -270,6 +271,13 @@ def process(server, config, path):
 infos = [{
     "name": "livedoor",
     "display_name": "Livedoor",
+
+    "endpoints": {
+        "url": {
+            "name": "URL",
+            "process": lambda server, config, path: generate_url(config, path)
+        }
+    },
 
     "config": {},
 

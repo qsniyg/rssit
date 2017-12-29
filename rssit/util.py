@@ -426,3 +426,9 @@ class Cache():
                 key = self.timestamps[timestamp]
                 del self.db[key]
                 del self.timestamps[timestamp]
+
+
+def addhttp(url):
+    if not re.search("^[^/]+://", url):
+        return "http://" + url
+    return url
