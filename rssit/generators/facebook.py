@@ -74,7 +74,7 @@ def get_albumid_from_link(link):
     return re.match(r".*facebook\.com/[^/]*/photos/a\.([0-9]*).*", link).group(1)
 
 
-def generate_photos(graph, config, user_info):
+def generate_photo_entries(graph, config, user_info):
     #global albums
     albums = {}
 
@@ -141,7 +141,7 @@ def generate_photos(graph, config, user_info):
     return entries
 
 
-def generate_posts(graph, config, user_info):
+def generate_post_entries(graph, config, user_info):
     entries = []
 
     posts_api = graph.get_connections(user_info['id'], 'posts?limit=100&fields=id,message,created_time,updated_time,permalink_url,picture')
@@ -199,7 +199,7 @@ def process(server, config, path):
         return True
 
     if path.startswith("/access_2"):
-        if not "code" in config:
+        if "code" not in config:
             server.send_response(500, "ISE")
             server.end_headers()
 
@@ -242,8 +242,8 @@ def process(server, config, path):
 
         feed = get_feed_info(user_info, config)
 
-        feed["entries"] = generate_posts(graph, config, user_info)
-        feed["entries"].extend(generate_photos(graph, config, user_info))
+        feed["entries"] = generate_post_entries(graph, config, user_info)
+        feed["entries"].extend(generate_photo_entries(graph, config, user_info))
 
         return ("social", feed)
     if path.startswith("/photos/"):
@@ -252,7 +252,7 @@ def process(server, config, path):
 
         feed = get_feed_info(user_info, config)
 
-        feed["entries"] = generate_photos(graph, config, user_info)
+        feed["entries"] = generate_photo_entries(graph, config, user_info)
 
         return ("social", feed)
     elif path.startswith("/posts/"):
@@ -261,14 +261,66 @@ def process(server, config, path):
 
         feed = get_feed_info(user_info, config)
 
-        feed["entries"] = generate_posts(graph, config, user_info)
+        feed["entries"] = generate_post_entries(graph, config, user_info)
 
         return ("social", feed)
+
+
+def generate_user(server, config, user):
+    graph = get_api(config["access_token"])
+
+    if not graph:
+        return None
+
+    user_info = get_user_info(graph, user)
+
+    feed = get_feed_info(user_info, config)
+
+    feed["entries"] = []
+
+    if config["posts"]:
+        feed["entries"].extend(generate_post_entries(graph, config, user_info))
+
+    if config["photos"]:
+        feed["entries"].extend(generate_photo_entries(graph, config, user_info))
+
+    return ("social", feed)
+
+
+def generate_access_app(server, config, path):
+    if not config["app_id"] or not config["app_secret"]:
+        server.send_response(500, "Error")
+        server.end_headers()
+
+        server.wfile.write(bytes("app_id or app_secret not set", "UTF-8"))
+        return True
+
+    access_token = facebook.GraphAPI().get_app_access_token(
+        config["app_id"],
+        config["app_secret"]
+    )
+
+    server.send_response(200, "OK")
+    server.end_headers()
+
+    server.wfile.write(bytes(access_token, "UTF-8"))
+    return True
 
 
 infos = [{
     "name": "facebook",
     "display_name": "Facebook",
+
+    "endpoints": {
+        "user": {
+            "name": "User's feed (photos and posts)",
+            "process": generate_user
+        },
+        "access_app": {
+            "name": "Generate access token for app",
+            "process": generate_access_app
+        }
+    },
 
     "config": {
         "author_username": {
@@ -295,10 +347,20 @@ infos = [{
             "value": ""
         },
 
+        "photos": {
+            "name": "Generate photos",
+            "value": True
+        },
+
+        "posts": {
+            "name": "Generate posts",
+            "value": True
+        },
+
         "redirect_url": {
             "name": "Redirect URL",
             "description": "Facebook App Redirect URL",
-            "value": "" # /f/facebook/access_2
+            "value": ""  # /f/facebook/access_2
         }
     },
 
