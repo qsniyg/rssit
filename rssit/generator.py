@@ -61,7 +61,7 @@ def process_generator(generator, server, config, splitted):
         if "endpoints" in generator and generator["endpoints"] and splitted[1] in generator["endpoints"]:
             return generator["endpoints"][splitted[1]]["process"](server, config, "/".join(splitted[2:]))
 
-    return generator["process"](server, config, "/".join(splitted[1:]))
+    return generator["process"](server, config, "/" + "/".join(splitted[1:]))
 
 
 def process(server, config, path):

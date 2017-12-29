@@ -34,12 +34,13 @@ def get_string(element):
 
 
 def get_url(config, url):
+    # TODO: add support for adding users by username
     match = re.match(r"^(https?://)?weibo.wbdacdn.com/user/(?P<user>[0-9]*)", url)
 
-    if match == None:
+    if match is None:
         match = re.match(r"^(https?://)?(www.)?weibo.com/u/(?P<user>[0-9]*)", url)
 
-        if match == None:
+        if match is None:
             return None
 
     return "/u/" + match.group("user")
