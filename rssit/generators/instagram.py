@@ -1495,12 +1495,12 @@ infos = [{
         "v": {
             "name": "Redirect to the URL of a video",
             "internal": True,
-            "process": lambda server, config, path: generate_user(config, server, path)
+            "process": lambda server, config, path: generate_video(config, server, path)
         },
         "livereplay": {
             "name": "Serve a live replay's DASH manifest",
             "internal": True,
-            "process": lambda server, config, path: generate_user(config, server, path)
+            "process": lambda server, config, path: generate_livereplay(config, server, path)
         },
         "uid": {
             "name": "User's feed by UID",
