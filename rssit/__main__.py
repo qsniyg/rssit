@@ -9,8 +9,10 @@ import rssit.globals
 import rssit.update
 import rssit.args
 import rssit.cli
+import rssit.paths.all
 import gc
 import lxml.etree
+import signal
 
 
 config_model = {
@@ -78,12 +80,21 @@ config_model = {
 }
 
 
+def signal_handler(signal, frame):
+    print("Killing")
+    rssit.update.kill()
+
+
 def update():
     rssit.globals.config["model"] = config_model
     rssit.globals.config["model"].update(rssit.generator.get_model())
 
 
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGHUP, signal_handler)
+
     gc.enable()
     #gc.set_debug(gc.DEBUG_LEAK)
 
@@ -96,6 +107,11 @@ def main():
     url = rssit.args.parse_args(sys.argv)
     if url:
         return rssit.cli.serve(url)
+
+    for path_name in rssit.paths.all.paths_dict:
+        path = rssit.paths.all.paths_dict[path_name]
+        if "init" in path:
+            path["init"]()
 
     core = rssit.config.get_section("core")
     rssit.http.serve(core["port"])

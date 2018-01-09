@@ -26,6 +26,26 @@ stylestr = """<style>
 """
 
 
+def init():
+    for generator_name in rssit.generators.all.generator_dict:
+        generator = rssit.generators.all.generator_dict[generator_name]
+        if "init" in generator:
+            generator["init"](rssit.generator.get_config(generator_name))
+
+
+def unload():
+    for generator_name in rssit.generators.all.generator_dict:
+        generator = rssit.generators.all.generator_dict[generator_name]
+        if "unload" in generator:
+            generator["unload"](rssit.generator.get_config(generator_name))
+
+
+def update():
+    #unload()
+    #init()
+    pass
+
+
 def process(server, path, normpath, options):
     splitted = normpath.split("/")
 
@@ -168,5 +188,6 @@ def process(server, path, normpath, options):
 
 infos = [{
     "path": "f",
+    "init": init,
     "process": process
 }]

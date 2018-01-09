@@ -5,6 +5,28 @@ import importlib
 
 import rssit.config
 
+modules = []
+
+
+def set_modules():
+    global modules
+    modules = [
+        rssit.config,
+        rssit.converter,
+        rssit.converters.all,
+        rssit.formats,
+        rssit.generator,
+        rssit.generators.all,
+        rssit.path,
+        rssit.paths.all,
+        rssit.serializer,
+        rssit.serializers.all,
+        rssit.util,
+        rssit.http,
+        rssit.globals,
+        rssit.__main__
+    ]
+
 
 def update_module(module):
     importlib.reload(module)
@@ -13,18 +35,18 @@ def update_module(module):
         module.update()
 
 
+def kill_module(module):
+    if hasattr(module, "unload"):
+        module.unload()
+
+
 def update():
-    update_module(rssit.config)
-    update_module(rssit.converter)
-    update_module(rssit.converters.all)
-    update_module(rssit.formats)
-    update_module(rssit.generator)
-    update_module(rssit.generators.all)
-    update_module(rssit.path)
-    update_module(rssit.paths.all)
-    update_module(rssit.serializer)
-    update_module(rssit.serializers.all)
-    update_module(rssit.util)
-    update_module(rssit.http)
-    update_module(rssit.globals)
-    update_module(rssit.__main__)
+    set_modules()
+    for module in modules:
+        update_module(module)
+
+
+def kill():
+    set_modules()
+    for module in modules:
+        kill_module(module)

@@ -20,6 +20,15 @@ import random
 import sortedcontainers
 import collections
 
+try:
+    try:
+        from gi.repository import GObject as gobject
+        from gi.repository import GLib as glib
+    except ImportError:
+        import gobject
+except ImportError:
+    gobject = None
+
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
 
@@ -420,6 +429,14 @@ class Cache():
             return None
 
         return self.db[key]["value"]
+
+    def get_all(self):
+        newdb = {}
+
+        for key in self.db:
+            newdb[key] = self.db[key]["value"]
+
+        return newdb
 
     def collect(self):
         now = self.now()

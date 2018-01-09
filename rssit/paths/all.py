@@ -35,3 +35,8 @@ def update():
         rssit.update.update_module(i)
 
     build_dict()
+
+
+def unload():
+    for i in paths_list:
+        rssit.update.kill_module(i)

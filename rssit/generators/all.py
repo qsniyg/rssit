@@ -18,6 +18,17 @@ import rssit.generators.naverblog
 import rssit.generators.reddit
 import rssit.generators.livedoor
 
+have_notifications = False
+try:
+    import dbus
+    rssit.util.gobject.__dict__
+    import rssit.generators.notifications
+    have_notifications = True
+except ImportError as e:
+    print(e)
+    print("Warning: one of dbus-python or gobject is missing, so no notification support")
+    pass
+
 
 generator_list = [
     rssit.generators.instagram,
@@ -35,6 +46,9 @@ generator_list = [
     rssit.generators.reddit,
     rssit.generators.livedoor
 ]
+
+if have_notifications:
+    generator_list.append(rssit.generators.notifications)
 
 generator_dict = {}
 

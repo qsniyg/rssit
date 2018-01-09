@@ -4,6 +4,8 @@
 import http.server
 import socketserver
 import rssit.path
+import rssit.persistent
+import threading
 
 
 try:
@@ -49,7 +51,10 @@ def serve(wanted_port):
             print("Trying port %i" % port)
             #socketserver.TCPServer(('', port), handler).serve_forever()
             socketserver.TCPServer.allow_reuse_address = True
-            ThreadedTCPServer(('', port), handler).serve_forever()
+            rssit.persistent.storage["server"] = ThreadedTCPServer(('', port), handler)
+            thread = threading.Thread(target=rssit.persistent.storage["server"].serve_forever)
+            thread.deamon = True
+            thread.start()
         except OSError as exc:
             if exc.errno != 98:
                 raise
@@ -57,3 +62,8 @@ def serve(wanted_port):
             port += 1
         else:
             break
+
+
+def unload():
+    rssit.persistent.storage["server"].shutdown()
+    rssit.persistent.storage["server"].socket.close()

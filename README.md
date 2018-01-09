@@ -29,6 +29,8 @@ You can install them automatically via:
 
 `$ pip install -r requirements.txt`
 
+RSSit optionally requires `dbus-python` and `PyGObject` for desktop notifications support.
+
 ## Installation
 
 None required.
