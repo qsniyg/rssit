@@ -28,5 +28,10 @@ infos = [
     {
         "name": "feed",
         "process": process
+    },
+
+    {
+        "name": "raw",
+        "process": process
     }
 ]

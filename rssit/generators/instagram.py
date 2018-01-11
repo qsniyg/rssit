@@ -175,6 +175,13 @@ graphql_api = rssit.rest.API({
             "query": {
                 "query_id": "17873473675158481"
             }
+        },
+
+        "comments": {
+            "base": "base",
+            "query": {
+                "query_id": "17852405266163336"
+            }
         }
     }
 })
@@ -1455,6 +1462,37 @@ def generate_inbox(config):
     return ("feed", feed)
 
 
+def generate_raw(config, path):
+    if path.startswith("p/"):
+        post = path[len("p/"):]
+        node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
+        node = normalize_node(node)
+
+        comments = node["edge_media_to_comment"]
+        after = comments["page_info"]["end_cursor"]
+
+        def get_comments(maxid):
+            if not maxid:
+                maxid = after
+            newcomments_api = graphql_api.run(config, "comments", {
+                "shortcode": post,
+                "first": 500,
+                "after": maxid
+            })["data"]["shortcode_media"]["edge_media_to_comment"]
+            return (newcomments_api["edges"],
+                    newcomments_api["page_info"]["end_cursor"],
+                    newcomments_api["page_info"]["has_next_page"])
+
+        if after:
+            morecomments = rssit.util.paginate(config, comments["count"], get_comments)
+            comments["edges"] = comments["edges"] + morecomments
+            comments["edges"].sort(key=lambda x: x["node"]["created_at"])
+            #node["edge_media_to_comment"] = comments
+
+        return ("raw", node)
+    return None
+
+
 def process(server, config, path):
     if path.startswith("/u/"):
         return generate_user(config, username=path[len("/u/"):])
@@ -1522,6 +1560,11 @@ infos = [{
         "inbox": {
             "name": "Inbox",
             "process": lambda server, config, path: generate_inbox(config)
+        },
+        "raw": {
+            "name": "Raw API access",
+            "internal": True,
+            "process": lambda server, config, path: generate_raw(config, path)
         }
     },
 

@@ -18,6 +18,7 @@ As of the time of writing:
  * Twitter
  * Vine (deprecated due to vine's closure)
  * Weibo
+ * XDG Notifications (requires `notifications_server` to be set to `true`)
  * XE (search only)
 
 This list may change. Check https://github.com/qsniyg/rssit/tree/master/rssit/generators to see the full list.

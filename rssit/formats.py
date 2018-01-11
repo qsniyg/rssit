@@ -2,6 +2,12 @@
 
 
 formats = {
+    "raw": {
+        "name": "Raw data",
+        "description": "Raw data, used for API calls",
+        "content-type": None
+    },
+
     "social": {
         "name": "Social feed",
         "description": "Simplified feed type for social networking websites",
@@ -25,4 +31,4 @@ formats = {
     }
 }
 
-formats_order = ["atom", "rss", "feed", "social"]
+formats_order = ["atom", "rss", "feed", "social", "raw"]

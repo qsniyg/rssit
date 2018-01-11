@@ -167,7 +167,7 @@ def process(server, path, normpath, options):
     server.send_response(200, "OK")
 
     result_format = result[0]
-    if not result_format in rssit.formats.formats:
+    if result_format not in rssit.formats.formats:
         # print error?
         return
 

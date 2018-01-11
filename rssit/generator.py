@@ -34,6 +34,9 @@ def get_urls(url):
     gd = rssit.generators.all.generator_dict
 
     for i in gd:
+        if "get_url" not in gd[i]:
+            continue
+
         config = get_config(i + "/")
         newurl = gd[i]["get_url"](config, url)
 
@@ -97,9 +100,15 @@ def process(server, config, path):
     elif process_result is True:
         return True
 
+    if len(process_result) == 1 and "raw" in process_result:
+        return ("raw", process_result["raw"])
+
     results = {}
     preferred_i = None
     for result_format in process_result:
+        if result_format == "raw":
+            continue
+
         result = process_result[result_format]
 
         if len(config["title"]) > 0:
