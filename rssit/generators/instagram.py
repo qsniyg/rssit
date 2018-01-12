@@ -10,6 +10,7 @@ import pprint
 import urllib.parse
 from dateutil.tz import *
 import collections
+import traceback
 
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
@@ -265,15 +266,23 @@ def get_node_info(config, code):
     if info:
         return info
     else:
-        if config["use_shortcode_a1"]:
-            req = get_node_info_a1(config, code)
-        else:
-            req = get_node_info_webpage(config, code)
-        post_cache.add(code, req)
-        return req
+        try:
+            if config["use_shortcode_a1"]:
+                req = get_node_info_a1(config, code)
+            else:
+                req = get_node_info_webpage(config, code)
+            post_cache.add(code, req)
+            return req
+        except Exception as e:
+            #print(e)
+            traceback.print_exc()
+            return {}
 
 
 def get_node_media(config, node, images, videos):
+    if len(node) == 0:
+        return node
+
     node = normalize_node(node)
 
     image_src = None
@@ -325,7 +334,8 @@ def get_node_media(config, node, images, videos):
                 get_node_media(config, i, images, videos)
         else:
             newnodes = get_node_info(config, node["code"])
-            get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
+            if len(newnodes) > 0:
+                get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
 
 
 def get_app_headers(config):
@@ -636,11 +646,12 @@ def get_entry_from_node(config, node, user):
     if "__typename" in node and node["__typename"] == "GraphSidecar" and False:
         newnodes = get_node_info(config, node["code"])
 
-        if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
-            sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
-        else:
-            for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
-                get_node_media(config, newnode["node"], images, videos)
+        if len(newnodes) > 0:
+            if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
+                sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
+            else:
+                for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
+                    get_node_media(config, newnode["node"], images, videos)
 
     return {
         "url": "https://www.instagram.com/p/%s/" % node["code"],
@@ -1465,8 +1476,16 @@ def generate_inbox(config):
 def generate_raw(config, path):
     if path.startswith("p/"):
         post = path[len("p/"):]
-        node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
+        #node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
+        node = get_node_info(config, post)["graphql"]["shortcode_media"]
         node = normalize_node(node)
+
+        images = []
+        videos = []
+        get_node_media(config, node, images, videos)
+
+        node["node_images"] = images
+        node["node_videos"] = videos
 
         comments = node["edge_media_to_comment"]
         after = comments["page_info"]["end_cursor"]
