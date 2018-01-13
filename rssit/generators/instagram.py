@@ -110,6 +110,10 @@ def base_image(url):
     return re.sub(r"\?[^/]*$", "", url)
 
 
+def image_basename(url):
+    return re.sub(r".*/([^.]*\.[^/]*)$", "\\1", base_image(url))
+
+
 def parse_webpage_request(data):
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare is None:
@@ -315,7 +319,8 @@ def get_node_media(config, node, images, videos):
     else:
         ok = True
         for image in images:
-            if base_image(image) == base_image(normalized):
+            #if base_image(image) == base_image(normalized):
+            if image_basename(image) == image_basename(normalized):
                 ok = False
                 break
 
@@ -842,12 +847,14 @@ def get_profilepic_entry(config, userinfo):
 
     newurl = normalize_image(url)
     id_ = re.sub(r".*/([^.]*)\.[^/]*$", "\\1", newurl)
+    id_withext = image_basename(newurl) # re.sub(r".*/([^.]*\.[^/]*)$", "\\1", newurl)
 
     return {
         "url": newurl,
         "caption": "[DP] " + str(id_),
         "author": userinfo["username"],
         "date": rssit.util.parse_date(-1),
+        "guid": "https://scontent-sea1-1.cdninstagram.com//" + id_withext,
         "images": [newurl],
         "videos": []
     }

@@ -76,6 +76,9 @@ def process(result, config):
             "content": content
         }
 
+        if "guid" in entry:
+            thisentry["id"] = entry["guid"]
+
         if "updated_date" in entry:
             thisentry["updated_date"] = entry["updated_date"]
 
