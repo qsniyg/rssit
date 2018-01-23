@@ -445,6 +445,8 @@ class Cache():
         if time_id > 0:
             for i in reversed(range(0, time_id)):
                 timestamp = self.timestamps.iloc[i]
+                if timestamp not in self.timestamps:
+                    continue
                 key = self.timestamps[timestamp]
                 del self.db[key]
                 del self.timestamps[timestamp]

@@ -383,7 +383,8 @@ def get_date(myjson, soup):
         "#main-content .gn_rsmall",  # hotkorea
         ".xpress-post-footer",  # hotkorea
         ".article_tit > p",  # sports donga
-        "article.wrap_news_body > div.byline > em"  # khan
+        "article.wrap_news_body > div.byline > em",  # khan
+        "#container > div.art_header > div.function_wrap >  div.pagecontrol > div.byline > em"  # khan images
     ])
 
     if not datetag:
@@ -533,6 +534,7 @@ def get_images(myjson, soup):
         ".ngg-gallery-thumbnail > a > img",  # hotkorea photobook
         ".gn_file > a > img",  # hotkorea
         ".xpress-post-entry .main-text p > a > img.aligncenter",  # hotkorea
+        ".article_photo_center > #mltPhoto > img"  # khan images
     ])
 
     if myjson["author"] == "donga":
@@ -585,7 +587,8 @@ def get_description(myjson, soup):
         ".se_component_wrap.sect_dsc",  # naver mobile post
         ".page-wrap > main article #content_detail",  # saostar
         "article.wrap_news_body > div.desc_body",  # khan
-        ".cnt_article_wrap .cnt_lef_area div[itemprop='articleBody']",  # gamechosun
+        ".art_cont > .art_body p.content_text",  # khan images
+        ".cnt_article_wrap .cnt_lef_area div[itemprop='articleBody']"  # gamechosun
     ])
 
     if not desc_tag:
@@ -1231,6 +1234,16 @@ def get_articles(config, myjson, soup):
             "date": "dt span.date",
             "description": "dd.txt",
             "aid": lambda soup: re.sub(r".*art_id=([0-9]*).*", "\\1", soup.select("dt > a")[0]["href"]),
+            "html": True
+        },
+        # khan.co.kr images
+        {
+            "parent": "#wrap > #container > .content > .pimage.section > ul.photolist > li",
+            "link": "p > a",
+            "caption": "p > a",
+            "date": "-1",
+            "images": "div.thumb img",
+            "aid": lambda soup: re.sub(r".*artid=([0-9]*).*", "\\1", soup.select("p > a")[0]["href"]),
             "html": True
         }
     ]

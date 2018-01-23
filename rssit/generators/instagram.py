@@ -1505,9 +1505,10 @@ def generate_raw(config, path):
                 "first": 500,
                 "after": maxid
             })["data"]["shortcode_media"]["edge_media_to_comment"]
-            return (newcomments_api["edges"],
+            retval = (newcomments_api["edges"],
                     newcomments_api["page_info"]["end_cursor"],
                     newcomments_api["page_info"]["has_next_page"])
+            return retval
 
         if after:
             morecomments = rssit.util.paginate(config, comments["count"], get_comments)
