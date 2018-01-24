@@ -1705,13 +1705,13 @@ infos = [{
 
         "use_profile_a1": {
             "name": "Use [profile]/?__a=1 endpoint",
-            "description": "Uses the now-removed [profile]/?__a=1 endpoint, more prone to rate-limiting",
+            "description": "Uses the [profile]/?__a=1 endpoint, more prone to rate-limiting",
             "value": False
         },
 
         "use_shortcode_a1": {
             "name": "Use /p/[shortcode]/?__a=1 endpoint",
-            "description": "Uses the now-removed /p/[shortcode]/?__a=1 endpoint, faster, but possibly more prone to rate-limiting",
+            "description": "Uses the /p/[shortcode]/?__a=1 endpoint, faster, but possibly more prone to rate-limiting",
             "value": False
         },
 
