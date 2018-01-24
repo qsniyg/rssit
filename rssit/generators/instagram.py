@@ -18,11 +18,42 @@ instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
 endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=17873473675158481&variables="
 
+# new endpoints:
+# get entries
+#   https://www.instagram.com/graphql/query/?query_hash=472f257a40c653c64c666ce877d59d2b&variables=%7B%22id%22%3A%222523526502%22%2C%22first%22%3A12%2C%22after%22%3A%22...%22%7D
+#     query_hash:472f257a40c653c64c666ce877d59d2b
+#     variables:{"id":"2523526502","first":12,"after":"..."}
+#
+# get all stories
+#   https://www.instagram.com/graphql/query/?query_hash=b40536160b85d87aecc43106a1f35495&variables=%7B%7D
+#     query_hash:b40536160b85d87aecc43106a1f35495
+#     variables:{}
+#
+# get specific stories
+#   https://www.instagram.com/graphql/query/?query_hash=15463e8449a83d3d60b06be7e90627c7&variables=%7B%22reel_ids%22%3A%5B%2212345%22%2C%2267890%22%5D%2C%22precomposed_overlay%22%3Afalse%7D
+#      query_hash:15463e8449a83d3d60b06be7e90627c7
+#      variables: {
+#                   "reel_ids": [
+#                     "12345",
+#                     "67890"
+#                     ...
+#                   ],
+#                   "precomposed_overlay": false
+#                 }
+#
+# get comments
+#   https://www.instagram.com/graphql/query/?query_hash=a3b895bdcb9606d5b1ee9926d885b924&variables=%7B%22shortcode%22%3A%22...%22%2C%22first%22%3A20%2C%22after%22%3A%22...%22%7D
+#     query_hash:a3b895bdcb9606d5b1ee9926d885b924
+#     variables: {"shortcode":"...","first":20,"after":"..."}
+
+
+
 # others:
 # descriptions are from personal observation only, could be wrong
 #
 # homepage items + stories
 #   https://www.instagram.com/graphql/query/?query_id=17842794232208280&fetch_media_item_count=10&has_stories=true
+#   https://www.instagram.com/graphql/query/?query_hash=253f5079497e7ef2756867645f972e4c&fetch_media_item_count=10&has_stories=true
 #
 # user suggestions based off another user
 #   https://www.instagram.com/graphql/query/?query_id=17845312237175864&id=[uid]
@@ -32,6 +63,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #
 # stories?
 #   https://www.instagram.com/graphql/query/?query_id=17890626976041463
+#   https://www.instagram.com/graphql/query/?query_hash=b40536160b85d87aecc43106a1f35495
 #
 # likes
 #   https://www.instagram.com/graphql/query/?query_id=17864450716183058&shortcode=[shortcode]&first=20
@@ -158,7 +190,7 @@ web_api = rssit.rest.API({
     }
 })
 
-graphql_api = rssit.rest.API({
+graphql_id_api = rssit.rest.API({
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
     "endpoints": {
@@ -186,6 +218,39 @@ graphql_api = rssit.rest.API({
             "base": "base",
             "query": {
                 "query_id": "17852405266163336"
+            }
+        }
+    }
+})
+
+graphql_hash_api = rssit.rest.API({
+    "type": "json",
+    "url": "https://www.instagram.com/graphql/query/",
+    "endpoints": {
+        "base": {
+            "query": {
+                "variables": rssit.rest.Arg("variables", 0, parse=lambda x: rssit.util.json_dumps(x))
+            }
+        },
+
+        "entries": {
+            "base": "base",
+            "query": {
+                "query_hash": "472f257a40c653c64c666ce877d59d2b"
+            }
+        },
+
+        "stories": {
+            "base": "base",
+            "query": {
+                "query_hash": "15463e8449a83d3d60b06be7e90627c7"
+            }
+        },
+
+        "comments": {
+            "base": "base",
+            "query": {
+                "query_hash": "a3b895bdcb9606d5b1ee9926d885b924"
             }
         }
     }
@@ -371,7 +436,12 @@ def do_app_request(config, endpoint, **kwargs):
 
 
 def do_graphql_request(config, endpoint, variables):
-    return graphql_api.run(config, endpoint, variables)
+    if config["use_hash_graphql"]:
+        retval = graphql_hash_api.run(config, endpoint, variables)
+    else:
+        retval = graphql_id_api.run(config, endpoint, variables)
+    #pprint.pprint(retval)
+    return retval
     #data = rssit.util.download(endpoint, config=config)
     #return rssit.util.json_loads(data)
 
@@ -1519,7 +1589,7 @@ def generate_raw(config, path):
         def get_comments(maxid):
             if not maxid:
                 maxid = after
-            newcomments_api = graphql_api.run(config, "comments", {
+            newcomments_api = do_graphql_request(config, "comments", {
                 "shortcode": post,
                 "first": 500,
                 "after": maxid
@@ -1667,6 +1737,12 @@ infos = [{
             "name": "Use API entries",
             "description": "Uses API for entries if needed, rate-limited, but very fast",
             "value": False
+        },
+
+        "use_hash_graphql": {
+            "name": "Use hash graphql",
+            "description": "Uses query_hash instead of query_id for graphql",
+            "value": True
         }
     },
 
