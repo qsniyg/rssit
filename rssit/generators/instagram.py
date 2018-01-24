@@ -403,7 +403,7 @@ def get_user_info(config, userid):
     #return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
 
 
-def get_user_info_by_username(config, username, *args, **kwargs):
+def get_user_info_by_username_a1(config, username, *args, **kwargs):
     extra = {}
     if "max_id" in kwargs and kwargs["max_id"]:
         #extra = "max_id=" + str(kwargs["max_id"])
@@ -411,6 +411,17 @@ def get_user_info_by_username(config, username, *args, **kwargs):
             "max_id": str(kwargs["max_id"])
         }
     return do_a1_request(config, username, **extra)["user"]
+
+
+def get_user_info_by_username_website(config, username):
+    return get_user_page(config, username)
+
+
+def get_user_info_by_username(config, username, *args, **kwargs):
+    if "use_profile_a1" in config and config["use_profile_a1"]:
+        return get_user_info_by_username_a1(config, username, *args, **kwargs)
+    else:
+        return get_user_info_by_username_website(config, username)
 
 
 def get_user_media_by_username(config, username):
@@ -954,7 +965,15 @@ def generate_user(config, *args, **kwargs):
                 media = decoded_user["media"]
             nodes = media["nodes"]
             page_info = media["page_info"]
-            return (nodes, page_info["end_cursor"], page_info["has_next_page"])
+
+            end_cursor = page_info["end_cursor"]
+            has_next_page = page_info["has_next_page"]
+
+            if not config["use_profile_a1"]:
+                end_cursor = None
+                has_next_page = None
+
+            return (nodes, end_cursor, has_next_page)
         nodes = paginate(get_nodes)
 
     for node in reversed(nodes):
@@ -1616,14 +1635,14 @@ infos = [{
 
         "use_profile_a1": {
             "name": "Use [profile]/?__a=1 endpoint",
-            "description": "Uses the [profile]/?__a=1 endpoint, more prone to rate-limiting",
+            "description": "Uses the now-removed [profile]/?__a=1 endpoint, more prone to rate-limiting",
             "value": False
         },
 
         "use_shortcode_a1": {
             "name": "Use /p/[shortcode]/?__a=1 endpoint",
-            "description": "Uses the /p/[shortcode]/?__a=1 endpoint, faster, but possibly more prone to rate-limiting",
-            "value": True
+            "description": "Uses the now-removed /p/[shortcode]/?__a=1 endpoint, faster, but possibly more prone to rate-limiting",
+            "value": False
         },
 
         "use_graphql_stories": {
