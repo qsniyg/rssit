@@ -1573,7 +1573,8 @@ def generate_raw(config, path):
     if path.startswith("p/"):
         post = path[len("p/"):]
         #node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
-        node = get_node_info(config, post)["graphql"]["shortcode_media"]
+        node_raw = get_node_info(config, post)
+        node = node_raw["graphql"]["shortcode_media"]
         node = normalize_node(node)
 
         images = []

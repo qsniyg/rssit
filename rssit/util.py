@@ -75,6 +75,8 @@ def download(url, *args, **kwargs):
             "timeout": 40
         }
 
+    config["http_error"] = 500
+
     if "head" in kwargs and kwargs["head"]:
         request = urllib.request.Request(url, method="HEAD")
     elif "post" in kwargs and kwargs["post"]:
@@ -120,19 +122,46 @@ def download(url, *args, **kwargs):
     else:
         openf = urllib.request.urlopen
 
-    with openf(request, timeout=config["timeout"]) as response:
-        charset = response.headers.get_content_charset()
+    finished = False
+    times = 0
+    ourresponse = b''
+    content_length = -1
+    while not finished:
+        times = times + 1
+        if times > 3:
+            finished = True
 
-        ourresponse = response.read()
+        if content_length > 0:
+            request.add_header('Range', 'bytes=%i-%i' % (len(ourresponse), content_length))
 
-        if charset:
-            try:
-                return ourresponse.decode(charset)
-            except Exception as e:
-                sys.stderr.write("Error decoding charset " + charset + ": " + str(e) + "\n")
+        try:
+            with openf(request, timeout=config["timeout"]) as response:
+                for header in response.headers._headers:
+                    if header[0].lower() == "content-length":
+                        content_length = int(header[1])
+
+                charset = response.headers.get_content_charset()
+
+                try:
+                    ourresponse += response.read()
+                    finished = True
+                except http.client.IncompleteRead as e:
+                    ourresponse += e.partial
+
+                config["http_error"] = 200
+
+                if charset:
+                    try:
+                        return ourresponse.decode(charset)
+                    except Exception as e:
+                        sys.stderr.write("Error decoding charset " + charset + ": " + str(e) + "\n")
+                        return ourresponse
+
                 return ourresponse
-
-        return ourresponse
+        except urllib.error.HTTPError as e:
+            config["http_error"] = e.code
+            if e.code == 404 or e.code == 403 or e.code == 410:  # 410: instagram
+                raise e
 
 
 def convert_surrogate_pair(x, y):
@@ -456,3 +485,10 @@ def addhttp(url):
     if not re.search("^[^/]+://", url):
         return "http://" + url
     return url
+
+
+class HTTPErrorException(BaseException):
+    def __init__(self, exception, traceback, code):
+        self.exception = exception
+        self.traceback = traceback
+        self.code = code

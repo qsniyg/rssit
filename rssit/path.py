@@ -54,13 +54,20 @@ def process(server, path):
     if path_name not in path_list:
         path_name = "404"
 
+    format_exc = None
+
     try:
         path_list[path_name]["process"](server, path, newpath, options)
+    except rssit.util.HTTPErrorException as err:
+        server.send_response(err.code, "Internal Server Error")
+        format_exc = err.traceback
     except Exception as err:
         server.send_response(500, "Internal Server Error")
-        server.end_headers()
-
         format_exc = traceback.format_exc()
 
-        server.wfile.write(bytes(format_exc, "UTF-8"))
-        print(format_exc)
+    server.end_headers()
+
+    #format_exc = traceback.format_exc()
+
+    server.wfile.write(bytes(format_exc, "UTF-8"))
+    print(format_exc)

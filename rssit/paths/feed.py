@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8; python-indent-offset: 4 -*-
 
 
 import rssit.generator
@@ -6,7 +6,6 @@ import rssit.generators.all
 import rssit.serializer
 import rssit.formats
 import re
-import io
 import traceback
 
 
@@ -152,10 +151,17 @@ def process(server, path, normpath, options):
         server.wfile.write(bytes(respstr, "UTF-8"))
         return
 
-    result = rssit.generator.process(server, config, newpath)
+    try:
+        result = rssit.generator.process(server, config, newpath)
+    except Exception as e:
+        raise rssit.util.HTTPErrorException(e, traceback.format_exc(), config.get("http_error", 500))
 
     if not result:
-        server.send_response(500, "ISE: Feed")
+        errorcode = 500
+        if "http_error" in config and config["http_error"] != 200:
+            errorcode = config["http_error"]
+
+        server.send_response(errorcode, "ISE: Feed")
         server.end_headers()
 
         server.wfile.write(bytes("An unknown error occurred while trying to generate feed", "UTF-8"))

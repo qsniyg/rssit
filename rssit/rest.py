@@ -82,12 +82,12 @@ class API(object):
 
             if type(value) == tuple:
                 newvalue = tuple(newvalue)
-        elif type(value) == Format:
+        elif str(type(value)) == str(Format):  # needed for updates
             newargs = []
             for x in value.args:
                 newargs.append(self.get_value(x, args, kwargs))
             newvalue = value.format_ % tuple(newargs)
-        elif type(value) == Arg:
+        elif str(type(value)) == str(Arg):  # needed for updates
             if value.varname and value.varname in kwargs:
                 newvalue = value.get(kwargs[value.varname])
             elif value.argnum is not None and value.argnum < len(args):
@@ -132,6 +132,7 @@ class API(object):
         if querystr:
             baseurl = baseurl + "?" + querystr
 
+        orig_config = config
         config = rssit.util.simple_copy(config)
 
         headers = self.get_setting(endpoint_name, "headers", kwargs)
@@ -142,7 +143,14 @@ class API(object):
 
         noextra = self.get_setting(endpoint_name, "http_noextra", kwargs)
 
-        data = rssit.util.download(baseurl, config=config, http_noextra=noextra)
+        try:
+            data = rssit.util.download(baseurl, config=config, http_noextra=noextra)
+        except Exception as e:
+            if "http_error" in config:
+                orig_config["http_error"] = config["http_error"]
+            raise e
+        if "http_error" in config:
+            orig_config["http_error"] = config["http_error"]
 
         if self.get_setting(endpoint_name, "type", kwargs) == "json":
             data = rssit.util.json_loads(data)

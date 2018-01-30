@@ -19,6 +19,7 @@ def set_modules():
         rssit.generators.all,
         rssit.path,
         rssit.paths.all,
+        rssit.rest,
         rssit.serializer,
         rssit.serializers.all,
         rssit.util,
