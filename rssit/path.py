@@ -65,9 +65,8 @@ def process(server, path):
         server.send_response(500, "Internal Server Error")
         format_exc = traceback.format_exc()
 
-    server.end_headers()
+    if format_exc:
+        server.end_headers()
 
-    #format_exc = traceback.format_exc()
-
-    server.wfile.write(bytes(format_exc, "UTF-8"))
-    print(format_exc)
+        server.wfile.write(bytes(format_exc, "UTF-8"))
+        print(format_exc)
