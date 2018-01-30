@@ -157,6 +157,6 @@ class API(object):
 
         parser = self.get_setting(endpoint_name, "parse", kwargs)
         if parser:
-            return parser(data)
+            return parser(orig_config, config, data)
         else:
             return data

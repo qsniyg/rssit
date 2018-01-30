@@ -146,7 +146,7 @@ def image_basename(url):
     return re.sub(r".*/([^.]*\.[^/]*)$", "\\1", base_image(url))
 
 
-def parse_webpage_request(data):
+def parse_webpage_request(orig_config, config, data):
     jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
     if jsondatare is None:
         sys.stderr.write("No sharedData!\n")
@@ -156,6 +156,17 @@ def parse_webpage_request(data):
     decoded = rssit.util.json_loads(jsondata)
 
     return decoded
+
+
+def parse_a1_request(orig_config, config, data):
+    try:
+        data = rssit.util.json_loads(data)
+    except Exception as e:
+        if str(data).startswith("<!"):
+            orig_config["http_error"] = 404
+        raise e
+
+    return data
 
 
 web_api = rssit.rest.API({
@@ -169,6 +180,8 @@ web_api = rssit.rest.API({
 
         "a1": {
             "url": rssit.rest.Format("http://www.instagram.com/%s/", rssit.rest.Arg("path", 0)),
+            "parse": parse_a1_request,
+            "type": "raw",
             "query": {
                 "__a": 1
             }

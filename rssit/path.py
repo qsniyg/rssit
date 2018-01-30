@@ -59,6 +59,8 @@ def process(server, path):
     try:
         path_list[path_name]["process"](server, path, newpath, options)
     except rssit.util.HTTPErrorException as err:
+        if int(err.code/100) == 2:
+            err.code = 500
         server.send_response(err.code, "Internal Server Error")
         format_exc = err.traceback
     except Exception as err:
