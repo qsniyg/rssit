@@ -50,7 +50,7 @@ def generate_url(config, url):
         "author": blogid,
         "url": url,
         "config": {
-            "generator": "tumblr"
+            "generator": "naverblog"
         },
         "entries": []
     }

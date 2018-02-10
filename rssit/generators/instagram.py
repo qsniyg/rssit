@@ -376,6 +376,22 @@ def get_node_media(config, node, images, videos):
         sys.stderr.write("No image!!\n")
     normalized = normalize_image(image_src)
 
+    if node["type"] == "carousel":
+        def carousel_has_nonimage_member(carousel):
+            for i in carousel:
+                if "display_url" not in normalize_node(i):
+                    return True
+            return False
+
+        if "carousel_media" in node and not carousel_has_nonimage_member(node["carousel_media"]):
+            for i in node["carousel_media"]:
+                get_node_media(config, i, images, videos)
+        else:
+            newnodes = get_node_info(config, node["code"])
+            if len(newnodes) > 0:
+                get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
+
+
     if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
         if "video_url" in node:
             videourl = node["video_url"]
@@ -401,24 +417,17 @@ def get_node_media(config, node, images, videos):
             if image_basename(image) == image_basename(normalized):
                 ok = False
                 break
+        if ok:
+            for video in videos:
+                if "image" not in video:
+                    # shouldn't happen?
+                    continue
+                if image_basename(video["image"]) == image_basename(normalized):
+                    ok = False
+                    break
 
         if ok:
             images.append(normalized)
-
-    if node["type"] == "carousel":
-        def carousel_has_nonimage_member(carousel):
-            for i in carousel:
-                if "display_url" not in normalize_node(i):
-                    return True
-            return False
-
-        if "carousel_media" in node and not carousel_has_nonimage_member(node["carousel_media"]):
-            for i in node["carousel_media"]:
-                get_node_media(config, i, images, videos)
-        else:
-            newnodes = get_node_info(config, node["code"])
-            if len(newnodes) > 0:
-                get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
 
 
 def get_app_headers(config):
@@ -918,7 +927,7 @@ def get_author(config, userinfo):
 
 
 def get_feed(config, userinfo):
-    username = userinfo["username"]
+    username = userinfo["username"].lower()
 
     return {
         "title": get_author(config, userinfo),
@@ -958,7 +967,7 @@ def generate_user(config, *args, **kwargs):
     config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
 
     if "username" in kwargs:
-        username = kwargs["username"]
+        username = kwargs["username"].lower()
 
         if not config["use_profile_a1"]:
             decoded_user = get_user_page(config, username)
@@ -1283,7 +1292,7 @@ def generate_news(config):
         # 128 = taking a video at n
 
         # type:
-        # 1 = 1 person likes 1 post, or leave a comment on 1 post
+        # 1 = 1 person likes 1 post, or leave a comment on 1 post, or n people like/leave a comment on 1 post
         # 2 = 1 person likes n posts, or 'took n videos at n'
         # 4 = 1 person starts following 1-n other people
         # 14 = 1 person likes 1 comment
@@ -1603,11 +1612,22 @@ def generate_raw(config, path):
         def get_comments(maxid):
             if not maxid:
                 maxid = after
-            newcomments_api = do_graphql_request(config, "comments", {
-                "shortcode": post,
-                "first": 500,
-                "after": maxid
-            })["data"]["shortcode_media"]["edge_media_to_comment"]
+            try:
+                newcomments_api = do_graphql_request(config, "comments", {
+                    "shortcode": post,
+                    "first": 500,
+                    "after": maxid
+                })["data"]["shortcode_media"]["edge_media_to_comment"]
+            except Exception:
+                sys.stderr.write("Unable to load comments\n")
+                newcomments_api = {
+                    "edges": [],
+                    "page_info": {
+                        "end_cursor": None,
+                        "has_next_page": False
+                    }
+                }
+
             retval = (newcomments_api["edges"],
                     newcomments_api["page_info"]["end_cursor"],
                     newcomments_api["page_info"]["has_next_page"])

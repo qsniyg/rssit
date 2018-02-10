@@ -244,6 +244,8 @@ def get_author(url):
         return "khan"
     if "gamechosun.co.kr" in url:
         return "gamechosun"
+    if "www.ohmynews.com" in url:
+        return "ohmynews"
     return None
 
 
@@ -758,6 +760,43 @@ def do_api(config, path):
                     "images": [strify(thumb_url)],
                     "videos": []
                 })
+    elif author == "ohmynews":
+        if "keyword" in config and config["keyword"]:
+            query = config["keyword"]
+        url = "http://www.ohmynews.com/NWS_Web/Search/neo_json.aspx?keyword=" + query
+        post = ""
+        if "page" in config and config["page"]:
+            url += "&page=" + str(config["page"])
+        if "order" in config and config["order"]:
+            url += "&order=" + strify(config["order"])
+
+        if "list_cnt" in config and config["list_cnt"]:
+            post += "list_cnt=" + str(config["list_cnt"])
+        else:
+            post += "list_cnt=20"
+        if "article_type" in config and config["article_type"]:
+            post += "&article_type=" + strify(config["article_type"])
+        else:
+            post += "&article_type=IE"
+
+        if "article_type=IE" in post:
+            config["quick"] = True
+
+        #url = rssit.util.quote_url1(url)
+        myjson["url"] = url
+        data = rssit.util.download(url, post=post.encode("utf-8"), config=config)
+        data = demjson.decode(data)
+        data = demjson.decode(data["data"][0])
+        for item in data["data"]:
+            date = datetime.datetime.fromtimestamp(int(item["datei"]) / 1000)
+            articles.append({
+                "url": strify(item["url"]),
+                "caption": strify(item["desc"]),
+                "aid": strify(item["docid"]),
+                "date": date,
+                "images": [get_max_quality(strify(item["thumbnail"]))],
+                "videos": []
+            })
 
     if not myjson["url"] or len(articles) == 0:
         return
@@ -833,6 +872,9 @@ def get_articles(config, myjson, soup):
             return
     elif myjson["author"] == "saostar":
         if "/?s=" not in myjson["url"]:
+            return
+    elif myjson["author"] == "ohmynews":
+        if "/Search/" not in myjson["url"]:
             return
     else:
         if "news/articleList" not in myjson["url"]:
@@ -1245,6 +1287,16 @@ def get_articles(config, myjson, soup):
             "images": "div.thumb img",
             "aid": lambda soup: re.sub(r".*artid=([0-9]*).*", "\\1", soup.select("p > a")[0]["href"]),
             "html": True
+        },
+        # ohmynews images (needs api, doesn't work)
+        {
+            "parent": ".section_sch > .cssPhotoList > .article > ul > li",
+            "link": "/a",
+            "caption": lambda soup: extra_select(soup, "/a")[0]["title"],
+            "date": "-1",
+            "images": "/a > img",
+            "aid": lambda soup: re.sub(r".*CNTN_CD=([A-Z0-9]*).*", "\\1", extra_select(soup, "/a")[0]["href"]),
+            "html": True
         }
     ]
 
@@ -1290,7 +1342,6 @@ def get_articles(config, myjson, soup):
     for a in parenttag:
         if not extra_select(a, selector["link"]):
             sys.stderr.write("couldn't find link\n")
-            # print warning?
             continue
 
         if "parent_process" in selector:
@@ -1332,7 +1383,12 @@ def get_articles(config, myjson, soup):
         if "aid" in selector:
             aid = strify(selector["aid"](a)) + " "
         if "caption" in selector:
-            realcaption = strify(extra_select(a, selector["caption"])[0].text.strip())
+            caption_el = extra_select(a, selector["caption"])[0]
+            if type(caption_el) == str:
+                realcaption = caption_el
+            else:
+                realcaption = strify(caption_el.text)
+            realcaption = realcaption.strip()
             caption = aid + realcaption
         entry["media_caption"] = caption
         entry["caption"] = realcaption
@@ -1490,6 +1546,12 @@ def get_max_quality(url, data=None):
         "img.khan.co.kr" in url):
         url = re.sub(r"\/r\/[0-9]+x[0-9]+\/", "/", url)
         url = re.sub(r"\/[a-z]*_([0-9]+\.[a-z0-9A-Z]*)$", "/\\1", url)
+
+    if "ojsfile.ohmynews.com" in url:
+        newurl = re.sub("\?.*", "", url)
+        newurl = re.sub("/CT_T_IMG/(.*?)/([^/]*)_APP(\.[^/.]*?)(?:\?.*)?$", "/ORG_IMG_FILE/\\1/\\2_ORG\\3", newurl)
+        newurl = re.sub("/[A-Z]*_IMG_FILE/(.*?)/([^/]*)_[A-Z]*(\.[^/.]*)(?:\?.*)?$", "/ORG_IMG_FILE/\\1/\\2_ORG\\3", newurl)
+        url = [newurl, url]
 
     return url
 

@@ -159,7 +159,12 @@ def download(url, *args, **kwargs):
 
                 return ourresponse
         except urllib.error.HTTPError as e:
-            config["http_error"] = e.code
+            if e.code == 302:
+                # infinite loop
+                config["http_error"] = 500
+            else:
+                config["http_error"] = e.code
+
             if e.code == 404 or e.code == 403 or e.code == 410:  # 410: instagram
                 raise e
 
