@@ -93,7 +93,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #   https://www.instagram.com/graphql/query/?query_id=17884116436028098
 
 
-post_cache = rssit.util.Cache(60*60, 20)
+post_cache = rssit.util.Cache(3*60*60, 30)
 uid_to_username_cache = rssit.util.Cache(6*60*60, 100)
 
 
@@ -502,7 +502,7 @@ def get_user_info_by_username_a1(config, username, *args, **kwargs):
         extra = {
             "max_id": str(kwargs["max_id"])
         }
-    return do_a1_request(config, username, **extra)["user"]
+    return do_a1_request(config, username, **extra)["graphql"]["user"]
 
 
 def get_user_info_by_username_website(config, username):
@@ -548,7 +548,7 @@ def get_user_page(config, username):
 
     decoded = do_website_request(config, url)
 
-    return decoded["entry_data"]["ProfilePage"][0]["user"]
+    return decoded["entry_data"]["ProfilePage"][0]["graphql"]["user"]
 
 
 def get_nodes_from_uid_graphql(config, uid, *args, **kwargs):
@@ -630,6 +630,8 @@ def get_stories(config, userid):
 
 
 def normalize_node(node):
+    if "node" in node:
+        node = node["node"]
     node = rssit.util.simple_copy(node)
     if "caption" not in node:
         if (("edge_media_to_caption" in node) and
@@ -975,8 +977,8 @@ def generate_user(config, *args, **kwargs):
             decoded_user = get_user_info_by_username(config, username)
 
         uid = decoded_user["id"]
-        mediacount = decoded_user["media"]["count"]
-        medianodes = decoded_user["media"]["nodes"]
+        mediacount = decoded_user["edge_owner_to_timeline_media"]["count"]
+        medianodes = decoded_user["edge_owner_to_timeline_media"]["edges"]
     elif "uid" in kwargs:
         uid = kwargs["uid"]
         decoded_user = get_user_info(config, uid)["user"]
@@ -1052,10 +1054,10 @@ def generate_user(config, *args, **kwargs):
     else:
         def get_nodes(max_id):
             if max_id or "media" not in decoded_user:
-                media = get_user_info_by_username(config, username, max_id=max_id)["media"]
+                media = get_user_info_by_username(config, username, max_id=max_id)["edge_owner_to_timeline_media"]
             else:
-                media = decoded_user["media"]
-            nodes = media["nodes"]
+                media = decoded_user["edge_owner_to_timeline_media"]
+            nodes = media["edges"]
             page_info = media["page_info"]
 
             end_cursor = page_info["end_cursor"]
