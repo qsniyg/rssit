@@ -1,6 +1,8 @@
 import rssit.util
 import urllib.parse
 import collections
+import threading
+import time
 
 
 class Arg(object):
@@ -25,6 +27,8 @@ class Format(object):
 class API(object):
     def __init__(self, apidef):
         self.apidef = apidef
+        self.lock = threading.Lock()
+        self.lastran = 0
 
     def get_endpoint(self, endpoint_name):
         if endpoint_name not in self.apidef["endpoints"]:
@@ -143,12 +147,34 @@ class API(object):
 
         noextra = self.get_setting(endpoint_name, "http_noextra", kwargs)
 
+        do_ratelimit = False
+        if self.get_value(self.get_setting(endpoint_name, "force", kwargs), args, kwargs) is not True:
+            do_ratelimit = True
+
+        limit = self.get_value(self.get_setting(endpoint_name, "ratelimit", kwargs), args, kwargs)
+        if not limit:
+            limit = 1
+
+        if do_ratelimit:
+            self.lock.acquire()
+            now = time.monotonic()
+            diff = now - self.lastran
+            if diff < limit:
+                time.sleep(limit - diff)
+
         try:
             data = rssit.util.download(baseurl, config=config, http_noextra=noextra)
         except Exception as e:
+            if do_ratelimit:
+                self.lock.release()
             if "http_error" in config:
                 orig_config["http_error"] = config["http_error"]
             raise e
+
+        if do_ratelimit:
+            self.lastran = time.monotonic()
+            self.lock.release()
+
         if "http_error" in config:
             orig_config["http_error"] = config["http_error"]
 

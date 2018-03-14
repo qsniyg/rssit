@@ -284,7 +284,8 @@ app_api = rssit.rest.API({
                                      rssit.rest.Arg("uid", 0))
         },
         "reels_tray": {
-            "url": "https://i.instagram.com/api/v1/feed/reels_tray/"
+            "url": "https://i.instagram.com/api/v1/feed/reels_tray/",
+            "force": True
         },
         "news": {
             "url": "https://i.instagram.com/api/v1/news/"
@@ -1005,6 +1006,12 @@ def generate_user(config, *args, **kwargs):
 
         while (len(nodes) < total) and has_next_page:
             output = f(maxid)
+            if len(output[0]) == 0:
+                sys.stderr.write("\rLoading media (%i/%i, skipping)... " % (len(nodes), total))
+                sys.stderr.flush()
+                console = True
+                break
+
             nodes.extend(output[0])
             if len(nodes) < total:
                 sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
@@ -1038,11 +1045,19 @@ def generate_user(config, *args, **kwargs):
             edges = media["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
             pageinfo = media["data"]["user"]["edge_owner_to_timeline_media"]["page_info"]
 
+            end_cursor = pageinfo["end_cursor"]
+            has_next_page = pageinfo["has_next_page"]
+
+            # workaround for private accounts
+            if len(edges) == 0:
+                end_cursor = None
+                has_next_page = None
+
             nodes = []
             for node in edges:
                 nodes.append(node["node"])
 
-            return (nodes, pageinfo["end_cursor"], pageinfo["has_next_page"])
+            return (nodes, end_cursor, has_next_page)
 
         nodes = paginate(get_nodes)
     elif config["use_api_entries"] and count > len(medianodes):
@@ -1062,6 +1077,11 @@ def generate_user(config, *args, **kwargs):
 
             end_cursor = page_info["end_cursor"]
             has_next_page = page_info["has_next_page"]
+
+            # workaround for private accounts
+            if len(nodes) == 0:
+                end_cursor = None
+                has_next_page = None
 
             if not config["use_profile_a1"]:
                 end_cursor = None
