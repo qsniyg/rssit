@@ -93,8 +93,8 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #   https://www.instagram.com/graphql/query/?query_id=17884116436028098
 
 
-post_cache = rssit.util.Cache(3*60*60, 30)
-uid_to_username_cache = rssit.util.Cache(6*60*60, 100)
+post_cache = rssit.util.Cache(6*60*60, 50)
+uid_to_username_cache = rssit.util.Cache(12*60*60, 100)
 
 
 def get_url(config, url):
@@ -1001,10 +1001,11 @@ def generate_user(config, *args, **kwargs):
 
         maxid = None
         nodes = []
+        nodecount = 0
         console = False
         has_next_page = True
 
-        while (len(nodes) < total) and has_next_page:
+        while (nodecount < total) and has_next_page:
             output = f(maxid)
             if len(output[0]) == 0:
                 sys.stderr.write("\rLoading media (%i/%i, skipping)... " % (len(nodes), total))
@@ -1012,9 +1013,21 @@ def generate_user(config, *args, **kwargs):
                 console = True
                 break
 
-            nodes.extend(output[0])
-            if len(nodes) < total:
-                sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
+            nodecount += len(output[0])
+
+            for item in output[0]:
+                duplicate = False
+                newitem = normalize_node(item)
+                for oitem in nodes:
+                    if newitem["shortcode"] == normalize_node(oitem)["shortcode"]:
+                        duplicate = True
+                        break
+                if duplicate:
+                    continue
+                nodes.append(item)
+
+            if nodecount < total:
+                sys.stderr.write("\rLoading media (%i/%i)... " % (nodecount, total))
                 sys.stderr.flush()
                 console = True
             maxid = output[1]
