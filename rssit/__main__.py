@@ -74,6 +74,12 @@ config_model = {
                 "name": "Description",
                 "value": "",
                 "description": "Custom description (leave blank for default)"
+            },
+
+            "picture_tag": {
+                "name": "Use <picture>",
+                "value": True,
+                "description": "Use the <picture> tag when converting from social to feed"
             }
         }
     }

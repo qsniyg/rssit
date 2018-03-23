@@ -11,6 +11,7 @@ import urllib.parse
 from dateutil.tz import *
 import collections
 import traceback
+import rssit.converters.social_to_feed
 
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
@@ -344,6 +345,13 @@ def get_node_info_webpage(config, code):
     return req["entry_data"]["PostPage"][0]
 
 
+def get_normalized_array(config, norm, orig):
+    if config["use_normalized"]:
+        return [norm, orig]
+    else:
+        return orig
+
+
 def get_node_info(config, code):
     info = post_cache.get(code)
     if info:
@@ -408,13 +416,15 @@ def get_node_media(config, node, images, videos):
 
         if not found:
             videos.append({
-                "image": normalized,
-                "video": videourl
+                "image": get_normalized_array(config, normalized, image_src),
+                "video": get_normalized_array(config, normalize_image(videourl), videourl)
             })
     else:
         ok = True
         for image in images:
             #if base_image(image) == base_image(normalized):
+            if type(image) == list:
+                image = image[0]
             if image_basename(image) == image_basename(normalized):
                 ok = False
                 break
@@ -423,12 +433,15 @@ def get_node_media(config, node, images, videos):
                 if "image" not in video:
                     # shouldn't happen?
                     continue
-                if image_basename(video["image"]) == image_basename(normalized):
+                video_image = video["image"]
+                if type(video_image) == list:
+                    video_image = video_image[0]
+                if image_basename(video_image) == image_basename(normalized):
                     ok = False
                     break
 
         if ok:
-            images.append(normalized)
+            images.append(get_normalized_array(config, normalized, image_src))
 
 
 def get_app_headers(config):
@@ -691,8 +704,8 @@ def normalize_node(node):
                     max_ = total
                     node["video_url"] = video["url"]"""
 
-    if "video_url" in node:
-        node["video_url"] = normalize_image(node["video_url"])
+    #if "video_url" in node:
+    #    node["video_url"] = normalize_image(node["video_url"])
 
     if "type" not in node:
         if "video_url" not in node:
@@ -720,8 +733,8 @@ def normalize_node(node):
     if ("display_url" not in node) and ("carousel_media" in node):
         node["display_url"] = normalize_node(node["carousel_media"][0])["display_url"]
 
-    if "display_url" in node:
-        node["display_url"] = normalize_image(node["display_url"])
+    #if "display_url" in node:
+    #    node["display_url"] = normalize_image(node["display_url"])
 
     if "is_video" not in node:
         node["is_video"] = node["type"] == "video"
@@ -810,16 +823,17 @@ def parse_story_entries(config, storiesjson, do_stories=True):
 
         item = normalize_node(item)
 
-        image = normalize_image(item["display_url"])
+        image_src = item["display_url"]
+        image = normalize_image(image_src)
 
         url = image
-        images = [image]
+        images = [get_normalized_array(config, image, image_src)]
         videos = []
 
         if "video_url" in item and item["video_url"]:
             videos = [{
-                "image": image,
-                "video": item["video_url"]
+                "image": get_normalized_array(config, image, image_src),
+                "video": get_normalized_array(config, normalize_image(item["video_url"]), item["video_url"])
             }]
             url = videos[0]["video"]
             images = []
@@ -961,7 +975,7 @@ def get_profilepic_entry(config, userinfo):
         "author": userinfo["username"],
         "date": rssit.util.parse_date(-1),
         "guid": "https://scontent-sea1-1.cdninstagram.com//" + id_withext,
-        "images": [newurl],
+        "images": [get_normalized_array(config, newurl, url)],
         "videos": []
     }
 
@@ -1143,7 +1157,7 @@ def generate_video(config, server, id):
     return True
 
 
-def generate_livereplay(config, server, id):
+def generate_livereplay_reelstray(config, server, id):
     reelsurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
     config = get_app_headers(config)
     reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
@@ -1158,6 +1172,27 @@ def generate_livereplay(config, server, id):
                 server.end_headers()
                 server.wfile.write(broadcast["dash_manifest"].encode('utf-8'))
                 return True
+
+    sys.stderr.write("Unable to find media id %s\n" % id)
+    return None
+
+
+def generate_livereplay(config, server, id):
+    uid = re.sub(r".*_([0-9]+)$", "\\1", id)
+    reelsurl = "https://i.instagram.com/api/v1/feed/user/" + uid + "/story/"
+
+    config = get_app_headers(config)
+    reels_data = rssit.util.download(reelsurl, config=config, http_noextra=True)
+
+    reelsjson = rssit.util.json_loads(reels_data)
+
+    for broadcast in reelsjson["post_live_item"]["broadcasts"]:
+        if id == broadcast["media_id"]:
+            server.send_response(200, "OK")
+            server.send_header("Content-type", "application/xml")
+            server.end_headers()
+            server.wfile.write(broadcast["dash_manifest"].encode('utf-8'))
+            return True
 
     sys.stderr.write("Unable to find media id %s\n" % id)
     return None
@@ -1244,13 +1279,16 @@ def generate_convert(config, server, url):
     return True
 
 
-def generate_news_media(medias):
+def generate_news_media(config, medias):
     content = ""
     for media in medias:
-        content += "<p><a href='%s'><img src='%s' alt='(image)' /></a></p>" % (
-            id_to_url(media["id"]),
-            normalize_image(media["image"]),
-        )
+        #content += "<p><a href='%s'><img src='%s' alt='(image)' /></a></p>" % (
+        #    id_to_url(media["id"]),
+        #    normalize_image(media["image"]),
+        #)
+        content += "<a href='%s'>" % id_to_url(media["id"])
+        content += rssit.converters.social_to_feed.do_image(config, get_normalized_array(config, normalize_image(media["image"]), media["image"]))
+        content += "</a>"
 
     return content
 
@@ -1288,7 +1326,7 @@ def generate_simple_news(config, story):
     if "media" not in args:
         args["media"] = []
 
-    content += generate_news_media(args["media"])
+    content += generate_news_media(config, args["media"])
 
     return (caption, content)
 
@@ -1526,7 +1564,7 @@ def generate_news(config):
                 content = "<p>%s</p>" % do_format(uids_to_links, subj, obj)
 
                 if media:
-                    content += generate_news_media([media])
+                    content += generate_news_media(config, [media])
 
                 tuuid = "story_type:%s/subject:%s" % (
                     #args["tuuid"],
@@ -1812,6 +1850,12 @@ infos = [{
             "name": "Use hash graphql",
             "description": "Uses query_hash instead of query_id for graphql",
             "value": True
+        },
+
+        "use_normalized": {
+            "name": "Use normalized images",
+            "description": "Uses normalized images as well as the ones given by Instagram (useless for newer images)",
+            "value": False
         }
     },
 

@@ -2,10 +2,37 @@
 
 
 import rssit.util
+import sys
 
 
 def htmlify(text):
     return rssit.util.link_urls(text).replace("\n", "<br />\n")
+
+
+def do_image(config, image):
+    if type(image) not in [list, tuple]:
+        image = [image]
+
+    if len(image) == 0:
+        sys.stderr.write("0 images\n")
+        return None
+
+    content = "<p>"
+
+    if config["picture_tag"] and False:
+        content += "<picture>"
+        for theimage in image:
+            content += "<source srcset='%s' />" % theimage
+        content += "<img src='%s' alt='(image)' />" % image[0]
+        content += "</picture>"
+    else:
+        alt = ""
+        for theimage in image:
+            content += "<p><img src='%s' alt='(image%s)'/></p>" % (theimage, alt)
+            alt = ", alt"
+
+    content += "</p>"
+    return content
 
 
 def process(result, config):
@@ -50,23 +77,45 @@ def process(result, config):
 
         if entry["videos"]:
             for video in entry["videos"]:
-                if "image" in video and video["image"]:
-                    content += "<p><em>Click to watch video</em></p>"
+                videourls = video["video"]
+                if type(videourls) not in [tuple, list]:
+                    videourls = [videourls]
+                alt = ""
+                for videourl in videourls:
+                    if "image" in video and video["image"]:
+                        content += "<p><em>Click to watch video%s</em></p>" % alt
 
-                    content += "<a href='%s'><img src='%s' alt='(thumbnail)'/></a>" % (
-                        rssit.util.get_local_url("/player/" + video["video"], norm=False),
-                        video["image"]
-                    )
-                else:
-                    content += "<p><em><a href='%s'>Video</a></em></p>" % video["video"]
+                        content += "<a href='%s'>" % rssit.util.get_local_url("/player/" + videourl, norm=False)
+                        content += do_image(config, video["image"])
+                        content += "</a>"
+                    else:
+                        content += "<p><em><a href='%s'>Video%s</a></em></p>" % (videourl, alt)
+                    alt = " (alt)"
 
         if entry["images"]:
             for image in entry["images"]:
-                if type(image) not in [list, tuple]:
+                image_content = do_image(config, image)
+                if image_content is not None:
+                    content += image_content
+                """if type(image) not in [list, tuple]:
                     image = [image]
 
-                for theimage in image:
-                    content += "<p><img src='%s' alt='(image)'/></p>" % theimage
+                if len(image) == 0:
+                    sys.stderr.write("0 images\n")
+                    continue
+
+                if config["picture_tag"]:
+                    content += "<p><picture>"
+                    for theimage in image:
+                        content += "<source srcset='%s' />" % theimage
+                    content += "<img src='%s' alt='(image)' />" % image[0]
+                    content += "</picture></p>"
+                else:
+                    content += "<p>"
+                    for theimage in image:
+                        content += "<p><img src='%s' alt='(image)'/></p>" % theimage
+                    content += "</p>"
+                """
 
         thisentry = {
             "url": entry["url"],
