@@ -96,6 +96,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 
 post_cache = rssit.util.Cache("ig_post", 12*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 12*60*60, 100)
+api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 
 
 def get_url(config, url):
@@ -144,7 +145,7 @@ def base_image(url):
 
 
 def image_basename(url):
-    return re.sub(r".*/([^.]*\.[^/]*)$", "\\1", base_image(url))
+    return re.sub(r".*/([^.]*\.[^/?]*)(\?.*)?$", "\\1", base_image(url))
 
 
 def parse_webpage_request(orig_config, config, data):
@@ -529,8 +530,18 @@ def get_reelstray_app(config):
     #return do_app_request(config, storiesurl)
 
 
-def get_user_info(config, userid):
-    return do_app_request(config, "user_info", uid=userid)
+def get_user_info(config, userid, force=False):
+    userinfo = None
+    cached = True
+    if not force:
+        userinfo = api_userinfo_cache.get(userid)
+        if userinfo and "user" in userinfo and "pk" not in userinfo:
+            userinfo = userinfo["user"]
+    if not userinfo:
+        cached = False
+        userinfo = do_app_request(config, "user_info", uid=userid)["user"]
+        api_userinfo_cache.add(userid, userinfo)
+    return (userinfo, cached)
     #return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
 
 
@@ -1005,9 +1016,13 @@ def get_home_entries(config):
     return entries
 
 
-def get_profilepic_entry(config, userinfo):
+def get_profilepic_entry_raw(config, userinfo):
     url = None
-    if "profile_pic_url_hd" in userinfo:
+    # api
+    if "hd_profile_pic_url_info" in userinfo:
+        url = userinfo["hd_profile_pic_url_info"]["url"]
+    # graphql
+    elif "profile_pic_url_hd" in userinfo:
         url = userinfo["profile_pic_url_hd"]
     elif "profile_pic_url" in userinfo:
         url = userinfo["profile_pic_url"]
@@ -1019,15 +1034,33 @@ def get_profilepic_entry(config, userinfo):
     id_ = re.sub(r".*/([^.]*)\.[^/]*$", "\\1", newurl)
     id_withext = image_basename(newurl) # re.sub(r".*/([^.]*\.[^/]*)$", "\\1", newurl)
 
+    date = rssit.util.parse_date(-1)
+    if "profile_pic_id" in userinfo:
+        date = get_datetime_from_id(userinfo["profile_pic_id"])
+
     return {
         "url": newurl,
         "caption": "[DP] " + str(id_),
         "author": userinfo["username"],
-        "date": rssit.util.parse_date(-1),
+        "date": date,
         "guid": "https://scontent-sea1-1.cdninstagram.com//" + id_withext,
         "images": [get_normalized_array(config, newurl, url)],
         "videos": []
     }
+
+
+def get_profilepic_entry(config, userinfo):
+    if not config["use_profilepic_api"]:
+        return get_profilepic_entry_raw(config, userinfo)
+
+    if "hd_profile_pic_url_info" not in userinfo:
+        new_userinfo, cached = get_user_info(config, userinfo["id"])
+        if cached:
+            api_basename = image_basename(new_userinfo["hd_profile_pic_url_info"]["url"])
+            orig_basename = image_basename(userinfo["profile_pic_url"])
+            if api_basename != orig_basename:
+                new_userinfo, cached = get_user_info(config, userinfo["id"], True)
+        return get_profilepic_entry_raw(config, new_userinfo)
 
 
 def generate_user(config, *args, **kwargs):
@@ -1046,7 +1079,7 @@ def generate_user(config, *args, **kwargs):
         medianodes = decoded_user["edge_owner_to_timeline_media"]["edges"]
     elif "uid" in kwargs:
         uid = kwargs["uid"]
-        decoded_user = get_user_info(config, uid)["user"]
+        decoded_user, decoded_user_cached = get_user_info(config, uid, True)
         username = decoded_user["username"]
 
         mediacount = decoded_user["media_count"]
@@ -1289,6 +1322,15 @@ def get_uid_from_id(id):
     return id.split("_")[1]
 
 
+# https://carrot.is/coding/instagram-ids
+def get_timestamp_from_id(id):
+    return (int(id.split("_")[0]) >> (64-41)) + (1314220021*1000)
+
+
+def get_datetime_from_id(id):
+    return datetime.datetime.fromtimestamp(int(get_timestamp_from_id(id) / 1000), None).replace(tzinfo=tzlocal())
+
+
 def normalize_user(user):
     if "uid" not in user:
         if "pk" in user:
@@ -1320,8 +1362,8 @@ def uid_to_username(config, uid):
         if type(uid) == dict and "username" in uid:
             username = uid["username"]
         else:
-            userinfo = get_user_info(config, real_uid)
-            username = userinfo["user"]["username"]
+            userinfo, cached = get_user_info(config, real_uid)
+            username = userinfo["username"]
         uid_to_username_cache.add(real_uid, username)
     return username
 
@@ -1924,6 +1966,12 @@ infos = [{
             "name": "Use normalized images",
             "description": "Uses normalized images as well as the ones given by Instagram (useless for newer images)",
             "value": False
+        },
+
+        "use_profilepic_api": {
+            "name": "Use API for DP",
+            "description": "Uses the API for the profile picture (higher quality, but extra call)",
+            "value": True
         }
     },
 
