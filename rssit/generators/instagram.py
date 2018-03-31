@@ -188,6 +188,16 @@ web_api = rssit.rest.API({
             }
         },
 
+        "user": {
+            "base": "webpage",
+            "ratelimit": 5
+        },
+
+        "user_a1": {
+            "base": "a1",
+            "ratelimit": 5
+        },
+
         "node": {
             "base": "webpage",
             "args": {
@@ -531,7 +541,8 @@ def get_user_info_by_username_a1(config, username, *args, **kwargs):
         extra = {
             "max_id": str(kwargs["max_id"])
         }
-    return do_a1_request(config, username, **extra)["graphql"]["user"]
+    return web_api.run(config, "user_a1", username.strip("/"), _overlay={"query": extra})["graphql"]["user"]
+    #return do_a1_request(config, username, **extra)["graphql"]["user"]
 
 
 def get_user_info_by_username_website(config, username):
@@ -561,6 +572,7 @@ def do_website_request(config, url):
     decoded = rssit.util.json_loads(jsondata)
 
     return decoded
+
 
 def get_user_page(config, username):
     url = "https://www.instagram.com/" + username + "/"  # / to avoid redirect
