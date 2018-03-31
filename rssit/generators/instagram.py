@@ -94,8 +94,8 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 #   https://www.instagram.com/graphql/query/?query_id=17884116436028098
 
 
-post_cache = rssit.util.Cache(6*60*60, 50)
-uid_to_username_cache = rssit.util.Cache(12*60*60, 100)
+post_cache = rssit.util.Cache("ig_post", 12*60*60, 50)
+uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 12*60*60, 100)
 
 
 def get_url(config, url):
@@ -266,6 +266,14 @@ graphql_hash_api = rssit.rest.API({
             "query": {
                 "query_hash": "a3b895bdcb9606d5b1ee9926d885b924"
             }
+        },
+
+        # {"fetch_media_item_count":12,"fetch_media_item_cursor":"...","fetch_comment_count":4,"fetch_like":10,"has_stories":false}
+        "home": {
+            "base": "base",
+            "query": {
+                "query_hash": "485c25657308f08317c1e4b967356828"
+            }
         }
     }
 })
@@ -352,7 +360,7 @@ def get_normalized_array(config, norm, orig):
         return orig
 
 
-def get_node_info(config, code):
+def get_node_info_raw(config, code):
     info = post_cache.get(code)
     if info:
         return info
@@ -368,6 +376,13 @@ def get_node_info(config, code):
             #print(e)
             traceback.print_exc()
             return {}
+
+
+def get_node_info(config, code):
+    req = get_node_info_raw(config, code)
+    if "graphql" in req:
+        req = req["graphql"]["shortcode_media"]
+    return req
 
 
 def get_node_media(config, node, images, videos):
@@ -398,7 +413,7 @@ def get_node_media(config, node, images, videos):
         else:
             newnodes = get_node_info(config, node["code"])
             if len(newnodes) > 0:
-                get_node_media(config, newnodes["graphql"]["shortcode_media"], images, videos)
+                get_node_media(config, newnodes, images, videos)
 
 
     if "is_video" in node and (node["is_video"] == "true" or node["is_video"] == True):
@@ -406,7 +421,7 @@ def get_node_media(config, node, images, videos):
             videourl = node["video_url"]
         else:
             #videourl = rssit.util.get_local_url("/f/instagram/v/" + node["code"])
-            return get_node_media(config, get_node_info(config, node["code"])["graphql"]["shortcode_media"], images, videos)
+            return get_node_media(config, get_node_info(config, node["code"]), images, videos)
 
         found = False
         for video in videos:
@@ -771,10 +786,10 @@ def get_entry_from_node(config, node, user):
         newnodes = get_node_info(config, node["code"])
 
         if len(newnodes) > 0:
-            if "edge_sidecar_to_children" not in newnodes["graphql"]["shortcode_media"]:
+            if "edge_sidecar_to_children" not in newnodes:
                 sys.stderr.write("No 'edge_sidecar_to_children' property in " + sidecar_url + "\n")
             else:
-                for newnode in newnodes["graphql"]["shortcode_media"]["edge_sidecar_to_children"]["edges"]:
+                for newnode in newnodes["edge_sidecar_to_children"]["edges"]:
                     get_node_media(config, newnode["node"], images, videos)
 
     return {
@@ -916,6 +931,9 @@ def get_story_entries(config, uid, username):
         if not storiesjson:
             sys.stderr.write("Warning: not logged in, so no stories\n")
             return []
+
+        if "raw" in config and config["raw"]:
+            pprint.pprint(storiesjson)
     except Exception as e:  # soft error
         sys.stderr.write(str(e) + "\n")
         return []
@@ -953,6 +971,26 @@ def get_feed(config, userinfo):
         "author": username,
         "entries": []
     }
+
+
+def get_home_entries(config):
+    count = config["count"]
+    if count < 0:
+        count = 500
+
+    home_api = do_graphql_request(config, "home", {
+        "fetch_media_item_count": count
+    })["data"]["user"]["edge_web_feed_timeline"]
+
+    entries = []
+
+    for edge in home_api["edges"]:
+        if "node" in edge:
+            edge = edge["node"]
+        post_cache.add(edge["shortcode"], edge)
+        entries.append(get_entry_from_node(config, edge, edge["owner"]["username"]))
+
+    return entries
 
 
 def get_profilepic_entry(config, userinfo):
@@ -1095,7 +1133,7 @@ def generate_user(config, *args, **kwargs):
         nodes = paginate(get_nodes)
     else:
         def get_nodes(max_id):
-            if max_id or "media" not in decoded_user:
+            if max_id or "edge_owner_to_timeline_media" not in decoded_user:
                 media = get_user_info_by_username(config, username, max_id=max_id)["edge_owner_to_timeline_media"]
             else:
                 media = decoded_user["edge_owner_to_timeline_media"]
@@ -1123,6 +1161,22 @@ def generate_user(config, *args, **kwargs):
     story_entries = get_story_entries(config, uid, username)
     for entry in story_entries:
         feed["entries"].append(entry)
+
+    return ("social", feed)
+
+
+def generate_home(config):
+    config["is_index"] = True
+
+    feed = {
+        "title": "Home",
+        "description": "Instagram homepage (current feeds)",
+        "url": "https://www.instagram.com/",
+        "author": "instagram",
+        "entries": []
+    }
+
+    feed["entries"] = get_home_entries(config)
 
     return ("social", feed)
 
@@ -1286,9 +1340,7 @@ def generate_news_media(config, medias):
         #    id_to_url(media["id"]),
         #    normalize_image(media["image"]),
         #)
-        content += "<a href='%s'>" % id_to_url(media["id"])
-        content += rssit.converters.social_to_feed.do_image(config, get_normalized_array(config, normalize_image(media["image"]), media["image"]))
-        content += "</a>"
+        content += rssit.converters.social_to_feed.do_image(config, get_normalized_array(config, normalize_image(media["image"]), media["image"]), id_to_url(media["id"]))
 
     return content
 
@@ -1669,7 +1721,7 @@ def generate_raw(config, path):
         post = path[len("p/"):]
         #node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
         node_raw = get_node_info(config, post)
-        node = node_raw["graphql"]["shortcode_media"]
+        node = node_raw
         node = normalize_node(node)
 
         images = []
@@ -1788,6 +1840,10 @@ infos = [{
             "name": "Raw API access",
             "internal": True,
             "process": lambda server, config, path: generate_raw(config, path)
+        },
+        "home": {
+            "name": "Homepage feed",
+            "process": lambda server, config, path: generate_home(config)
         }
     },
 

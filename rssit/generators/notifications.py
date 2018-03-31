@@ -9,12 +9,12 @@ import os
 import signal
 
 
-notifications = rssit.util.Cache(24*60*60, 0)
-notification_entries = rssit.util.Cache(24*60*60, 0)
+notifications = rssit.util.Cache("notifications", 24*60*60, 0)
+notification_entries = rssit.util.Cache("notification_entries", 24*60*60, 0)
 
 
 def process_notification(notification):
-    #print(notification)
+    print(notification)
     notifications.add(notification["notification_id"], notification)
     notification_entries.add(notification["notification_id"], {
         "title": notification["summary"] or "(n/a)",

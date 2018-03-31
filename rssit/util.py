@@ -19,6 +19,16 @@ import json
 import random
 import sortedcontainers
 import collections
+try:
+    import redis
+except ImportError:
+    redis = None
+
+rinstance = None
+try:
+    rinstance = redis.StrictRedis(host='localhost', db=1, charset="utf-8", decode_responses=True)
+except:
+    rinstance = None
 
 try:
     try:
@@ -429,14 +439,18 @@ def strify(x):
 
 
 class Cache():
-    def __init__(self, timeout, rand=0):
+    def __init__(self, name, timeout, rand=0):
         self.db = {}
+        self.name = name
         self.timestamps = sortedcontainers.SortedDict()
         self.timeout = timeout
         self.rand = rand
 
     def now(self):
         return int(datetime.datetime.now().timestamp())
+
+    def get_redis_key(self, key):
+        return "RSSIT:" + str(self.name) + ":" + str(key)
 
     def add(self, key, value):
         if key in self.db:
@@ -453,18 +467,29 @@ class Cache():
             "timestamp": now
         }
 
+        if rinstance:
+            rinstance.setex(self.get_redis_key(key), self.timeout, json_dumps(value))
+
     def get(self, key):
         self.collect()
 
-        if key not in self.db:
+        if self.rand > 0 and random.randint(0, self.rand) == 0:
             return None
 
-        if self.rand > 0 and random.randint(0, self.rand) == 0:
+        if rinstance:
+            val = rinstance.get(self.get_redis_key(key))
+            if not val:
+                return None
+            else:
+                return json_loads(val)
+
+        if key not in self.db:
             return None
 
         return self.db[key]["value"]
 
     def get_all(self):
+        # FIXME: somehow work with redis?
         newdb = {}
 
         for key in self.db:

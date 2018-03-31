@@ -9,7 +9,7 @@ def htmlify(text):
     return rssit.util.link_urls(text).replace("\n", "<br />\n")
 
 
-def do_image(config, image):
+def do_image(config, image, link=None, alt_img="image"):
     if type(image) not in [list, tuple]:
         image = [image]
 
@@ -19,16 +19,28 @@ def do_image(config, image):
 
     content = "<p>"
 
+    linkstart = ""
+    linkend = ""
+    if link is not None:
+        linkstart = "<a href='%s'>" % link
+        linkend = "</a>"
+
     if config["picture_tag"] and False:
+        content += linkstart
         content += "<picture>"
         for theimage in image:
             content += "<source srcset='%s' />" % theimage
-        content += "<img src='%s' alt='(image)' />" % image[0]
+        content += "<img src='%s' alt='(%s)' />" % (image[0], alt_img)
         content += "</picture>"
+        content += linkend
     else:
         alt = ""
         for theimage in image:
-            content += "<p><img src='%s' alt='(image%s)'/></p>" % (theimage, alt)
+            content += "<p>%s<img src='%s' alt='(%s%s)'/>%s</p>" % (
+                linkstart,
+                theimage, alt_img, alt,
+                linkend
+            )
             alt = ", alt"
 
     content += "</p>"
@@ -85,9 +97,7 @@ def process(result, config):
                     if "image" in video and video["image"]:
                         content += "<p><em>Click to watch video%s</em></p>" % alt
 
-                        content += "<a href='%s'>" % rssit.util.get_local_url("/player/" + videourl, norm=False)
-                        content += do_image(config, video["image"])
-                        content += "</a>"
+                        content += do_image(config, video["image"], rssit.util.get_local_url("/player/" + videourl, norm=False), "thumbnail")
                     else:
                         content += "<p><em><a href='%s'>Video%s</a></em></p>" % (videourl, alt)
                     alt = " (alt)"

@@ -3,6 +3,7 @@ import urllib.parse
 import collections
 import threading
 import time
+import sys
 
 
 class Arg(object):
@@ -162,6 +163,8 @@ class API(object):
             if diff < limit:
                 time.sleep(limit - diff)
 
+        if "http_debug" in config and config["http_debug"]:
+            sys.stderr.write(baseurl + "\n")
         try:
             data = rssit.util.download(baseurl, config=config, http_noextra=noextra)
         except Exception as e:
