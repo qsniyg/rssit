@@ -14,7 +14,6 @@ notification_entries = rssit.util.Cache("notification_entries", 24*60*60, 0)
 
 
 def process_notification(notification):
-    print(notification)
     notifications.add(notification["notification_id"], notification)
     notification_entries.add(notification["notification_id"], {
         "title": notification["summary"] or "(n/a)",
@@ -26,7 +25,7 @@ def process_notification(notification):
 
 
 def create_guid(date, notification_id):
-    return str(date.timestamp()) + "_" + str(notification_id)
+    return str(date) + "_" + str(notification_id)
 
 
 # adapted from https://github.com/halhen/statnot/blob/master/statnot
@@ -45,7 +44,8 @@ class NotificationFetcher(dbus.service.Object):
     def Notify(self, app_name, notification_id, app_icon,
                summary, body, actions, hints, expire_timeout):
         self._id += 1
-        date = rssit.util.localize_datetime(datetime.datetime.now())
+        #date = rssit.util.localize_datetime(datetime.datetime.now())
+        date = datetime.datetime.now().timestamp()
         if not notification_id:
             notification_id = self._id
             notification_guid = create_guid(date, notification_id)
@@ -127,6 +127,7 @@ def generate_feed(server, config, path):
 
     entries = notification_entries.get_all()
     for entry_id in entries:
+        entries[entry_id]["date"] = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(entries[entry_id]["date"], None))
         feed["entries"].append(entries[entry_id])
     return ("feed", feed)
 

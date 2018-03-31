@@ -495,6 +495,8 @@ class Cache():
         for key in self.db:
             newdb[key] = self.db[key]["value"]
 
+        self.collect()
+
         return newdb
 
     def collect(self):
