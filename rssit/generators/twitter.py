@@ -217,7 +217,7 @@ def generate_api(user, config):
 
             sys.stderr.write("\r" + str(len(tl)) + " / " + str(user_info.statuses_count))
     else:
-        tl = api.user_timeline(id=user, count=config["count"])
+        tl = api.user_timeline(id=user, count=config["count"], tweet_mode="extended")
 
     if not tl:
         return None
@@ -234,7 +234,7 @@ def generate_api(user, config):
         if is_retweeted and not config["with_retweets"]:
             continue
 
-        origcaption = obj.text.replace("\r", "\n")
+        origcaption = obj.full_text.replace("\r", "\n")
         newcaption = origcaption
 
         if "entities" in obj.__dict__:

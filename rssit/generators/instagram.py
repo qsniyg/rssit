@@ -11,6 +11,7 @@ import urllib.parse
 from dateutil.tz import *
 import collections
 import traceback
+import hashlib
 import rssit.converters.social_to_feed
 
 
@@ -93,10 +94,47 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 # contact_history
 #   https://www.instagram.com/graphql/query/?query_id=17884116436028098
 
+# e = {"id":"...","first":10,"after":"..."}
+# e = /mizuki.sakamaki/
+# e = /p/5ZYSGMCtZW/
+# o()(_sharedData.rhx_gis + ":" + window._sharedData.config.csrf_token + ":" + window.navigator.userAgent + ":" + e)
+# o = md5
+
 
 post_cache = rssit.util.Cache("ig_post", 12*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 12*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
+_sharedData = None
+
+
+def get_sharedData(config):
+    do_website_request(config, "https://www.instagram.com")
+
+
+def get_gis_generic(config, e):
+    if not _sharedData:
+        get_sharedData(config)
+
+    useragent = None
+    for key in config:
+        if key.lower() == "httpheader_user-agent":
+            useragent = config[key]
+    string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + useragent + ":" + e
+    m = hashlib.md5()
+    m.update(string.encode('utf-8'))
+    return m.hexdigest()
+
+
+def set_gis_generic(config, e):
+    config["httpheader_X-Instagram-GIS"] = get_gis_generic(config, e)
+
+
+def set_gis_a1(config, url):
+    set_gis_generic(config, re.sub(r".*\.instagram\.com(/.*?/)\?__a=1.*$", "\\1", url))
+
+
+def set_gis_graphql(config, url):
+    set_gis_generic(config, re.sub(r".*[?&]variables=([^&]*).*", "\\1", url))
 
 
 def get_url(config, url):
@@ -173,6 +211,9 @@ def parse_a1_request(orig_config, config, data):
 
 web_api = rssit.rest.API({
     "type": "json",
+    "headers": {
+        "X-Requested-With": "XMLHttpRequest"
+    },
     "endpoints": {
         "webpage": {
             "url": rssit.rest.Format("http://www.instagram.com/%s/", rssit.rest.Arg("path", 0)),
@@ -182,6 +223,7 @@ web_api = rssit.rest.API({
 
         "a1": {
             "url": rssit.rest.Format("http://www.instagram.com/%s/", rssit.rest.Arg("path", 0)),
+            "pre": set_gis_a1,
             "parse": parse_a1_request,
             "type": "raw",
             "query": {
@@ -191,12 +233,12 @@ web_api = rssit.rest.API({
 
         "user": {
             "base": "webpage",
-            "ratelimit": 5
+            "ratelimit": 4
         },
 
         "user_a1": {
             "base": "a1",
-            "ratelimit": 5
+            "ratelimit": 4
         },
 
         "node": {
@@ -218,6 +260,7 @@ web_api = rssit.rest.API({
 graphql_id_api = rssit.rest.API({
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
+    "pre": set_gis_graphql,
     "endpoints": {
         "base": {
             "query": {
@@ -251,6 +294,7 @@ graphql_id_api = rssit.rest.API({
 graphql_hash_api = rssit.rest.API({
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
+    "pre": set_gis_graphql,
     "endpoints": {
         "base": {
             "query": {
@@ -261,7 +305,8 @@ graphql_hash_api = rssit.rest.API({
         "entries": {
             "base": "base",
             "query": {
-                "query_hash": "472f257a40c653c64c666ce877d59d2b"
+                #"query_hash": "472f257a40c653c64c666ce877d59d2b"
+                "query_hash": "42323d64886122307be10013ad2dcc44"
             }
         },
 
@@ -581,6 +626,9 @@ def do_website_request(config, url):
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
+
+    global _sharedData
+    _sharedData = decoded
 
     return decoded
 
@@ -1075,6 +1123,13 @@ def generate_user(config, *args, **kwargs):
             decoded_user = get_user_info_by_username(config, username)
 
         uid = decoded_user["id"]
+
+        # cache
+        uid_to_username(config, {
+            "uid": uid,
+            "username": username
+        })
+
         mediacount = decoded_user["edge_owner_to_timeline_media"]["count"]
         medianodes = decoded_user["edge_owner_to_timeline_media"]["edges"]
     elif "uid" in kwargs:
@@ -1343,12 +1398,14 @@ def normalize_user(user):
 
 def uid_to_username(config, uid):
     real_uid = uid
+    do_cache = False
 
     if type(uid) == dict:
         uid = normalize_user(rssit.util.simple_copy(uid))
 
         if "uid" in uid:
             real_uid = uid["uid"]
+            do_cache = True
         elif "username" in uid:
             return uid["username"]
         else:
@@ -1358,7 +1415,7 @@ def uid_to_username(config, uid):
         return real_uid
 
     username = uid_to_username_cache.get(real_uid)
-    if not username:
+    if not username or do_cache:
         if type(uid) == dict and "username" in uid:
             username = uid["username"]
         else:

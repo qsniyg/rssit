@@ -127,8 +127,9 @@ def generate_feed(server, config, path):
 
     entries = notification_entries.get_all()
     for entry_id in entries:
-        entries[entry_id]["date"] = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(entries[entry_id]["date"], None))
-        feed["entries"].append(entries[entry_id])
+        ourentry = rssit.util.simple_copy(entries[entry_id])
+        ourentry["date"] = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(ourentry["date"], None))
+        feed["entries"].append(ourentry)
     return ("feed", feed)
 
 

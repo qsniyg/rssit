@@ -4,6 +4,7 @@ import collections
 import threading
 import time
 import sys
+import pprint
 
 
 class Arg(object):
@@ -162,6 +163,10 @@ class API(object):
             diff = now - self.lastran
             if diff < limit:
                 time.sleep(limit - diff)
+
+        prefunc = self.get_setting(endpoint_name, "pre", kwargs)
+        if prefunc:
+            prefunc(config, baseurl)
 
         if "http_debug" in config and config["http_debug"]:
             sys.stderr.write(baseurl + "\n")
