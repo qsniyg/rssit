@@ -119,7 +119,13 @@ def get_gis_generic(config, e):
     for key in config:
         if key.lower() == "httpheader_user-agent":
             useragent = config[key]
-    string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + useragent + ":" + e
+    #print(_sharedData["rhx_gis"])
+    #print(_sharedData["config"]["csrf_token"])
+    #print(useragent)
+    #print(e)
+    #print("---")
+    #string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + useragent + ":" + e
+    string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + e
     m = hashlib.md5()
     m.update(string.encode('utf-8'))
     return m.hexdigest()
@@ -261,6 +267,12 @@ graphql_id_api = rssit.rest.API({
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
     "pre": set_gis_graphql,
+    "headers": {
+        "User-Agent": rssit.util.get_random_user_agent(),
+        "accept": "*/*",
+        # "accept-encoding": "gzip, deflate, br",
+        "accept-language": "en-US,en;q=0.8"
+    },
     "endpoints": {
         "base": {
             "query": {
@@ -295,6 +307,12 @@ graphql_hash_api = rssit.rest.API({
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
     "pre": set_gis_graphql,
+    "headers": {
+        "User-Agent": rssit.util.get_random_user_agent(),
+        "accept": "*/*",
+        # "accept-encoding": "gzip, deflate, br",
+        "accept-language": "en-US,en;q=0.8"
+    },
     "endpoints": {
         "base": {
             "query": {
@@ -416,9 +434,9 @@ def get_normalized_array(config, norm, orig):
         return orig
 
 
-def get_node_info_raw(config, code):
+def get_node_info_raw(config, code, usecache=True):
     info = post_cache.get(code)
-    if info:
+    if info and usecache:
         return info
     else:
         try:
@@ -434,8 +452,8 @@ def get_node_info_raw(config, code):
             return {}
 
 
-def get_node_info(config, code):
-    req = get_node_info_raw(config, code)
+def get_node_info(config, code, usecache=True):
+    req = get_node_info_raw(config, code, usecache)
     if "graphql" in req:
         req = req["graphql"]["shortcode_media"]
     return req
@@ -1831,7 +1849,11 @@ def generate_raw(config, path):
     if path.startswith("p/"):
         post = path[len("p/"):]
         #node = get_node_info_webpage(config, post)["graphql"]["shortcode_media"]
-        node_raw = get_node_info(config, post)
+        node_raw = get_node_info(config, post, usecache=False)
+        if not node_raw:
+            config["http_error"] = 404
+            return None
+
         node = node_raw
         node = normalize_node(node)
 
