@@ -60,7 +60,19 @@ user_agents = [
 ]
 
 
-def get_random_user_agent():
+def get_httpheader(config, header):
+    goodkey = "httpheader_" + header.lower()
+    for key in config:
+        if key.lower() == goodkey:
+            return config[key]
+    return None
+
+
+def get_random_user_agent(config=None):
+    if config is not None:
+        useragent = get_httpheader(config, "user-agent")
+        if useragent:
+            return useragent
     return random.choice(user_agents)
 
 

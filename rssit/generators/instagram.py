@@ -125,7 +125,8 @@ def get_gis_generic(config, e):
     #print(e)
     #print("---")
     #string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + useragent + ":" + e
-    string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + e
+    #string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + e
+    string = _sharedData["rhx_gis"] + ":" + e
     m = hashlib.md5()
     m.update(string.encode('utf-8'))
     return m.hexdigest()
@@ -218,6 +219,7 @@ def parse_a1_request(orig_config, config, data):
 web_api = rssit.rest.API({
     "type": "json",
     "headers": {
+        "User-Agent": rssit.util.get_random_user_agent(),
         "X-Requested-With": "XMLHttpRequest"
     },
     "endpoints": {
@@ -311,7 +313,8 @@ graphql_hash_api = rssit.rest.API({
         "User-Agent": rssit.util.get_random_user_agent(),
         "accept": "*/*",
         # "accept-encoding": "gzip, deflate, br",
-        "accept-language": "en-US,en;q=0.8"
+        "accept-language": "en-US,en;q=0.8",
+        "referer": "https://www.instagram.com/"
     },
     "endpoints": {
         "base": {
@@ -978,16 +981,20 @@ def parse_story_entries(config, storiesjson, do_stories=True):
     for item in storiesjson["post_live_item"]["broadcasts"]:
         date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
 
+        post_video = {
+            "video": rssit.util.get_local_url("/f/instagram/livereplay/" + item["media_id"])
+        }
+
+        if "cover_frame_url" in item:
+            post_video["image"] = item["cover_frame_url"]
+
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE REPLAY]",
             "author": uid_to_username(config, item["broadcast_owner"]),  #["username"],
             "date": date,
             "images": [],
-            "videos": [{
-                "image": item["cover_frame_url"],
-                "video": rssit.util.get_local_url("/f/instagram/livereplay/" + item["media_id"])
-            }]
+            "videos": [post_video]
         })
 
     for item in storiesjson["broadcasts"]:
@@ -1065,11 +1072,16 @@ def get_feed(config, userinfo):
 def get_home_entries(config):
     count = config["count"]
     if count < 0:
-        count = 500
+        count = config["max_graphql_count"]
 
-    home_api = do_graphql_request(config, "home", {
+    variables = {
         "fetch_media_item_count": count
-    })["data"]["user"]["edge_web_feed_timeline"]
+    }
+
+    if count <= 12:
+        variables = {}
+
+    home_api = do_graphql_request(config, "home", variables)["data"]["user"]["edge_web_feed_timeline"]
 
     entries = []
 
@@ -1130,8 +1142,6 @@ def get_profilepic_entry(config, userinfo):
 
 
 def generate_user(config, *args, **kwargs):
-    config["httpheader_User-Agent"] = rssit.util.get_random_user_agent()
-
     if "username" in kwargs:
         username = kwargs["username"].lower()
 
@@ -1218,8 +1228,8 @@ def generate_user(config, *args, **kwargs):
         nodes = get_user_media_by_username(config, username)
     elif config["use_graphql_entries"] and count > len(medianodes):
         # there doesn't seem to be a limit, but let's impose one just in case
-        if count > 500:
-            count = 500
+        if count > config["max_graphql_count"]:
+            count = config["max_graphql_count"]
         elif count == 1:
             count = 20
 
@@ -1873,7 +1883,7 @@ def generate_raw(config, path):
             try:
                 newcomments_api = do_graphql_request(config, "comments", {
                     "shortcode": post,
-                    "first": 500,
+                    "first": config["max_graphql_count"],
                     "after": maxid
                 })["data"]["shortcode_media"]["edge_media_to_comment"]
             except Exception:
@@ -1899,6 +1909,14 @@ def generate_raw(config, path):
 
         return ("raw", node)
     return None
+
+
+def init(config):
+    useragent_header = rssit.util.get_httpheader(config, "user-agent")
+    if useragent_header:
+        web_api.apidef["headers"]["User-Agent"] = useragent_header
+        graphql_id_api.apidef["headers"]["User-Agent"] = useragent_header
+        graphql_hash_api.apidef["headers"]["User-Agent"] = useragent_header
 
 
 def process(server, config, path):
@@ -1932,6 +1950,8 @@ def process(server, config, path):
 infos = [{
     "name": "instagram",
     "display_name": "Instagram",
+
+    "init": init,
 
     "endpoints": {
         "u": {
@@ -2051,6 +2071,12 @@ infos = [{
             "name": "Use API for DP",
             "description": "Uses the API for the profile picture (higher quality, but extra call)",
             "value": True
+        },
+
+        "max_graphql_count": {
+            "name": "Largest GraphQL Query",
+            "description": "Maximum number of items a single GraphQL call will return",
+            "value": 50
         }
     },
 
