@@ -314,7 +314,8 @@ graphql_hash_api = rssit.rest.API({
         "accept": "*/*",
         # "accept-encoding": "gzip, deflate, br",
         "accept-language": "en-US,en;q=0.8",
-        "referer": "https://www.instagram.com/"
+        "referer": "https://www.instagram.com/",
+        "origin": "https://www.instagram.com"
     },
     "endpoints": {
         "base": {
@@ -717,6 +718,9 @@ def force_array(obj):
 
 
 def get_largest_url(items):
+    if type(items) == str:
+        return items
+
     max_ = 0
     url = None
     for item in force_array(items):
@@ -1070,9 +1074,12 @@ def get_feed(config, userinfo):
 
 
 def get_home_entries(config):
+    origcount = config["count"]
     count = config["count"]
-    if count < 0:
+    if count < 0 or count > config["max_graphql_count"]:
         count = config["max_graphql_count"]
+        if count < 0:
+            origcount = count
 
     variables = {
         "fetch_media_item_count": count
@@ -1081,15 +1088,26 @@ def get_home_entries(config):
     if count <= 12:
         variables = {}
 
-    home_api = do_graphql_request(config, "home", variables)["data"]["user"]["edge_web_feed_timeline"]
+    def get_nodes(cursor):
+        if cursor:
+            variables["fetch_media_item_cursor"] = cursor
+        home_api = do_graphql_request(config, "home", variables)["data"]["user"]["edge_web_feed_timeline"]
 
+        nodes = []
+
+        for edge in home_api["edges"]:
+            if "node" in edge:
+                edge = edge["node"]
+            post_cache.add(edge["shortcode"], edge)
+            #nodes.append(get_entry_from_node(config, edge, edge["owner"]["username"]))
+            nodes.append(edge)
+
+        return (nodes, home_api["page_info"]["end_cursor"], home_api["page_info"]["has_next_page"])
+
+    nodes = instagram_paginate(config, origcount, get_nodes)
     entries = []
-
-    for edge in home_api["edges"]:
-        if "node" in edge:
-            edge = edge["node"]
-        post_cache.add(edge["shortcode"], edge)
-        entries.append(get_entry_from_node(config, edge, edge["owner"]["username"]))
+    for node in nodes:
+        entries.append(get_entry_from_node(config, node, node["owner"]["username"]))
 
     return entries
 
@@ -1139,6 +1157,52 @@ def get_profilepic_entry(config, userinfo):
             if api_basename != orig_basename:
                 new_userinfo, cached = get_user_info(config, userinfo["id"], True)
         return get_profilepic_entry_raw(config, new_userinfo)
+
+
+def instagram_paginate(config, mediacount, f):
+    total = config["count"]
+    if config["count"] == -1:
+        total = mediacount
+
+    maxid = None
+    nodes = []
+    nodecount = 0
+    console = False
+    has_next_page = True
+
+    while (nodecount < total) and has_next_page:
+        output = f(maxid)
+        if len(output[0]) == 0:
+            sys.stderr.write("\rLoading media (%i/%i, skipping)... " % (len(nodes), total))
+            sys.stderr.flush()
+            console = True
+            break
+
+        nodecount += len(output[0])
+
+        for item in output[0]:
+            duplicate = False
+            newitem = normalize_node(item)
+            for oitem in nodes:
+                if newitem["shortcode"] == normalize_node(oitem)["shortcode"]:
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            nodes.append(item)
+
+        if nodecount < total:
+            sys.stderr.write("\rLoading media (%i/%i)... " % (nodecount, total))
+            sys.stderr.flush()
+            console = True
+        maxid = output[1]
+        has_next_page = output[2]
+
+    if console:
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+
+    return nodes
 
 
 def generate_user(config, *args, **kwargs):
@@ -2076,7 +2140,7 @@ infos = [{
         "max_graphql_count": {
             "name": "Largest GraphQL Query",
             "description": "Maximum number of items a single GraphQL call will return",
-            "value": 50
+            "value": 24
         }
     },
 

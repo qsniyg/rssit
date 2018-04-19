@@ -231,7 +231,7 @@ def paginate(config, mediacount, f):
 
         while (len(nodes) < total) and (has_next_page is not False):
             output = f(maxid)
-            if not output or not output[0]:
+            if not output or not output[0] or len(output[0]) == 0:
                 break
 
             nodes.extend(output[0])
