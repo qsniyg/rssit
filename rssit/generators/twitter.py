@@ -208,7 +208,7 @@ def generate_api(user, config):
         maxid = None
 
         while True:
-            temp_tl = api.user_timeline(id=user, max_id=maxid, count=200)
+            temp_tl = api.user_timeline(id=user, max_id=maxid, count=200, tweet_mode="extended")
             if not temp_tl:
                 break
 
