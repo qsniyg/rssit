@@ -1004,18 +1004,22 @@ def parse_story_entries(config, storiesjson, do_stories=True):
     for item in storiesjson["broadcasts"]:
         date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
 
+        video_item = {
+            "video": item.get("dash_abr_playback_url") or item["dash_playback_url"],
+            "live": True,
+            "type": "instagram_live"
+        }
+
+        if "cover_frame_url" in item:
+            video_item["image"] = item["cover_frame_url"]
+
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE]",
             "author": uid_to_username(config, item["broadcast_owner"]),  #["username"],
             "date": date,
             "images": [],
-            "videos": [{
-                "image": item["cover_frame_url"],
-                "video": item.get("dash_abr_playback_url") or item["dash_playback_url"],
-                "live": True,
-                "type": "instagram_live"
-            }]
+            "videos": [video_item]
         })
 
     return entries
