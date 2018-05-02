@@ -641,13 +641,15 @@ def get_user_media_by_username(config, username):
 def do_website_request(config, url):
     data = rssit.util.download(url, config=config)
 
-    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    #jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?);</script>", str(data))
+    jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded", str(data))
     if jsondatare is None:
         sys.stderr.write("No sharedData!\n")
         return None
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
+    #print(jsondata)
 
     global _sharedData
     _sharedData = decoded
@@ -670,7 +672,8 @@ def get_user_page(config, username):
 
     decoded = do_website_request(config, url)
 
-    return decoded["entry_data"]["ProfilePage"][0]["graphql"]["user"]
+    #return decoded["entry_data"]["ProfilePage"][0]["graphql"]["user"]
+    return decoded["entry_data"]["ProfilePage"]["graphql"]["user"]
 
 
 def get_nodes_from_uid_graphql(config, uid, *args, **kwargs):
