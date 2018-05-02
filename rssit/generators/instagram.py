@@ -106,6 +106,9 @@ uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 12*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 _sharedData = None
 
+sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
+sharedDataregex2 = r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded"
+
 
 def get_sharedData(config):
     do_website_request(config, "https://www.instagram.com")
@@ -194,11 +197,12 @@ def image_basename(url):
 
 
 def parse_webpage_request(orig_config, config, data):
-    #jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
-    jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded", str(data))
+    jsondatare = re.search(sharedDataregex1, str(data))
     if jsondatare is None:
-        sys.stderr.write("No sharedData!\n")
-        return None
+        jsondatare = re.search(sharedDataregex2, str(data))
+        if jsondatare is None:
+            sys.stderr.write("No sharedData!\n")
+            return None
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
@@ -429,8 +433,10 @@ def get_node_info_a1(config, code):
 
 def get_node_info_webpage(config, code):
     req = web_api.run(config, "node", code)
-    #return req["entry_data"]["PostPage"][0]
-    return req["entry_data"]["PostPage"]
+    try:
+        return req["entry_data"]["PostPage"][0]
+    except Exception:
+        return req["entry_data"]["PostPage"]
 
 
 def get_normalized_array(config, norm, orig):
@@ -643,6 +649,7 @@ def get_user_media_by_username(config, username):
 def do_website_request(config, url):
     data = rssit.util.download(url, config=config)
 
+    return parse_webpage_request(config, config, data)
     #jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?);</script>", str(data))
     jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded", str(data))
     if jsondatare is None:
@@ -674,8 +681,10 @@ def get_user_page(config, username):
 
     decoded = do_website_request(config, url)
 
-    #return decoded["entry_data"]["ProfilePage"][0]["graphql"]["user"]
-    return decoded["entry_data"]["ProfilePage"]["graphql"]["user"]
+    try:
+        return decoded["entry_data"]["ProfilePage"][0]["graphql"]["user"]
+    except Exception:
+        return decoded["entry_data"]["ProfilePage"]["graphql"]["user"]
 
 
 def get_nodes_from_uid_graphql(config, uid, *args, **kwargs):
