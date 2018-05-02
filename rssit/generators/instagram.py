@@ -194,7 +194,8 @@ def image_basename(url):
 
 
 def parse_webpage_request(orig_config, config, data):
-    jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    #jsondatare = re.search(r"window._sharedData = *(?P<json>.*?);?</script>", str(data))
+    jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded", str(data))
     if jsondatare is None:
         sys.stderr.write("No sharedData!\n")
         return None
@@ -428,7 +429,8 @@ def get_node_info_a1(config, code):
 
 def get_node_info_webpage(config, code):
     req = web_api.run(config, "node", code)
-    return req["entry_data"]["PostPage"][0]
+    #return req["entry_data"]["PostPage"][0]
+    return req["entry_data"]["PostPage"]
 
 
 def get_normalized_array(config, norm, orig):
