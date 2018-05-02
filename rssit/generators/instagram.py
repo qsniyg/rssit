@@ -649,7 +649,13 @@ def get_user_media_by_username(config, username):
 def do_website_request(config, url):
     data = rssit.util.download(url, config=config)
 
-    return parse_webpage_request(config, config, data)
+    decoded = parse_webpage_request(config, config, data)
+
+    global _sharedData
+    _sharedData = decoded
+
+    return decoded
+
     #jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?);</script>", str(data))
     jsondatare = re.search(r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded", str(data))
     if jsondatare is None:
@@ -660,10 +666,10 @@ def do_website_request(config, url):
     decoded = rssit.util.json_loads(jsondata)
     #print(jsondata)
 
-    global _sharedData
-    _sharedData = decoded
-
-    return decoded
+    #global _sharedData
+    #_sharedData = decoded
+    #
+    #return decoded
 
 
 def get_user_page(config, username):
