@@ -1256,6 +1256,12 @@ def generate_user(config, *args, **kwargs):
         mediacount = decoded_user["media_count"]
         medianodes = []
 
+    if config["fail_if_not_following"]:
+        if not decoded_user["followed_by_viewer"]:
+            if "requested_by_viewer" not in decoded_user or not decoded_user["requested_by_viewer"]:
+                config["http_error"] = 490
+                return None
+
     feed = get_feed(config, decoded_user)
 
     ppentry = get_profilepic_entry(config, decoded_user)
@@ -2165,6 +2171,12 @@ infos = [{
             "name": "Largest GraphQL Query",
             "description": "Maximum number of items a single GraphQL call will return",
             "value": 24
+        },
+
+        "fail_if_not_following": {
+            "name": "Fail if not following",
+            "description": "Return 490 if not following the account",
+            "value": False
         }
     },
 
