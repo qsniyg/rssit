@@ -3,10 +3,11 @@
 
 import rssit.util
 import sys
+import html
 
 
 def htmlify(text):
-    return rssit.util.link_urls(text).replace("\n", "<br />\n")
+    return rssit.util.link_urls(html.escape(text)).replace("\n", "<br />\n")
 
 
 def do_image(config, image, link=None, alt_img="image"):

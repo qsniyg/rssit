@@ -121,6 +121,7 @@ def download(url, *args, **kwargs):
         if key.startswith("httpheader_"):
             httpheaders[key] = kwargs[key]
 
+    #pprint.pprint(httpheaders)
     for key in httpheaders:
         if key.startswith("httpheader_"):
             headername = list(key[len("httpheader_"):])
@@ -140,6 +141,10 @@ def download(url, *args, **kwargs):
     if "proxy" in config and config["proxy"]:
         proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
         opener = urllib.request.build_opener(proxy_support)
+        openf = opener.open
+    elif "http_urllib_debug" in config and config["http_urllib_debug"]:
+        opener = urllib.request.build_opener(urllib.request.HTTPHandler(debuglevel=1),
+                                             urllib.request.HTTPSHandler(debuglevel=1))
         openf = opener.open
     else:
         openf = urllib.request.urlopen
@@ -186,6 +191,8 @@ def download(url, *args, **kwargs):
                 config["http_error"] = 500
             else:
                 config["http_error"] = e.code
+
+            config["http_resp"] = ourresponse
 
             if e.code == 404 or e.code == 403 or e.code == 410:  # 410: instagram
                 raise e
@@ -259,6 +266,11 @@ def good_timezone_converter(input_dt, current_tz='UTC', target_tz='US/Eastern'):
 
 def need_timezone(dt):
     return dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None
+
+def replace_timezone(dt, target_tz):
+    if not need_timezone(dt):
+        return dt
+    return pytz.timezone(target_tz).localize(dt)
 
 def localize_datetime(dt):
     if need_timezone(dt):
@@ -354,6 +366,12 @@ def get_local_url(path, *args, **kwargs):
 
 def ascii_only(string):
     return ''.join([i if ord(i) < 128 else ' ' for i in string])
+
+
+def requote_uri(uri):
+    parsed = urllib.parse.urlparse(uri)
+    newpath = urllib.parse.quote(urllib.parse.unquote(parsed.path))
+    return urllib.parse.urlunparse((parsed[0], parsed[1], newpath, parsed[3], parsed[4], parsed[5]))
 
 
 def parse_date(date):
@@ -480,7 +498,10 @@ class Cache():
         }
 
         if rinstance:
-            rinstance.setex(self.get_redis_key(key), self.timeout, json_dumps(value))
+            if self.timeout != 0:
+                rinstance.setex(self.get_redis_key(key), self.timeout, json_dumps(value))
+            else:
+                rinstance.set(self.get_redis_key(key), json_dumps(value))
 
     def get(self, key):
         self.collect()
@@ -512,6 +533,9 @@ class Cache():
         return newdb
 
     def collect(self):
+        if self.timeout == 0:
+            return
+
         now = self.now()
         time_id = self.timestamps.bisect_left(now - self.timeout)
 

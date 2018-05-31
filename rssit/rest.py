@@ -141,6 +141,15 @@ class API(object):
         orig_config = config
         config = rssit.util.simple_copy(config)
 
+        #method = self.get_value(self.get_setting(endpoint_name, "method", kwargs), args, kwargs)
+        #if method is None:
+        #    method = "GET"
+        #config["http_method"] = method
+
+        form = self.get_value(self.get_setting(endpoint_name, "form", kwargs), args, kwargs)
+        if form is not None:
+            form = urllib.parse.urlencode(form).encode("utf-8")
+
         headers = self.get_setting(endpoint_name, "headers", kwargs)
         if headers:
             for header in headers:
@@ -170,13 +179,24 @@ class API(object):
 
         if "http_debug" in config and config["http_debug"]:
             sys.stderr.write(baseurl + "\n")
+
+        data = None
+
         try:
-            data = rssit.util.download(baseurl, config=config, http_noextra=noextra)
+            download_kw = {
+                "config": config,
+                "http_noextra": noextra
+            }
+            if form is not None:
+                download_kw["post"] = form
+            data = rssit.util.download(baseurl, **download_kw)
         except Exception as e:
             if do_ratelimit:
                 self.lock.release()
             if "http_error" in config:
                 orig_config["http_error"] = config["http_error"]
+            if "http_resp" in config:
+                orig_config["http_resp"] = config["http_resp"]
             raise e
 
         if do_ratelimit:

@@ -446,8 +446,15 @@ def get_normalized_array(config, norm, orig):
         return orig
 
 
+def check_cache(config, usecache):
+    if config["force_nocache"]:
+        return False
+    return usecache
+
+
 def get_node_info_raw(config, code, usecache=True):
     info = post_cache.get(code)
+    usecache = check_cache(config, usecache)
     if info and usecache:
         return info
     else:
@@ -2176,6 +2183,12 @@ infos = [{
         "fail_if_not_following": {
             "name": "Fail if not following",
             "description": "Return 490 if not following the account",
+            "value": False
+        },
+
+        "force_nocache": {
+            "name": "Force not using cache",
+            "description": "Forces redoing every request without using cache",
             "value": False
         }
     },
