@@ -10,6 +10,7 @@ import rssit.util
 import re
 import pprint
 import unicodedata
+import urllib.parse
 
 
 def get_string(element):
@@ -322,8 +323,29 @@ def generate_social_weibo(config, user):
                 else:
                     picsel = []
                 images = []
-                for pic in picsel:
-                    images.append(get_max_image(urllib.parse.urljoin(url, pic.select("img")[0]["src"])))
+                videos = []
+
+                if len(picsel) > 0:
+                    for pic in picsel:
+                        images.append(get_max_image(urllib.parse.urljoin(url, pic.select("img")[0]["src"])))
+                elif piclistel:
+                    videl = piclistel[0].select("ul.WB_media_a > li")
+                    if len(videl) > 0:
+                        try:
+                            videl = videl[0]
+
+                            actiondata = videl.get("action-data")
+                            actiondata = "&" + actiondata + "&"
+                            videosrc = "https:" + urllib.parse.unquote(re.sub(r".*&video_src=([^&]*)&.*", "\\1", actiondata))
+                            videosrc = re.sub(r"^https:https?://", "https://", videosrc)
+                            coverimg = "https:" + urllib.parse.unquote(re.sub(r".*&cover_img=([^&]*)&.*", "\\1", actiondata))
+                            coverimg = get_max_image(re.sub(r"^https:https?://", "https://", coverimg))
+                            videos.append({
+                                "image": coverimg,
+                                "video": videosrc
+                            })
+                        except Exception as e:
+                            print(e)
 
                 posturl = re.sub(r"\?[^/]*$", "", urllib.parse.urljoin(url, dateel["href"]))
 
@@ -343,7 +365,7 @@ def generate_social_weibo(config, user):
                     "date": date,
                     "author": author,
                     "images": images,
-                    "videos": []
+                    "videos": videos
                 })
 
     return ("social", feed)

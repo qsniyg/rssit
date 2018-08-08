@@ -1636,11 +1636,12 @@ def do_url(config, url, oldarticle=None):
         sys.stderr.write(str(e) + "\n")
         pass
     #data = data.decode("utf-8", "ignore")
-    if type(data) != str:
+    if type(data) != str and False:
         data = data.decode(encoding, "ignore")
+        soup = bs4.BeautifulSoup(data, 'lxml')
     #data = download("file:///tmp/naver.html")
 
-    soup = bs4.BeautifulSoup(data, 'lxml')
+    #soup = bs4.BeautifulSoup(data, 'lxml')
 
     myjson = {
         "title": None,

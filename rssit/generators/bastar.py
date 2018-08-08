@@ -87,6 +87,17 @@ api = rssit.rest.API({
                 "pageNumber": rssit.rest.Arg("pageNumber", 1),
                 "pageSize": rssit.rest.Arg("pageSize", 2),
             }
+        },
+        "bastars": {
+            "url": "https://api.bastabastar.com/bastars",
+            "headers": {
+                "x-innertainment-auth-token": rssit.rest.Arg("auth-token", 10)
+            },
+            "query": {
+                "pageNumber": rssit.rest.Arg("pageNumber", 1),
+                "pageSize": rssit.rest.Arg("pageSize", 2),
+                "orderBy": rssit.rest.Arg("orderBy", 0)
+            }
         }
     }
 })
@@ -101,6 +112,7 @@ def login(config):
         login_cache.add("auth_resp", response)
         login_cache.add("auth_token", response["token"])
         login_cache.add("push_token", response["pushToken"])
+        return response
     except Exception as e:
         raise e
 
@@ -125,6 +137,10 @@ def run_api(config, *args, **kwargs):
     return api.run(config, *args, **newkwargs)
 
 
+def generate_login(server, config, path):
+    return ("raw", login(config))
+
+
 def generate_search(server, config, path):
     pageno = 0
     pagesize = 20
@@ -138,15 +154,53 @@ def generate_search(server, config, path):
 
     return ("raw", response)
 
+
+def generate_bastars(server, config, path):
+    pageno = 0
+    pagesize = 20
+    orderby = "realtime"
+    nofollow = False
+    if "pageNumber" in config and config["pageNumber"]:
+        pageno = config["pageNumber"]
+    if "pageSize" in config and config["pageSize"]:
+        pagesize = config["pageSize"]
+    if "orderBy" in config and config["orderBy"]:
+        orderby = config["orderBy"]
+    if "nofollow" in config and config["nofollow"]:
+        nofollow = True
+
+    response = run_api(config, "bastars", pageNumber=pageno, pageSize=pagesize, orderBy=orderby)
+    #pprint.pprint(response)
+
+    newresponse = []
+    for item in response:
+        if nofollow and item["followed"]:
+            continue
+        newresponse.append(item)
+
+    pprint.pprint(newresponse)
+
+    return ("raw", newresponse)
+
+
 def generate_user(server, config, path):
-    response = run_api(config, "user", path)
+    try:
+        response = run_api(config, "user", path)
+    except Exception as e:
+        # try logging in again
+        if config["http_error"] == 403:
+            login(config)
+            response = run_api(config, "user", path)
 
     if "raw" in config and config["raw"]:
         return ("raw", response)
 
+    name = response["name"]
+    author = str(response["id"]) + " " + name
+
     feed = {
-        "title": response["name"],
-        "author": response["name"],
+        "title": name,
+        "author": author,
         "description": response["introductionWriting"],
         "url": "https://uid.bastabastar.com/" + str(response["id"]),
         "config": {
@@ -155,13 +209,13 @@ def generate_user(server, config, path):
         "entries": []
     }
 
-    if "signImageUrl" in response:
+    if "signImageUrl" in response and response["signImageUrl"] is not None:
         guid = re.sub(r".*_([-0-9a-f]+)\.[^/.]*$", "\\1", os.path.basename(response["signImageUrl"]))
         feed["entries"].append({
             "caption": "[SIGNATURE] " + guid,
             "guid": "https://guid.bastabastar.com/sign/" + os.path.basename(response["signImageUrl"]),
             "url": response["signImageUrl"],
-            "author": response["name"],
+            "author": author,
             "date": rssit.util.parse_date(-1),
             "images": [response["signImageUrl"]],
             "videos": []
@@ -175,7 +229,7 @@ def generate_user(server, config, path):
                 "caption": "[PICTURE] " + str(picture["id"]),
                 "guid": "https://guid.bastabastar.com/picture/" + str(picture["id"]),
                 "url": url,
-                "author": response["name"],
+                "author": author,
                 "date": date,
                 "images": [url],
                 "videos": []
@@ -188,7 +242,7 @@ def generate_user(server, config, path):
                 "caption": "[VIDEO] " + video["name"] + "\n\n" + video["description"],
                 "guid": "https://guid.bastabastar.com/video/" + str(video["id"]),
                 "url": video["videoUrl"],
-                "author": response["name"],
+                "author": author,
                 "date": date,
                 "images": [],
                 "videos": [{
@@ -200,6 +254,18 @@ def generate_user(server, config, path):
                 updated_date = rssit.util.replace_timezone(rssit.util.parse(video["updatedAt"]), "Asia/Seoul")
                 entry["updated_date"] = updated_date
             feed["entries"].append(entry)
+
+    if "profileImgUrl" in response:
+        guid = re.sub(r"(.+)\.[^/.]*$", "\\1", os.path.basename(response["profileImgUrl"]))
+        feed["entries"].append({
+            "caption": "[DP] " + guid,
+            "guid": "https://guid.bastabastar.com/sign/" + os.path.basename(response["profileImgUrl"]),
+            "url": response["profileImgUrl"],
+            "author": author,
+            "date": rssit.util.parse_date(-1),
+            "images": [response["profileImgUrl"]],
+            "videos": []
+        })
 
     return ("social", feed)
 
@@ -216,6 +282,14 @@ infos = [{
         "search": {
             "name": "Search",
             "process": generate_search
+        },
+        "bastars": {
+            "name": "Bastars",
+            "process": generate_bastars
+        },
+        "login": {
+            "name": "Login",
+            "process": generate_login
         }
     },
 

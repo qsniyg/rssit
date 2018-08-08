@@ -148,7 +148,12 @@ class API(object):
 
         form = self.get_value(self.get_setting(endpoint_name, "form", kwargs), args, kwargs)
         if form is not None:
-            form = urllib.parse.urlencode(form).encode("utf-8")
+            form_encoding = self.get_value(self.get_setting(endpoint_name, "form_encoding", kwargs), args, kwargs)
+            if form_encoding == "json":
+                form = rssit.util.json_dumps(form).encode("utf-8")
+                config["httpheader_Content-Type"] = "application/json"
+            else:
+                form = urllib.parse.urlencode(form).encode("utf-8")
 
         headers = self.get_setting(endpoint_name, "headers", kwargs)
         if headers:
@@ -189,6 +194,9 @@ class API(object):
             }
             if form is not None:
                 download_kw["post"] = form
+
+            #if "http_debug" in config and config["http_debug"]:
+            #    sys.stderr.write(pprint.pformat(download_kw) + "\n")
             data = rssit.util.download(baseurl, **download_kw)
         except Exception as e:
             if do_ratelimit:

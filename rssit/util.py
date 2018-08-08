@@ -19,6 +19,8 @@ import json
 import random
 import sortedcontainers
 import collections
+import gzip
+import io
 try:
     import redis
 except ImportError:
@@ -111,6 +113,8 @@ def download(url, *args, **kwargs):
         request.add_header('Pragma', 'no-cache')
         request.add_header('Cache-Control', 'max-age=0')
         request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
+        #request.add_header('Accept-Encoding', 'gzip, deflate')
+        #request.add_header('Accept-Language', 'ko,en;q=0.9,en-US;q=0.8')
 
     httpheaders = {}
     for key in config:
@@ -153,6 +157,7 @@ def download(url, *args, **kwargs):
     times = 0
     ourresponse = b''
     content_length = -1
+    content_encoding = None
     while not finished:
         times = times + 1
         if times > 3:
@@ -166,6 +171,8 @@ def download(url, *args, **kwargs):
                 for header in response.headers._headers:
                     if header[0].lower() == "content-length":
                         content_length = int(header[1])
+                    elif header[0].lower() == "content-encoding":
+                        content_encoding = header[1]
 
                 charset = response.headers.get_content_charset()
 
@@ -176,6 +183,11 @@ def download(url, *args, **kwargs):
                     ourresponse += e.partial
 
                 config["http_error"] = 200
+
+                if content_encoding == "gzip":
+                    buf = io.BytesIO(ourresponse)
+                    f = gzip.GzipFile(fileobj=buf)
+                    ourresponse = f.read()
 
                 if charset:
                     try:

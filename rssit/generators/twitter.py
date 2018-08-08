@@ -51,6 +51,7 @@ def get_url(config, url):
 
 def generate_html(user, config):
     url = "https://twitter.com/" + user
+    user = user.lower()
 
     if config["with_replies"]:
         url += "/with_replies"
@@ -92,7 +93,7 @@ def generate_html(user, config):
         timestamp = int(tweet.find_all(attrs={"data-time": True})[0]["data-time"])
         date = rssit.util.localize_datetime(datetime.datetime.fromtimestamp(timestamp, None))
 
-        username = tweet["data-screen-name"]
+        username = tweet["data-screen-name"].lower()
 
         link = urllib.parse.urljoin(url, tweet["data-permalink-path"])
 
@@ -183,6 +184,8 @@ def generate_api(user, config):
 
     user_info = user_infos[user]
 
+    username = user_info.screen_name.lower()
+
     title = "@" + user_info.screen_name
 
     if not config["author_username"] and "name" in user_info.__dict__ and len(user_info.name) > 0:
@@ -196,8 +199,8 @@ def generate_api(user, config):
     feed = {
         "title": title,
         "description": description,
-        "author": user_info.screen_name,
-        "url": "https://twitter.com/" + user_info.screen_name,
+        "author": username,
+        "url": "https://twitter.com/" + username,
         "social": True,
         "entries": []
     }
@@ -252,7 +255,7 @@ def generate_api(user, config):
             "caption": caption,
             "date": date,
             "updated_date": date,
-            "author": obj.author.screen_name,
+            "author": obj.author.screen_name.lower(),
             "images": [],
             "videos": []
         }

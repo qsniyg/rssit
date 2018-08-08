@@ -19,6 +19,13 @@ def process(config, data):
     return rssit.util.json_dumps(newdata)
 
 
+def process_raw(config, data):
+    if type(data) != str:
+        return rssit.util.json_dumps(data)
+    else:
+        return data
+
+
 infos = [
     {
         "name": "social",
@@ -32,6 +39,6 @@ infos = [
 
     {
         "name": "raw",
-        "process": process
+        "process": process_raw
     }
 ]
