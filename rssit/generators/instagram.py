@@ -101,8 +101,8 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 # o = md5
 
 
-post_cache = rssit.util.Cache("ig_post", 12*60*60, 50)
-uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 12*60*60, 100)
+post_cache = rssit.util.Cache("ig_post", 24*60*60, 50)
+uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 24*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 _sharedData = None
 

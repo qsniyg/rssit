@@ -27,8 +27,9 @@ try:
     import rssit.generators.notifications
     have_notifications = True
 except ImportError as e:
-    print(e)
-    print("Warning: one of dbus-python or gobject is missing, so no notification support")
+    import sys
+    sys.stderr.write(str(e) + "\n")
+    sys.stderr.write("Warning: one of dbus-python or gobject is missing, so no notification support")
     pass
 
 
