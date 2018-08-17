@@ -222,6 +222,7 @@ def parse_a1_request(orig_config, config, data):
 
 
 web_api = rssit.rest.API({
+    "name": "instagram_web",
     "type": "json",
     "headers": {
         "User-Agent": rssit.util.get_random_user_agent(),
@@ -271,6 +272,7 @@ web_api = rssit.rest.API({
 })
 
 graphql_id_api = rssit.rest.API({
+    "name": "instagram_graphql_id",
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
     "pre": set_gis_graphql,
@@ -311,6 +313,7 @@ graphql_id_api = rssit.rest.API({
 })
 
 graphql_hash_api = rssit.rest.API({
+    "name": "instagram_graphql_hash",
     "type": "json",
     "url": "https://www.instagram.com/graphql/query/",
     "pre": set_gis_graphql,
@@ -365,6 +368,7 @@ graphql_hash_api = rssit.rest.API({
 })
 
 app_api = rssit.rest.API({
+    "name": "instagram_app",
     "type": "json",
     "headers": {
         "User-Agent": instagram_ua,

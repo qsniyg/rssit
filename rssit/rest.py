@@ -1,4 +1,5 @@
 import rssit.util
+import rssit.status
 import urllib.parse
 import collections
 import threading
@@ -171,6 +172,11 @@ class API(object):
         if not limit:
             limit = 1
 
+        status_obj = rssit.status.add_api({
+            "endpoint": endpoint_name,
+            "apidef": self.apidef
+        })
+
         if do_ratelimit:
             self.lock.acquire()
             now = time.monotonic()
@@ -199,6 +205,8 @@ class API(object):
             #    sys.stderr.write(pprint.pformat(download_kw) + "\n")
             data = rssit.util.download(baseurl, **download_kw)
         except Exception as e:
+            rssit.status.remove_api(status_obj)
+
             if do_ratelimit:
                 self.lock.release()
             if "http_error" in config:
@@ -206,6 +214,8 @@ class API(object):
             if "http_resp" in config:
                 orig_config["http_resp"] = config["http_resp"]
             raise e
+
+        rssit.status.remove_api(status_obj)
 
         if do_ratelimit:
             self.lastran = time.monotonic()

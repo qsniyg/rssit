@@ -134,6 +134,7 @@ def before_request(config, baseurl):
 
 
 api = rssit.rest.API({
+    "name": "periscope",
     "type": "json",
     "headers": {
         "User-Agent": rssit.rest.Arg("useragent", 12),

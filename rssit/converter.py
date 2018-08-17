@@ -3,6 +3,7 @@
 
 import rssit.converters.all
 import rssit.serializer
+import rssit.status
 import copy
 import threading
 import subprocess
@@ -40,14 +41,17 @@ def get_path(input, output):
 
 
 class runthread(threading.Thread):
-    def __init__(self, p, data):
+    def __init__(self, p, data, cmd):
         threading.Thread.__init__(self)
         self.p = p
         self.data = data
+        self.cmd = cmd
 
     def run(self):
+        status_obj = rssit.status.add_process(self.cmd)
         self.p.communicate(input=self.data)
         self.p.wait()
+        rssit.status.remove_process(status_obj)
         #print("Done")
         self.data = None
 
@@ -72,7 +76,7 @@ def runhooks(config, data, format):
         p = subprocess.Popen(hook, stdin=subprocess.PIPE,
                              stdout=None, stderr=None, close_fds=True,
                              shell=True)
-        rt = runthread(p, bytes(processed, "utf-8"))
+        rt = runthread(p, bytes(processed, "utf-8"), hook)
         rt.start()
 
 

@@ -5,6 +5,7 @@ import os.path
 import re
 import rssit.paths.all
 import rssit.config
+import rssit.status
 import traceback
 import urllib.parse
 
@@ -56,6 +57,8 @@ def process(server, path):
 
     format_exc = None
 
+    status_obj = rssit.status.add_path(path)
+
     try:
         path_list[path_name]["process"](server, path, newpath, options)
     except rssit.util.HTTPErrorException as err:
@@ -66,6 +69,8 @@ def process(server, path):
     except Exception as err:
         server.send_response(500, "Internal Server Error")
         format_exc = traceback.format_exc()
+
+    rssit.status.remove_path(status_obj)
 
     if format_exc:
         server.end_headers()

@@ -52,6 +52,7 @@ import urllib.parse
 #   returns large accept-charset and the content is "bastabastar"
 
 api = rssit.rest.API({
+    "name": "bastar",
     "type": "json",
     "headers": {
         #"x-innertainment-auth-token": rssit.rest.Arg("auth-token", 0),

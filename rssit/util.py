@@ -11,6 +11,7 @@ import re
 import os
 import rssit.config
 import rssit.http
+import rssit.status
 import urllib.parse
 import sys
 import pprint
@@ -20,6 +21,7 @@ import random
 import sortedcontainers
 import collections
 import gzip
+
 import io
 try:
     import redis
@@ -99,6 +101,8 @@ def download(url, *args, **kwargs):
             "timeout": 40
         }
 
+    status_obj = rssit.status.add_url(url)
+
     config["http_error"] = 500
 
     if "head" in kwargs and kwargs["head"]:
@@ -167,7 +171,7 @@ def download(url, *args, **kwargs):
             request.add_header('Range', 'bytes=%i-%i' % (len(ourresponse), content_length))
 
         try:
-            with openf(request, timeout=config["timeout"]) as response:
+            with openf(request, timeout=int(config["timeout"])) as response:
                 for header in response.headers._headers:
                     if header[0].lower() == "content-length":
                         content_length = int(header[1])
@@ -189,7 +193,9 @@ def download(url, *args, **kwargs):
                     f = gzip.GzipFile(fileobj=buf)
                     ourresponse = f.read()
 
-                if charset:
+                rssit.status.remove_url(status_obj)
+
+                if charset and False:
                     try:
                         return ourresponse.decode(charset)
                     except Exception as e:
@@ -207,7 +213,14 @@ def download(url, *args, **kwargs):
             config["http_resp"] = ourresponse
 
             if e.code == 404 or e.code == 403 or e.code == 410:  # 410: instagram
+                rssit.status.remove_url(status_obj)
                 raise e
+        except Exception as e:
+            sys.stderr.write("Other exception while downloading: " + str(e) + "\n")
+            rssit.status.remove_url(status_obj)
+            raise e
+
+    rssit.status.remove_url(status_obj)
 
 
 def convert_surrogate_pair(x, y):
