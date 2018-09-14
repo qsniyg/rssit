@@ -102,7 +102,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 
 
 post_cache = rssit.util.Cache("ig_post", 24*60*60, 50)
-uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 24*60*60, 100)
+uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 48*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 _sharedData = None
 
@@ -337,7 +337,8 @@ graphql_hash_api = rssit.rest.API({
             "query": {
                 #"query_hash": "472f257a40c653c64c666ce877d59d2b"
                 #"query_hash": "42323d64886122307be10013ad2dcc44"
-                "query_hash": "bd0d6d184eefd4d0ce7036c11ae58ed9"
+                #"query_hash": "bd0d6d184eefd4d0ce7036c11ae58ed9"
+                "query_hash": "e7e2f4da4b02303f74f0841279e52d76"
             }
         },
 
@@ -361,7 +362,8 @@ graphql_hash_api = rssit.rest.API({
             "base": "base",
             "query": {
                 #"query_hash": "485c25657308f08317c1e4b967356828"
-                "query_hash": "0a5d11877357197dfcd94d328b392cde"
+                #"query_hash": "0a5d11877357197dfcd94d328b392cde"
+                "query_hash": "bcbc6b4219dbbdf7af876bf561d7a283"
             }
         }
     }
@@ -1102,13 +1104,18 @@ def get_author(config, userinfo):
 def get_feed(config, userinfo):
     username = userinfo["username"].lower()
 
-    return {
+    outobj = {
         "title": get_author(config, userinfo),
         "description": "%s's instagram" % username,
         "url": "https://www.instagram.com/" + username + "/",
         "author": username,
         "entries": []
     }
+
+    if "description_uid" in config and config["description_uid"]:
+        outobj["description"] = "%s (UID: %s)" % (outobj["description"], str(userinfo["id"]))
+
+    return outobj
 
 
 def get_home_entries(config):
@@ -2196,6 +2203,12 @@ infos = [{
         "force_nocache": {
             "name": "Force not using cache",
             "description": "Forces redoing every request without using cache",
+            "value": False
+        },
+
+        "description_uid": {
+            "name": "UID in description",
+            "description": "Adds the UID to the description field",
             "value": False
         }
     },
