@@ -48,7 +48,7 @@ def questionmark(path):
 def process(server, path):
     normpath = re.sub("^/*", "", os.path.normpath(path))
     newpath, options = questionmark(normpath)
-    path_name = newpath.split("/")[0].lower()
+    path_name = re.sub("@.*", "", newpath.split("/")[0].lower())
 
     path_list = rssit.paths.all.paths_dict
 

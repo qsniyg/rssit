@@ -84,7 +84,12 @@ def process(server, path, normpath, options):
 
     newpath = re.sub("^" + splitted[0] + "/", "", normpath)
 
-    config = rssit.generator.get_config(newpath)
+    profile_match = re.search("^/+f@([^/]*)/", path)
+    profile = None
+    if profile_match:
+        profile = profile_match[1]
+
+    config = rssit.generator.get_config(newpath, profile)
     config.update(options)
     config["fullpath"] = path
 

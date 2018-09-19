@@ -25,8 +25,8 @@ def get_model():
     return model
 
 
-def get_config(path):
-    return rssit.config.get_section(path)
+def get_config(path, profile=None):
+    return rssit.config.get_section(path, profile)
 
 
 def get_urls(url):

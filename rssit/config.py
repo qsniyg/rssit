@@ -150,34 +150,48 @@ def get_models_config(models):
     return config
 
 
-def get_config_model_obj(options, model, config):
+def get_config_model_obj(options, model, config, config_profile=None):
     options.update(copy.deepcopy(get_model_options(model)))
     options.update(copy.deepcopy(config))
+    if config_profile is not None:
+        options.update(copy.deepcopy(config_profile))
     options.update(copy.deepcopy(rssit.globals.config["config"].get("args", {})))
 
 
-def get_config_model(options, section):
+def get_config_profile_section(section, profile=None):
+    if profile is None:
+        return None
+
+    return rssit.globals.config["config"].get(section + "@" + str(profile), {})
+
+
+def get_config_model(options, section, profile=None):
     config = rssit.globals.config["config"].get(section, {})
     model = rssit.globals.config["model"].get(section, {})
 
-    get_config_model_obj(options, model, config)
+    config_profile = get_config_profile_section(section, profile)
+
+    get_config_model_obj(options, model, config, config_profile)
 
 
-def get_section(section):
+def get_section(section, profile=None):
     options = {}
 
     if "/" not in section:
-        get_config_model(options, section)
+        get_config_model(options, section, profile)
         return options
 
-    get_config_model(options, "default")
+    get_config_model(options, "default", profile)
 
     splitted = section.split("/")[:-1]
     for i in range(len(splitted)):
         split = os.path.join(splitted[0], *splitted[1:i+1])
-        get_config_model(options, split)
+        get_config_model(options, split, profile)
 
     options.update(copy.deepcopy(rssit.globals.config["config"].get(section, {})))
+    config_profile = get_config_profile_section(section, profile)
+    if config_profile is not None:
+        options.update(copy.deepcopy(config_profile))
     options.update(copy.deepcopy(rssit.globals.config["config"].get("args", {})))
 
     return options

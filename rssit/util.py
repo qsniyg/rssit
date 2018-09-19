@@ -505,6 +505,9 @@ class Cache():
         return int(datetime.datetime.now().timestamp())
 
     def get_redis_key(self, key):
+        if not self.name:
+            return None
+
         return "RSSIT:" + str(self.name) + ":" + str(key)
 
     def add(self, key, value):
@@ -522,11 +525,12 @@ class Cache():
             "timestamp": now
         }
 
-        if rinstance:
+        redis_key = self.get_redis_key(key)
+        if rinstance and redis_key:
             if self.timeout != 0:
-                rinstance.setex(self.get_redis_key(key), self.timeout, json_dumps(value))
+                rinstance.setex(redis_key, self.timeout, json_dumps(value))
             else:
-                rinstance.set(self.get_redis_key(key), json_dumps(value))
+                rinstance.set(redis_key, json_dumps(value))
 
     def get(self, key):
         self.collect()
@@ -534,8 +538,9 @@ class Cache():
         if self.rand > 0 and random.randint(0, self.rand) == 0:
             return None
 
-        if rinstance:
-            val = rinstance.get(self.get_redis_key(key))
+        redis_key = self.get_redis_key(key)
+        if rinstance and redis_key:
+            val = rinstance.get(redis_key)
             if not val:
                 return None
             else:

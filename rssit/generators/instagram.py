@@ -104,6 +104,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 post_cache = rssit.util.Cache("ig_post", 24*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 48*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
+stories_api_cache = rssit.util.Cache("ig_stories_api_cache", 5*60, 0)
 _sharedData = None
 
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
@@ -338,7 +339,16 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "472f257a40c653c64c666ce877d59d2b"
                 #"query_hash": "42323d64886122307be10013ad2dcc44"
                 #"query_hash": "bd0d6d184eefd4d0ce7036c11ae58ed9"
-                "query_hash": "e7e2f4da4b02303f74f0841279e52d76"
+                #"query_hash": "e7e2f4da4b02303f74f0841279e52d76"
+                "query_hash": "a5164aed103f24b03e7b7747a2d94e3c"
+            }
+        },
+
+        # {"id":"...","first":12,"after":"..."} -- after is optional
+        "tagged": {
+            "base": "base",
+            "query": {
+                "query_hash": "de71ba2f35e0b59023504cfeb5b9857e"
             }
         },
 
@@ -363,7 +373,8 @@ graphql_hash_api = rssit.rest.API({
             "query": {
                 #"query_hash": "485c25657308f08317c1e4b967356828"
                 #"query_hash": "0a5d11877357197dfcd94d328b392cde"
-                "query_hash": "bcbc6b4219dbbdf7af876bf561d7a283"
+                #"query_hash": "bcbc6b4219dbbdf7af876bf561d7a283"
+                "query_hash": "6a6601e518828c14896420942c903e44"
             }
         }
     }
@@ -616,7 +627,14 @@ def get_stories_graphql(config, userid):
 
 
 def get_reelstray_app(config):
-    return do_app_request(config, "reels_tray")
+    if config["use_stories_cache"]:
+        result = stories_api_cache.get("reels_tray")
+        if result:
+            return result
+
+    result = do_app_request(config, "reels_tray")
+    stories_api_cache.add("reels_tray", result)
+    return result
     #storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
     #return do_app_request(config, storiesurl)
 
@@ -964,8 +982,23 @@ def parse_story_entries(config, storiesjson, do_stories=True):
 
     entries = []
 
-    for item in storiesjson["reel"]["items"]:
-        if not do_stories:
+    story_items = []
+
+    if config["stories"]:
+        if "tray" in storiesjson:
+            for tray_user in storiesjson["tray"]:
+                # most users don't have items
+                # via the "latest_reel_media" property, it would be possible to check for, and query stories
+                if "items" in tray_user:
+                    for item in tray_user["items"]:
+                        story_items.append(item)
+        if "reel" in storiesjson and "items" in storiesjson["reel"]:
+            for item in storiesjson["reel"]["items"]:
+                story_items.append(item)
+
+    for item in story_items:#storiesjson["reel"]["items"]:
+        if not config["stories"]:
+            #if not do_stories:
             break
 
         item = normalize_node(item)
@@ -1019,6 +1052,9 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         })
 
     for item in storiesjson["post_live_item"]["broadcasts"]:
+        if not config["lives"]:
+            break
+
         date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
 
         post_video = {
@@ -1038,6 +1074,9 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         })
 
     for item in storiesjson["broadcasts"]:
+        if not config["lives"]:
+            break
+
         date = datetime.datetime.fromtimestamp(int(item["published_time"]), None).replace(tzinfo=tzlocal())
 
         video_item = {
@@ -1062,7 +1101,7 @@ def parse_story_entries(config, storiesjson, do_stories=True):
 
 
 def get_story_entries(config, uid, username):
-    if not config["stories"]:
+    if not config["stories"] and not config["lives"]:
         return []
 
     try:
@@ -1405,6 +1444,61 @@ def generate_user(config, *args, **kwargs):
     for entry in story_entries:
         feed["entries"].append(entry)
 
+    return ("social", feed)
+
+
+def generate_tagged(config, username):
+    config["is_index"] = True
+
+    feed = {
+        "title": "@%s's tagged photos" % username,
+        "description": "Photos that tag %s" % username,
+        "url": "https://www.instagram.com/%s/tagged/" % username,
+        "author": "instagram",
+        "entries": []
+    }
+
+    origcount = config["count"]
+    count = config["count"]
+    if count == 1:
+        count = config["max_graphql_count"]
+
+    if count < 0 or count > config["max_graphql_count"]:
+        count = config["max_graphql_count"]
+        if count < 0:
+            origcount = count
+
+    userinfo = get_user_info_by_username(config, username)
+
+    variables = {
+        "id": str(userinfo["id"]),
+        "first": count
+    }
+
+    def get_nodes(cursor):
+        if cursor:
+            variables["after"] = cursor
+        tagged_api = do_graphql_request(config, "tagged", variables)["data"]["user"]["edge_user_to_photos_of_you"]
+
+        nodes = []
+
+        for edge in tagged_api["edges"]:
+            if "node" in edge:
+                edge = edge["node"]
+            #post_cache.add(edge["shortcode"], edge)
+            nodes.append(edge)
+
+        return (nodes, tagged_api["page_info"]["end_cursor"], tagged_api["page_info"]["has_next_page"])
+
+    nodes = instagram_paginate(config, origcount, get_nodes)
+    entries = []
+    for node in nodes:
+        node_username = node["owner"].get("username", None)
+        if not node_username:
+            node_username = uid_to_username(config, node["owner"]["id"])
+        entries.append(get_entry_from_node(config, node, node_username))
+
+    feed["entries"] = entries
     return ("social", feed)
 
 
@@ -2073,6 +2167,10 @@ infos = [{
             "name": "User's feed by username",
             "process": lambda server, config, path: generate_user(config, username=path)
         },
+        "tagged": {
+            "name": "User's tagged feed by username",
+            "process": lambda server, config, path: generate_tagged(config, username=path)
+        },
         "v": {
             "name": "Redirect to the URL of a video",
             "internal": True,
@@ -2159,9 +2257,21 @@ infos = [{
         },
 
         "stories": {
-            "name": "Process stories/live videos",
-            "description": "Process stories and live videos as well, requires an extra call",
+            "name": "Process stories",
+            "description": "Process stories, possibly requires an extra call",
             "value": True
+        },
+
+        "lives": {
+            "name": "Process live videos",
+            "description": "Process live videos, requires an extra call",
+            "value": True
+        },
+
+        "use_stories_cache": {
+            "name": "Use stories cache",
+            "description": "Uses cached API calls for story/live calls if possible. Only use when splitting story/live feeds",
+            "value": False
         },
 
         "use_api_entries": {
