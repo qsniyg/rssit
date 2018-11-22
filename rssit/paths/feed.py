@@ -7,6 +7,7 @@ import rssit.serializer
 import rssit.formats
 import re
 import traceback
+import datetime
 
 
 stylestr = """<style>
@@ -44,6 +45,19 @@ def update():
     #init()
     pass
 
+
+def do_log(config, starttime, newpath, errorcode, size, text=None):
+    try:
+        if "logfile" in config and len(config["logfile"]) > 0:
+            with open(config["logfile"], "a") as myfile:
+                now = datetime.datetime.now()
+                now_str = now.isoformat()
+                myfile.write("%s - %s (%i, %i, %f)\n" % (now_str, newpath, errorcode, size, (now - starttime).total_seconds()))
+                if text is not None:
+                    myfile.write("%s\n" % str(text))
+    except Exception as e:
+        print(e)
+        pass
 
 def process(server, path, normpath, options):
     splitted = normpath.split("/")
@@ -157,9 +171,14 @@ def process(server, path, normpath, options):
         return
 
     try:
+        starttime = datetime.datetime.now()
         result = rssit.generator.process(server, config, newpath)
     except Exception as e:
-        raise rssit.util.HTTPErrorException(e, traceback.format_exc(), config.get("http_error", 500))
+        errortext = traceback.format_exc()
+        errorcode = config.get("http_error", 500)
+        do_log(config, starttime, newpath, errorcode, len(errortext), errortext)
+        # LOG ERROR
+        raise rssit.util.HTTPErrorException(e, errortext, errorcode)
 
     if not result:
         errorcode = 500
@@ -170,6 +189,8 @@ def process(server, path, normpath, options):
         server.end_headers()
 
         server.wfile.write(bytes("An unknown error occurred while trying to generate feed", "UTF-8"))
+
+        do_log(config, starttime, newpath, errorcode, 0)
         return
 
     if result is True:
@@ -193,8 +214,10 @@ def process(server, path, normpath, options):
 
     server.wfile.write(str_result)
 
-    import gc
-    gc.collect()
+    do_log(config, starttime, newpath, 200, len(str_result))
+
+    #import gc
+    #gc.collect()
 
 
 infos = [{

@@ -342,7 +342,8 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "e7e2f4da4b02303f74f0841279e52d76"
                 #"query_hash": "a5164aed103f24b03e7b7747a2d94e3c"
                 #"query_hash": "5b0222df65d7f6659c9b82246780caa7"
-                "query_hash": "f412a8bfd8332a76950fefc1da5785ef"
+                #"query_hash": "f412a8bfd8332a76950fefc1da5785ef"
+                "query_hash": "50d3631032cf38ebe1a2d758524e3492"
             }
         },
 
@@ -378,7 +379,8 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "bcbc6b4219dbbdf7af876bf561d7a283"
                 #"query_hash": "6a6601e518828c14896420942c903e44"
                 #"query_hash": "c409f8bda63382c86db99f2a2ea4a9b2"
-                "query_hash": "fcf12425b390947f4a9fc55c46b74dbf"
+                #"query_hash": "fcf12425b390947f4a9fc55c46b74dbf"
+                "query_hash": "01b3ccff4136c4adf5e67e1dd7eab68d"
             }
         }
     }

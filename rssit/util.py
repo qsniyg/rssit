@@ -16,7 +16,13 @@ import urllib.parse
 import sys
 import pprint
 import http.cookiejar
-import json
+if True:
+    import json
+else:
+    try:
+        import rapidjson as json
+    except ImportError:
+        import json
 import random
 import sortedcontainers
 import collections
@@ -109,6 +115,8 @@ def download(url, *args, **kwargs):
         request = urllib.request.Request(url, method="HEAD")
     elif "post" in kwargs and kwargs["post"]:
         request = urllib.request.Request(url, data=kwargs["post"], method="POST")
+    elif "method" in kwargs and kwargs["method"]:
+        request = urllib.request.Request(url, method=kwargs["method"])
     else:
         request = urllib.request.Request(url)
 

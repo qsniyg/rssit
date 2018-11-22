@@ -142,10 +142,10 @@ class API(object):
         orig_config = config
         config = rssit.util.simple_copy(config)
 
-        #method = self.get_value(self.get_setting(endpoint_name, "method", kwargs), args, kwargs)
-        #if method is None:
-        #    method = "GET"
-        #config["http_method"] = method
+        method = self.get_value(self.get_setting(endpoint_name, "method", kwargs), args, kwargs)
+        if method is None:
+            method = "GET"
+        config["http_method"] = method
 
         form = self.get_value(self.get_setting(endpoint_name, "form", kwargs), args, kwargs)
         if form is not None:
@@ -189,7 +189,7 @@ class API(object):
             prefunc(config, baseurl)
 
         if "http_debug" in config and config["http_debug"]:
-            sys.stderr.write(baseurl + "\n")
+            sys.stderr.write(str(method) + " " + str(baseurl) + "\n")
 
         data = None
 
@@ -200,6 +200,8 @@ class API(object):
             }
             if form is not None:
                 download_kw["post"] = form
+            if method is not None:
+                download_kw["method"] = method
 
             #if "http_debug" in config and config["http_debug"]:
             #    sys.stderr.write(pprint.pformat(download_kw) + "\n")

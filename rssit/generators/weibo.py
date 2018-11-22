@@ -336,14 +336,18 @@ def generate_social_weibo(config, user):
 
                             actiondata = videl.get("action-data")
                             actiondata = "&" + actiondata + "&"
-                            videosrc = "https:" + urllib.parse.unquote(re.sub(r".*&video_src=([^&]*)&.*", "\\1", actiondata))
-                            videosrc = re.sub(r"^https:https?://", "https://", videosrc)
-                            coverimg = "https:" + urllib.parse.unquote(re.sub(r".*&cover_img=([^&]*)&.*", "\\1", actiondata))
-                            coverimg = get_max_image(re.sub(r"^https:https?://", "https://", coverimg))
-                            videos.append({
-                                "image": coverimg,
-                                "video": videosrc
-                            })
+                            video_src_part = re.sub(r".*&video_src=([^&]*)&.*", "\\1", actiondata)
+                            if video_src_part != actiondata:
+                                videosrc = "https:" + urllib.parse.unquote(video_src_part)
+                                videosrc = re.sub(r"^https:https?://", "https://", videosrc)
+                                # there's also:
+                                # url=https://weibo.com/tv/l/QcnhER5fkh_drtI3
+                                coverimg = "https:" + urllib.parse.unquote(re.sub(r".*&cover_img=([^&]*)&.*", "\\1", actiondata))
+                                coverimg = get_max_image(re.sub(r"^https:https?://", "https://", coverimg))
+                                videos.append({
+                                    "image": coverimg,
+                                    "video": videosrc
+                                })
                         except Exception as e:
                             print(e)
 

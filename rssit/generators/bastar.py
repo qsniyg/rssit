@@ -27,7 +27,9 @@ import urllib.parse
 # https://api.bastabastar.com/bastars?pageNumber=0&pageSize=20&orderBy=realtime
 # https://api.bastabastar.com/videos?pageNumber=0&pageSize=30&orderBy=up_realtime&sortBy=ranking
 # https://api.bastabastar.com/bastars/[uid]
-# https://api.bastabastar.com/bastars/[uid]/follow
+# POST https://api.bastabastar.com/bastars/[uid]/follow
+#   content-length: 0
+# DELETE https://api.bastabastar.com/bastars/[uid]/follow
 #   content-length: 0
 # http://bastabastar.s3.amazonaws.com/profile/compressed/profileid.jpg
 #   http://bastabastar.s3.amazonaws.com/profile/profileid.jpg
@@ -77,6 +79,16 @@ api = rssit.rest.API({
             "headers": {
                 "x-innertainment-auth-token": rssit.rest.Arg("auth-token", 1)
             }
+        },
+        "user_follow": {
+            "url": rssit.rest.Format("https://api.bastabastar.com/bastars/%s/follow",
+                                     rssit.rest.Arg("uid", 0)),
+            "headers": {
+                "x-innertainment-auth-token": rssit.rest.Arg("auth-token", 1),
+                "content-length": 0
+            },
+            "method": "POST",
+            "type": "raw"
         },
         "search": {
             "url": "https://api.bastabastar.com/search",
@@ -185,6 +197,11 @@ def generate_bastars(server, config, path):
 
 
 def generate_user(server, config, path):
+    if "action" in config and config["action"] == "follow":
+        response = run_api(config, "user_follow", path)
+        #response = run_api(config, "user_follow", path) # twice, as done in the app
+        return ("raw", response)
+
     try:
         response = run_api(config, "user", path)
     except Exception as e:
