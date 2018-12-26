@@ -7,6 +7,7 @@ import rssit.status
 import copy
 import threading
 import subprocess
+import re
 
 
 def make_list(x):
@@ -60,12 +61,19 @@ def runhooks(config, data, format):
     if "nohooks" in config and config["nohooks"] is True:
         return
 
-    hooksname = format + "_hooks"
+    hookslist = []
 
-    if hooksname not in config:
+    for key in config:
+        if re.match("^" + format + "_hooks[0-9]*$", key):
+            hookslist.append(config[key])
+    #hooksname = format + "_hooks"
+
+    #if hooksname not in config:
+    #    return
+    if len(hookslist) == 0:
         return
 
-    hookslist = config[hooksname].split(";")
+    #hookslist = config[hooksname].split(";")
 
     processed = str(rssit.serializer.process(config, data, format))
 

@@ -19,6 +19,7 @@ import rssit.generators.reddit
 import rssit.generators.livedoor
 import rssit.generators.bastar
 import rssit.generators.periscope
+import rssit.generators.youtube
 
 have_notifications = False
 try:
@@ -49,7 +50,8 @@ generator_list = [
     rssit.generators.reddit,
     rssit.generators.livedoor,
     rssit.generators.bastar,
-    rssit.generators.periscope
+    rssit.generators.periscope,
+    rssit.generators.youtube
 ]
 
 if have_notifications:

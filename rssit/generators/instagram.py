@@ -343,7 +343,8 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "a5164aed103f24b03e7b7747a2d94e3c"
                 #"query_hash": "5b0222df65d7f6659c9b82246780caa7"
                 #"query_hash": "f412a8bfd8332a76950fefc1da5785ef"
-                "query_hash": "50d3631032cf38ebe1a2d758524e3492"
+                #"query_hash": "50d3631032cf38ebe1a2d758524e3492"
+                "query_hash": "66eb9403e44cc12e5b5ecda48b667d41"
             }
         },
 
@@ -1158,7 +1159,11 @@ def get_feed(config, userinfo):
     }
 
     if "description_uid" in config and config["description_uid"]:
-        outobj["description"] = "%s (UID: %s)" % (outobj["description"], str(userinfo["id"]))
+        outobj["description"] = "%s\n---\nUID: %s\nFollowers: %s" % (
+            outobj["description"],
+            str(userinfo["id"]),
+            str(userinfo["edge_followed_by"]["count"])
+        )
 
     return outobj
 
@@ -2123,6 +2128,10 @@ def generate_raw(config, path):
             #node["edge_media_to_comment"] = comments
 
         return ("raw", node)
+    if path.startswith("uid/"):
+        uid = path[len("uid/"):]
+        decoded_user, decoded_user_cached = get_user_info(config, uid, True)
+        return ("raw", decoded_user)
     return None
 
 
