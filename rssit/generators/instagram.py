@@ -520,6 +520,10 @@ def get_node_media(config, node, images, videos):
         sys.stderr.write("No image!!\n")
     normalized = normalize_image(image_src)
 
+    if "caption" not in node:
+        if "title" in node:
+            node["caption"] = node["title"]
+
     if node["type"] == "carousel":
         def carousel_has_nonimage_member(carousel):
             for i in carousel:
@@ -927,9 +931,13 @@ def normalize_node(node):
 def get_entry_from_node(config, node, user):
     node = normalize_node(node)
 
+    caption = ""
+    if "product_type" in node and node["product_type"] == "igtv":
+        caption = "[IGTV] "
+
     if "caption" in node:
-        caption = node["caption"]
-    else:
+        caption = caption + str(node["caption"])
+    elif caption == "":
         caption = None
 
     date = datetime.datetime.fromtimestamp(int(node["date"]), None).replace(tzinfo=tzlocal())
@@ -1254,6 +1262,23 @@ def get_profilepic_entry(config, userinfo):
         return get_profilepic_entry_raw(config, new_userinfo)
 
 
+def get_igtv(config, userinfo):
+    if "edge_felix_video_timeline" not in userinfo:
+        return None
+
+    videos = userinfo["edge_felix_video_timeline"]
+    if "edges" not in videos and type(videos["edges"]) is not list:
+        return None
+
+    edges = videos["edges"]
+
+    entries = []
+    for edge in edges:
+        entries.append(get_entry_from_node(config, edge, userinfo["username"]))
+
+    return entries
+
+
 def instagram_paginate(config, mediacount, f):
     total = config["count"]
     if config["count"] == -1:
@@ -1338,6 +1363,10 @@ def generate_user(config, *args, **kwargs):
     ppentry = get_profilepic_entry(config, decoded_user)
     if ppentry:
         feed["entries"].append(ppentry)
+
+    igtv = get_igtv(config, decoded_user)
+    if igtv:
+        feed["entries"].extend(igtv)
 
     def paginate(f):
         total = config["count"]
