@@ -4,6 +4,7 @@ import time
 import rssit.rest
 import pprint
 import re
+import html
 
 # iPad API:
 # https://proxsee.pscp.tv/api/v2/
@@ -169,9 +170,25 @@ api = rssit.rest.API({
                 "cookie": rssit.rest.Arg("sid", 11),
                 "from_push": False
             }
+        },
+        "user": {
+            "url": "https://proxsee.pscp.tv/api/v2/user",
+            "form": {
+                "user_id": rssit.rest.Arg("uid", 0),
+                "cookie": rssit.rest.Arg("sid", 11),
+            }
         }
     }
 })
+
+
+def get_url(config, url):
+    match = re.match(r"^(https?://)?(?:\w+\.)?(?:periscope|pscp)\.tv/(?P<user>[^/]*)", url)
+
+    if match is None:
+        return
+
+    return "/u/" + get_uid_from_username(match.group("user"))
 
 
 def get_cookie(config):
@@ -186,6 +203,55 @@ def run_api(config, *args, **kwargs):
     newkwargs["build_header"] = config["build_header"]
     newkwargs["useragent"] = config["useragent"]
     return api.run(config, *args, **newkwargs)
+
+
+def get_webpage_data(page):
+    data = rssit.util.download("https://www.periscope.tv/" + page)
+    regex = r"<div *id=\"page-container\" *[^<]* data-store=\"(?P<json>.*?)\" *>"
+    jsondata = re.search(regex, str(data))
+    if not jsondata:
+        return None
+
+    return rssit.util.json_loads(bytes(html.unescape(jsondata.group("json")), 'utf-8').decode('unicode-escape'))
+
+
+def get_uid_from_username(username):
+    usernames = get_webpage_data(username)["UserCache"]["usernames"]
+    for item in usernames:
+        if item.lower() == username.lower():
+            return usernames[item]
+    return None
+
+
+def generate_user_feed(server, config, uid):
+    response = run_api(config, "user", uid=uid)
+
+    user = response["user"]
+    author = user["username"]
+    feed = {
+        "title": user["display_name"],
+        "description": "\n---\nUID: %s\nUsername: %s\nFollowers: %s" % (
+            user["id"],
+            user["username"],
+            str(user["n_followers"])
+        ),
+        "url": "https://www.periscope.tv/" + user["username"],
+        "author": author,
+        "entries": []
+    }
+
+    profileimage_url = re.sub(r"_[0-9]+x[0-9]+(\.[^/.]*)$", "\\1", user["profile_image_urls"][-1]["ssl_url"])
+    profileimage_id = re.sub(r".*/([^/]*)\.[^/.]*$", "\\1", profileimage_url)
+    feed["entries"].append({
+        "url": profileimage_url,
+        "caption": "[DP] " + profileimage_id,
+        "author": author,
+        "date": rssit.util.parse_date(-1),
+        "images": [profileimage_url],
+        "videos": []
+    })
+
+    return ("social", feed)
 
 
 def generate_following_feed(server, config, path):
@@ -272,6 +338,10 @@ infos = [{
         "video": {
             "name": "Video",
             "process": generate_video
+        },
+        "u": {
+            "name": "User feed",
+            "process": generate_user_feed
         }
     },
 
@@ -299,6 +369,12 @@ infos = [{
         "streamuseragent": {
             "name": "Stream user agent",
             "value": None
+        },
+        "prefer_uid": {
+            "name": "Prefer UIDs over usernames",
+            "value": False
         }
-    }
+    },
+
+    "get_url": get_url
 }]

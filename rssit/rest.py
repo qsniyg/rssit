@@ -6,6 +6,7 @@ import threading
 import time
 import sys
 import pprint
+import re
 
 
 class Arg(object):
@@ -226,7 +227,12 @@ class API(object):
         if "http_error" in config:
             orig_config["http_error"] = config["http_error"]
 
-        if self.get_setting(endpoint_name, "type", kwargs) == "json":
+        encoding_type = self.get_setting(endpoint_name, "type", kwargs)
+        if encoding_type == "json":
+            data = rssit.util.json_loads(data)
+        elif encoding_type == "json_callback":
+            data = data.decode("utf-8")
+            data = re.sub(r"[^(]*[(]({.*})[)];?$", "\\1", data)
             data = rssit.util.json_loads(data)
 
         parser = self.get_setting(endpoint_name, "parse", kwargs)

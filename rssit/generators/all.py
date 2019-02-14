@@ -20,6 +20,7 @@ import rssit.generators.livedoor
 import rssit.generators.bastar
 import rssit.generators.periscope
 import rssit.generators.youtube
+import rssit.generators.afreecatv
 
 have_notifications = False
 try:
@@ -51,7 +52,8 @@ generator_list = [
     rssit.generators.livedoor,
     rssit.generators.bastar,
     rssit.generators.periscope,
-    rssit.generators.youtube
+    rssit.generators.youtube,
+    rssit.generators.afreecatv
 ]
 
 if have_notifications:
