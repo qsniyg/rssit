@@ -1174,6 +1174,8 @@ def get_feed(config, userinfo):
             str(userinfo["id"]),
             str(userinfo["edge_followed_by"]["count"])
         )
+        if "external_url" in userinfo:
+            outobj["description"] += "\nLink: %s" % userinfo["external_url"]
 
     return outobj
 

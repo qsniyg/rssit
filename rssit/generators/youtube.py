@@ -36,7 +36,7 @@ api = rssit.rest.API({
             "query": {
                 "key": rssit.rest.Arg("key", 10),
                 "id": rssit.rest.Arg("video", 0),
-                "part": "snippet"
+                "part": "snippet,liveStreamingDetails"
             }
         }
     }
@@ -48,7 +48,10 @@ def get_youtube_url(vidid):
 
 
 def get_video_entry(video, url):
-    created = rssit.util.parse_date(video["snippet"]["publishedAt"])
+    date = video["snippet"]["publishedAt"]
+    if "liveStreamingDetails" in video and "actualStartTime" in video["liveStreamingDetails"]:
+        date = video["liveStreamingDetails"]["actualStartTime"]
+    created = rssit.util.parse_date(date)
 
     selected_thumbnail = None
     largest = 0
@@ -190,6 +193,35 @@ def get_channel_json(config, path):
     return request_youtube_json(config, path, regex)
 
 
+def get_entry_from_videorenderer(config, vrenderer, channelid):
+    if ("badges" not in vrenderer or
+        len(vrenderer["badges"]) == 0 or
+        "metadataBadgeRenderer" not in vrenderer["badges"][0] or
+        vrenderer["badges"][0]["metadataBadgeRenderer"]["style"] != "BADGE_STYLE_TYPE_LIVE_NOW" or
+        "최초 공개" in vrenderer["badges"][0]["metadataBadgeRenderer"]["label"]):
+        return None
+
+    vidid = vrenderer["videoId"]
+    video = video_cache.get(vidid)
+    if not video:
+        video = api.run(config, "video", vidid, key=config["api_key"])["items"][0]
+        video_cache.add(vidid, video)
+    entry = get_video_entry(video, get_youtube_url(vidid))
+    entry["caption"] = "[LIVE] " + entry["caption"]
+    if not channelid:
+        if ("shortBylineText" in vrenderer and
+            "runs" in vrenderer["shortBylineText"] and
+            len(vrenderer["shortBylineText"]["runs"]) > 0 and
+            "navigationEndpoint" in vrenderer["shortBylineText"]["runs"][0] and
+            "browseEndpoint" in vrenderer["shortBylineText"]["runs"][0]["navigationEndpoint"]):
+            if "browseId" in vrenderer["shortBylineText"]["runs"][0]["navigationEndpoint"]["browseEndpoint"]:
+                channelid = vrenderer["shortBylineText"]["runs"][0]["navigationEndpoint"]["browseEndpoint"]["browseId"]
+    if not channelid:
+        return None
+    entry["author"] = channelid
+    return entry
+
+
 def get_channel_live(config, channelid):
     json = get_channel_json(config, "https://www.youtube.com/channel/" + channelid)
     #json = request_youtube_json(config, "https://www.youtube.com/channel/" + channelid, r"window[[]['\"]ytInitialData['\"]] = (?P<json>{.*?});\s+window[[]")
@@ -217,24 +249,65 @@ def get_channel_live(config, channelid):
                         if "videoRenderer" not in subitem:
                             continue
                         vrenderer = subitem["videoRenderer"]
-                        if ("badges" not in vrenderer or
-                            len(vrenderer["badges"]) == 0 or
-                            "metadataBadgeRenderer" not in vrenderer["badges"][0] or
-                            vrenderer["badges"][0]["metadataBadgeRenderer"]["style"] != "BADGE_STYLE_TYPE_LIVE_NOW"):
-                            continue
 
-                        vidid = vrenderer["videoId"]
-                        video = video_cache.get(vidid)
-                        if not video:
-                            video = api.run(config, "video", vidid, key=config["api_key"])["items"][0]
-                            video_cache.add(vidid, video)
-                        entry = get_video_entry(video, get_youtube_url(vidid))
-                        entry["caption"] = "[LIVE] " + entry["caption"]
-                        entry["author"] = channelid
-                        return entry
+                        entry = get_entry_from_videorenderer(config, vrenderer, channelid)
+                        if entry:
+                            return entry
+
+
+def generate_subscription_lives(server, config, path):
+    json = get_channel_json(config, "https://www.youtube.com/feed/subscriptions")
+    tabs = json["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
+    lives = []
+    for tab in tabs:
+        if "tabRenderer" not in tab:
+            continue
+
+        tab = tab["tabRenderer"]
+        if "content" not in tab or "sectionListRenderer" not in tab["content"]:
+            continue
+        slist = tab["content"]["sectionListRenderer"]["contents"]
+        for item in slist:
+            if "itemSectionRenderer" not in item:
+                continue
+            item = item["itemSectionRenderer"]["contents"]
+            for rwrapper in item:
+                for renderer_key in rwrapper:
+                    if renderer_key != "shelfRenderer":
+                        continue
+                    content = rwrapper[renderer_key]["content"]
+                    if "gridRenderer" not in content:
+                        continue
+                    grid = content["gridRenderer"]
+                    items = grid["items"]
+                    for subitem in items:
+                        if "gridVideoRenderer" not in subitem:
+                            continue
+                        vrenderer = subitem["gridVideoRenderer"]
+
+                        entry = get_entry_from_videorenderer(config, vrenderer, None)
+                        if entry:
+                            lives.append(entry)
+
+    feed = {
+        "title": "Livestreams (subscriptions)",
+        "author": "youtube",
+        "url": "https://www.youtube.com/feed/subscriptions",
+        "config": {
+            "generator": "youtube"
+        },
+        "entries": []
+    }
+
+    feed["entries"] = lives
+
+    return ("social", feed)
 
 
 def generate_lives(server, config, path):
+    if config["subscriptions"]:
+        return generate_subscription_lives(server, config, path)
+
     json = request_youtube_json(config, "https://www.youtube.com/", r"var ytInitialGuideData = (?P<json>{.*?});\s+if")
     items = json["items"]
     lives = []
@@ -296,7 +369,7 @@ infos = [{
         "lives": {
             "name": "Livestreams",
             "process": generate_lives
-        }
+        },
     },
 
     "config": {
@@ -304,6 +377,11 @@ infos = [{
             "name": "API Key",
             "description": "API Key",
             "value": None
+        },
+        "subscriptions": {
+            "name": "Lives by subscriptions",
+            "description": "Uses the subscriptions feed to find lives",
+            "value": False
         }
     },
 

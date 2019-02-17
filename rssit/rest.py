@@ -227,12 +227,16 @@ class API(object):
         if "http_error" in config:
             orig_config["http_error"] = config["http_error"]
 
+        if "http_debug_printout" in config and config["http_debug_printout"]:
+            print(data.decode("utf-8"))
+
         encoding_type = self.get_setting(endpoint_name, "type", kwargs)
         if encoding_type == "json":
             data = rssit.util.json_loads(data)
         elif encoding_type == "json_callback":
             data = data.decode("utf-8")
             data = re.sub(r"[^(]*[(]({.*})[)];?$", "\\1", data)
+            data = data.replace("\&quot;", "&quot;")
             data = rssit.util.json_loads(data)
 
         parser = self.get_setting(endpoint_name, "parse", kwargs)

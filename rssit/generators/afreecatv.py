@@ -68,7 +68,7 @@ def generate_favorite_feed(server, config, path):
         date = dateutil.parser.parse(broadcast["broad_start"] + " +0900")
         url = "https://play.afreecatv.com/" + broadcast["user_id"] + "/" + broadcast["broad_no"]
         entry = {
-            "caption": "[LIVE] " + broadcast["broad_title"],
+            "caption": "[LIVE] " + html.unescape(broadcast["broad_title"]),
             "url": url,
             "date": date,
             "author": broadcast["user_id"],
