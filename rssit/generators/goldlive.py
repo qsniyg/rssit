@@ -15,6 +15,7 @@ vod_info_cache = rssit.util.Cache("goldlive_vod_info", 24*60*60, 50)
 api = rssit.rest.API({
     "name": "goldlive",
     "method": "POST",
+    "cookiejar": "goldlive",
     "headers": {
         "X-Requested-With": "XMLHttpRequest",
         "Origin": "http://www.goldlive.co.kr"

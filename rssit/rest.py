@@ -163,6 +163,7 @@ class API(object):
                 value = self.get_value(headers[header], args, kwargs)
                 config["httpheader_" + self.get_value(header, args, kwargs)] = value
 
+        cookiejar = self.get_setting(endpoint_name, "cookiejar", kwargs)
         noextra = self.get_setting(endpoint_name, "http_noextra", kwargs)
 
         do_ratelimit = False
@@ -197,7 +198,8 @@ class API(object):
         try:
             download_kw = {
                 "config": config,
-                "http_noextra": noextra
+                "http_noextra": noextra,
+                "http_cookiejar": cookiejar
             }
             if form is not None:
                 download_kw["post"] = form

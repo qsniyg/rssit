@@ -16,6 +16,7 @@ import urllib.parse
 import sys
 import pprint
 import http.cookiejar
+import http.cookies
 if True:
     import json
 else:
@@ -120,15 +121,20 @@ def download(url, *args, **kwargs):
     else:
         request = urllib.request.Request(url)
 
+    httpheaders = {}
     if "http_noextra" not in kwargs:
-        request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
-        request.add_header('Pragma', 'no-cache')
-        request.add_header('Cache-Control', 'max-age=0')
-        request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
+        httpheaders['User-Agent'] = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36'
+        httpheaders['Pragma'] = 'no-cache'
+        httpheaders['Cache-Control'] = 'max-age=0'
+        httpheaders['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        #request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
+        #request.add_header('Pragma', 'no-cache')
+        #request.add_header('Cache-Control', 'max-age=0')
+        #request.add_header('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8')
+
         #request.add_header('Accept-Encoding', 'gzip, deflate')
         #request.add_header('Accept-Language', 'ko,en;q=0.9,en-US;q=0.8')
 
-    httpheaders = {}
     for key in config:
         if key.startswith("httpheader_"):
             httpheaders[key] = config[key]
@@ -136,6 +142,8 @@ def download(url, *args, **kwargs):
     for key in kwargs:
         if key.startswith("httpheader_"):
             httpheaders[key] = kwargs[key]
+
+    headers = {}
 
     #pprint.pprint(httpheaders)
     for key in httpheaders:
@@ -152,7 +160,36 @@ def download(url, *args, **kwargs):
 
             headername = "".join(headername)
 
-            request.add_header(headername, httpheaders[key])
+            headers[headername] = httpheaders[key]
+
+    use_cookiejar = False
+    cookieprefix = None
+    if "http_cookiejar" in kwargs and kwargs["http_cookiejar"] and rinstance:
+        use_cookiejar = True
+        cookieprefix = "RSSIT:HTTP_COOKIES:" + kwargs["http_cookiejar"] + ":"
+        newcookies = {}
+        for key in rinstance.scan_iter(match=cookieprefix + "*"):
+            cookie = key.replace(cookieprefix, "")
+            newcookies[cookie] = rinstance.get(key)
+        if len(newcookies) > 0:
+            cookies = {}
+            if "Cookie" in headers:
+                C = http.cookies.SimpleCookie()
+                C.load(headers["Cookie"])
+                for cookie in C:
+                    cookies[cookie] = C[cookie].value
+            for cookie in newcookies:
+                cookies[cookie] = newcookies[cookie]
+            C = http.cookies.SimpleCookie()
+            cookiestring = []
+            for cookie in cookies:
+                C[cookie] = cookies[cookie]
+            for cookie in C:
+                cookiestring.append(re.sub(r"^ *Cookie: *", "", C[cookie].output(header='Cookie: ')))
+            headers["Cookie"] = "; ".join(cookiestring)
+
+    for header in headers:
+        request.add_header(header, headers[header])
 
     if "proxy" in config and config["proxy"]:
         proxy_support = urllib.request.ProxyHandler({"http": config["proxy"]})
@@ -185,6 +222,14 @@ def download(url, *args, **kwargs):
                         content_length = int(header[1])
                     elif header[0].lower() == "content-encoding":
                         content_encoding = header[1]
+                    elif header[0].lower() == "set-cookie" and use_cookiejar:
+                        C = http.cookies.SimpleCookie()
+                        C.load(header[1])
+                        for cookie in C:
+                            if "max-age" in C[cookie] and C[cookie]["max-age"] != '':
+                                rinstance.setex(cookieprefix + cookie, int(C[cookie]["max-age"]), C[cookie].value)
+                            else:
+                                rinstance.setex(cookieprefix + cookie, C[cookie].value)
 
                 charset = response.headers.get_content_charset()
 
