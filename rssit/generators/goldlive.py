@@ -11,6 +11,7 @@ import dateutil.parser
 import bs4
 
 vod_info_cache = rssit.util.Cache("goldlive_vod_info", 24*60*60, 50)
+vod_page_cache = rssit.util.Cache("goldlive_vod_page", 24*60*60, 50)
 
 api = rssit.rest.API({
     "name": "goldlive",
@@ -78,6 +79,30 @@ def get_vod_entry(config, vodid):
         "images": [],
         "videos": []
     }
+
+    page = vod_page_cache.get(vodid)
+    if not page:
+        page = rssit.util.download(entry["url"], config=config)
+        page = page.decode('utf-8')
+        vod_page_cache.add(vodid, page)
+
+    image = re.search(r"<meta name=\"og:image\" *content=\"(http.*?)\"", page)
+    if not image:
+        return entry
+
+    image = image.group(1)
+
+    video = re.search(r"sources:\s*[[][\s\S]*?src:\s*\"(http.*?\.m3u8)\"\s*}", page)
+    #video = re.search(r"src:\s*\"(http.*?\.m3u8)\"[\s\S]*}", page)
+    if not video:
+        return entry
+
+    video = video.group(1)
+
+    entry["videos"] = [{
+        "image": image,
+        "video": video
+    }]
 
     return entry
 
