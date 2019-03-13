@@ -9,6 +9,7 @@ import rssit.paths.feed
 import rssit.paths.player
 import rssit.paths.status
 import rssit.paths.notfound
+import rssit.paths.resetcookiejar
 
 
 paths_list = [
@@ -18,7 +19,8 @@ paths_list = [
     rssit.paths.feed,
     rssit.paths.player,
     rssit.paths.status,
-    rssit.paths.notfound
+    rssit.paths.notfound,
+    rssit.paths.resetcookiejar
 ]
 
 paths_dict = {}

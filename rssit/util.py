@@ -226,7 +226,9 @@ def download(url, *args, **kwargs):
                         C = http.cookies.SimpleCookie()
                         C.load(header[1])
                         for cookie in C:
-                            if "max-age" in C[cookie] and C[cookie]["max-age"] != '':
+                            if "value" not in C[cookie]:
+                                continue
+                            if "max-age" in C[cookie] and C[cookie]["max-age"] != '' and C[cookie]["max-age"] != '0':
                                 rinstance.setex(cookieprefix + cookie, int(C[cookie]["max-age"]), C[cookie].value)
                             else:
                                 rinstance.setex(cookieprefix + cookie, C[cookie].value)

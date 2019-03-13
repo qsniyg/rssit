@@ -24,6 +24,7 @@ def get_time():
 api = rssit.rest.API({
     "name": "afreecatv",
     "type": "json_callback",
+    "cookiejar": "afreecatv",
     "method": "GET",
     "query": {
         "callback": rssit.rest.Arg("callback", 10),
