@@ -1105,10 +1105,19 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         if "cover_frame_url" in item:
             video_item["image"] = item["cover_frame_url"]
 
+        guests = []
+        try:
+            if "cobroadcasters" in item and type(item["cobroadcasters"]) == list:
+                for cobroadcaster in item["cobroadcasters"]:
+                    guests.append(uid_to_username(config, cobroadcaster))
+        except Exception:
+            pass
+
         entries.append({
             "url": "http://guid.instagram.com/" + item["media_id"],
             "caption": "[LIVE]",
             "author": uid_to_username(config, item["broadcast_owner"]),  #["username"],
+            "coauthors": guests,
             "date": date,
             "images": [],
             "videos": [video_item]
@@ -1330,6 +1339,8 @@ def instagram_paginate(config, mediacount, f):
 
 
 def generate_user(config, *args, **kwargs):
+    config["is_index"] = True  # for livestreams they are part of
+
     if "username" in kwargs:
         username = kwargs["username"].lower()
 
