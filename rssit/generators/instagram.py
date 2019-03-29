@@ -368,7 +368,8 @@ graphql_hash_api = rssit.rest.API({
             "base": "base",
             "query": {
                 #"query_hash": "a3b895bdcb9606d5b1ee9926d885b924"
-                "query_hash": "f0986789a5c5d17c2400faebf16efd0d"
+                #"query_hash": "f0986789a5c5d17c2400faebf16efd0d"
+                "query_hash": "97b41c52301f77ce508f55e66d17620e"
             }
         },
 
@@ -2138,7 +2139,7 @@ def generate_raw(config, path):
         node["node_images"] = images
         node["node_videos"] = videos
 
-        comments = node["edge_media_to_comment"]
+        comments = node["edge_media_to_parent_comment"]
         after = comments["page_info"]["end_cursor"]
 
         def get_comments(maxid):
@@ -2149,7 +2150,7 @@ def generate_raw(config, path):
                     "shortcode": post,
                     "first": config["max_graphql_count"],
                     "after": maxid
-                })["data"]["shortcode_media"]["edge_media_to_comment"]
+                })["data"]["shortcode_media"]["edge_media_to_parent_comment"]
             except Exception:
                 sys.stderr.write("Unable to load comments\n")
                 newcomments_api = {

@@ -274,6 +274,9 @@ def generate_following_feed(server, config, path):
             caption = "[LIVE REPLAY]"
             replay = True
 
+        if replay and "available_for_replay" in item and item["available_for_replay"] is False:
+            continue
+
         url = "https://www.periscope.tv/" + item["username"] + "/" + item["id"]
 
         entry = {
@@ -323,6 +326,14 @@ def generate_video(server, config, path):
         server.end_headers()
 
         return True
+
+    if ("share_url" in response and len(response["share_url"]) == 0 and
+        "broadcast" in response and "available_for_replay" in response["broadcast"] and
+        response["broadcast"]["available_for_replay"] is False):
+        server.send_response(403, "Unavailable for replay")
+        server.end_headers()
+        return True
+
     return ("raw", pprint.pformat(response).encode('utf-8'))
 
 
