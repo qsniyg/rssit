@@ -1059,8 +1059,14 @@ def parse_story_entries(config, storiesjson, do_stories=True):
                 for link in links:
                     extra += str(link) + "\n"
 
+        guid_url = "http://guid.instagram.com/" + item["id"]
+        story_url = guid_url
+        if "story_post_url" in config and config["story_post_url"] is True:
+            story_url = id_to_url(item["id"])
+
         entries.append({
-            "url": "http://guid.instagram.com/" + item["id"],  #url,
+            "url": story_url,
+            "guid": guid_url,
             "caption": caption,
             "extratext": extra,
             "author": uid_to_username(config, item["user"]),  #["username"],
@@ -2379,6 +2385,12 @@ infos = [{
         "description_uid": {
             "name": "UID in description",
             "description": "Adds the UID to the description field",
+            "value": False
+        },
+
+        "story_post_url": {
+            "name": "Real story URLs",
+            "description": "Uses a real post URL for stories, sometimes Instagram doesn't support this",
             "value": False
         }
     },
