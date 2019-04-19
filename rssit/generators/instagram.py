@@ -157,7 +157,7 @@ def get_url(config, url):
     if config["prefer_uid"]:
         return "/uid/" + get_user_page(config, match.group("user"))["id"]
 
-    return "/u/" + match.group("user")
+    return "/u/" + match.group("user").lower()
 
 
 def normalize_image(url):
