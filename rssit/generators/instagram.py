@@ -104,7 +104,7 @@ endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=1787347
 post_cache = rssit.util.Cache("ig_post", 36*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 48*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
-stories_api_cache = rssit.util.Cache("ig_stories_api_cache", 5*60, 0)
+reelstray_cache = rssit.util.Cache("ig_reelstray_cache", 5*60, 0)
 _sharedData = None
 
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
@@ -641,13 +641,13 @@ def get_stories_graphql(config, userid):
 
 
 def get_reelstray_app(config):
-    if config["use_stories_cache"]:
-        result = stories_api_cache.get("reels_tray")
+    if config["use_reelstray_cache"]:
+        result = reelstray_cache.get("reels_tray")
         if result:
             return result
 
     result = do_app_request(config, "reels_tray")
-    stories_api_cache.add("reels_tray", result)
+    reelstray_cache.add("reels_tray", result)
     return result
     #storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
     #return do_app_request(config, storiesurl)
@@ -2334,8 +2334,8 @@ infos = [{
             "value": True
         },
 
-        "use_stories_cache": {
-            "name": "Use stories cache",
+        "use_reelstray_cache": {
+            "name": "Use reels_tray cache",
             "description": "Uses cached API calls for story/live calls if possible. Only use when splitting story/live feeds",
             "value": False
         },
