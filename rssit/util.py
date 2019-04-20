@@ -555,6 +555,7 @@ class Cache():
         self.timestamps = sortedcontainers.SortedDict()
         self.timeout = timeout
         self.rand = rand
+        self.base_redis_key = "RSSIT:" + str(self.name) + ":"
 
     def now(self):
         return int(datetime.datetime.now().timestamp())
@@ -563,7 +564,7 @@ class Cache():
         if not self.name:
             return None
 
-        return "RSSIT:" + str(self.name) + ":" + str(key)
+        return self.base_redis_key + str(key)
 
     def add(self, key, value):
         if key in self.db:
@@ -617,6 +618,15 @@ class Cache():
 
         return newdb
 
+    def scan(self, pattern):
+        if rinstance:
+            for i in rinstance.scan_iter(match=self.get_redis_key(pattern)):
+                yield i[len(self.base_redis_key):]
+        else:
+            for key in self.db:
+                if findmatch(pattern, key):
+                    yield key
+
     def collect(self):
         if self.timeout == 0:
             return
@@ -633,6 +643,34 @@ class Cache():
                 del self.db[key]
                 del self.timestamps[timestamp]
 
+def findmatch(matchstr, text):
+    ti = 0
+    mi = 0
+    for _i in range(1000):
+        if mi >= len(matchstr):
+            if ti >= len(text):
+                return True
+            else:
+                return False
+        if ti >= len(text):
+            if matchstr[mi:] == "*":
+                return True
+            return False
+
+        if matchstr[mi] != '*':
+            if matchstr[mi] != text[ti]:
+                return False
+            mi += 1
+            ti += 1
+        else:
+            if mi + 1 >= len(matchstr):
+                return True
+
+            if findmatch(matchstr[mi+1:], text[ti:]):
+                mi += 1
+            else:
+                ti += 1
+    return False
 
 def addhttp(url):
     if not re.search("^[^/]+://", url):

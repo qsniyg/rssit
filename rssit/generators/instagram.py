@@ -105,6 +105,7 @@ post_cache = rssit.util.Cache("ig_post", 36*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 48*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 reelstray_cache = rssit.util.Cache("ig_reelstray_cache", 5*60, 0)
+stories_cache = rssit.util.Cache("ig_stories_cache", 10*60, 0)
 _sharedData = None
 
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
@@ -403,7 +404,8 @@ app_api = rssit.rest.API({
     "endpoints": {
         "stories": {
             "url": rssit.rest.Format("https://i.instagram.com/api/v1/feed/user/%s/story/",
-                                     rssit.rest.Arg("uid", 0))
+                                     rssit.rest.Arg("uid", 0)),
+            "ratelimit": 2
         },
         "reels_tray": {
             "url": "https://i.instagram.com/api/v1/feed/reels_tray/",
@@ -970,7 +972,7 @@ def get_entry_from_node(config, node, user):
     }
 
 
-def parse_story_entries(config, storiesjson, do_stories=True):
+def normalize_story_entries(config, storiesjson):
     if "reel" not in storiesjson or not storiesjson["reel"]:
         storiesjson["reel"] = {"items": []}
 
@@ -998,18 +1000,87 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         if "broadcast" in storiesjson and storiesjson["broadcast"]:
             storiesjson["broadcasts"].append(storiesjson["broadcast"])
 
+    return storiesjson
+
+
+def parse_story_entries(config, storiesjson, do_stories=True):
+    """if "reel" not in storiesjson or not storiesjson["reel"]:
+        storiesjson["reel"] = {"items": []}
+
+        if "tray" in storiesjson and type(storiesjson["tray"]) == list:
+            for tray in storiesjson["tray"]:
+                if "items" not in tray:
+                    continue
+                for item in tray["items"]:
+                    storiesjson["reel"]["items"].append(item)
+
+    if "post_live_item" not in storiesjson or not storiesjson["post_live_item"]:
+        storiesjson["post_live_item"] = {"broadcasts": []}
+
+        if (("post_live" in storiesjson and storiesjson["post_live"])
+            and ("post_live_items" in storiesjson["post_live"]
+                 and storiesjson["post_live"]["post_live_items"])):
+            for item in storiesjson["post_live"]["post_live_items"]:
+                if "broadcasts" in item and item["broadcasts"]:
+                    for broadcast in item["broadcasts"]:
+                        storiesjson["post_live_item"]["broadcasts"].append(broadcast)
+
+    if "broadcasts" not in storiesjson or not storiesjson["broadcasts"]:
+        storiesjson["broadcasts"] = []
+
+        if "broadcast" in storiesjson and storiesjson["broadcast"]:
+            storiesjson["broadcasts"].append(storiesjson["broadcast"])"""
+    storiesjson = normalize_story_entries(config, storiesjson)
+
     entries = []
 
     story_items = []
 
     if config["stories"]:
         if "tray" in storiesjson:
-            for tray_user in storiesjson["tray"]:
+            max_reelitems = config["max_extra_stories"]
+            max_requests = config["max_extra_story_requests"]
+            current_reelitem = 0
+            current_request = 0
+            storiesjson["tray"].sort(key=lambda x: int(x["latest_reel_media"]) if "latest_reel_media" in x else 0)
+            newtray = reversed(storiesjson["tray"])
+            for tray_user in newtray:
                 # most users don't have items
                 # via the "latest_reel_media" property, it would be possible to check for, and query stories
                 if "items" in tray_user:
                     for item in tray_user["items"]:
                         story_items.append(item)
+                else:
+                    if "latest_reel_media" in tray_user:
+                        if current_reelitem >= max_reelitems:
+                            continue
+                        current_reelitem += 1
+                        basepattern = "*_" + str(tray_user["id"])
+                        pattern = str(tray_user["latest_reel_media"]) + "_" + basepattern
+                        found = False
+                        for skey in stories_cache.scan(pattern):
+                            found = True
+                            break
+                        if found:
+                            for key in stories_cache.scan(basepattern):
+                                story_items.append(stories_cache.get(key))
+                        else:
+                            if current_request >= max_requests:
+                                continue
+                            current_request += 1
+
+                            try:
+                                user_stories = get_stories(config, tray_user["id"])
+                                user_stories = normalize_story_entries(config, user_stories)
+                                if "reel" in user_stories:
+                                    storiesjson["reel"]["items"].extend(user_stories["reel"]["items"])
+                                if "post_live_item" in user_stories:
+                                    storiesjson["post_live_item"]["broadcasts"].extend(user_stories["post_live_item"]["broadcasts"])
+                                if "broadcasts" in user_stories:
+                                    storiesjson["broadcasts"].extend(user_stories["broadcasts"])
+                            except Exception as e:
+                                sys.stderr.write(str(e) + " (HTTP: " + str(config["http_error"]) + ")\n")
+                                pass
         if "reel" in storiesjson and "items" in storiesjson["reel"]:
             for item in storiesjson["reel"]["items"]:
                 story_items.append(item)
@@ -1018,6 +1089,10 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         if not config["stories"]:
             #if not do_stories:
             break
+
+        if "taken_at" in item and "id" in item:
+            scacheid = str(item["taken_at"]) + "_" + str(item["id"])
+            stories_cache.add(scacheid, item)
 
         item = normalize_node(item)
 
@@ -1147,7 +1222,7 @@ def get_story_entries(config, uid, username):
         if "raw" in config and config["raw"]:
             pprint.pprint(storiesjson)
     except Exception as e:  # soft error
-        sys.stderr.write(str(e) + "\n")
+        sys.stderr.write(str(e) + " (HTTP: " + str(config["http_error"]) + ")\n")
         return []
 
     return parse_story_entries(config, storiesjson)
@@ -2392,6 +2467,18 @@ infos = [{
             "name": "Real story URLs",
             "description": "Uses a real post URL for stories, sometimes Instagram doesn't support this",
             "value": False
+        },
+
+        "max_extra_stories": {
+            "name": "Maximum extra users for stories",
+            "description": "The maximum amount of extra users to check for when using stories in reels_tray",
+            "value": 5
+        },
+
+        "max_extra_story_requests": {
+            "name": "Maximum extra story requests",
+            "description": "The maximum amount of extra story requests to run for reels_tray",
+            "value": 2
         }
     },
 
