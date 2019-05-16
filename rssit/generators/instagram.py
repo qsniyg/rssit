@@ -17,6 +17,11 @@ import rssit.converters.social_to_feed
 
 instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
 
+fbappid = "124024574287414"
+webfbappid = "1217981644879628"
+webdesktopfbappid = "936619743392459"
+liteappid = "152431142231154"
+
 endpoint_getentries = "https://www.instagram.com/graphql/query/?query_id=17888483320059182&variables="
 endpoint_getstories = "https://www.instagram.com/graphql/query/?query_id=17873473675158481&variables="
 
@@ -131,7 +136,8 @@ def get_gis_generic(config, e):
     #print("---")
     #string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + useragent + ":" + e
     #string = _sharedData["rhx_gis"] + ":" + _sharedData["config"]["csrf_token"] + ":" + e
-    string = _sharedData["rhx_gis"] + ":" + e
+    rhx_gis = _sharedData.get("rhx_gis", "")
+    string = rhx_gis + ":" + e
     m = hashlib.md5()
     m.update(string.encode('utf-8'))
     return m.hexdigest()
