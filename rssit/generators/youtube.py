@@ -71,9 +71,13 @@ def get_video_entry(video, url):
     if selected_thumbnail is not None:
         newvideo["image"] = selected_thumbnail["url"]
 
+    caption = video["snippet"]["title"]
+    if caption is None:
+        caption = ""
+
     entry = {
         "url": url,
-        "caption": video["snippet"]["title"],
+        "caption": caption,
         "description": video["snippet"]["description"],
         "date": created,
         "author": video["snippet"]["channelTitle"],

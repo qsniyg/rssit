@@ -9,6 +9,7 @@ import random
 import datetime
 import dateutil.parser
 import bs4
+import sys
 
 vod_info_cache = rssit.util.Cache("goldlive_vod_info", 24*60*60, 50)
 vod_page_cache = rssit.util.Cache("goldlive_vod_page", 24*60*60, 50)
@@ -108,6 +109,9 @@ def get_vod_entry(config, vodid):
 
 
 def generate_favorite_feed(server, config, path):
+    # Until I find a fix
+    return None
+
     data = api.run(config, "favorite_live").decode('utf-8')
 
     soup = bs4.BeautifulSoup(data, 'lxml')
@@ -124,9 +128,13 @@ def generate_favorite_feed(server, config, path):
 
     for element in elements:
         link = element.select("a[href='#none']")[0]
-        vod = re.sub(r".*/play/([0-9]*)'[)]", "\\1", link["onclick"])
-        entry = get_vod_entry(config, vod)
-        feed["entries"].append(entry)
+        vod = re.sub(r".*/play/([0-9]+)'[)].*", "\\1", link["onclick"])
+        print(vod)
+        if vod != link["onclick"]:
+            entry = get_vod_entry(config, vod)
+            feed["entries"].append(entry)
+        else:
+            sys.stderr.write("Can't parse Goldlive onclick: " + str(link["onclick"]) + "\n")
 
     return ("social", feed)
 

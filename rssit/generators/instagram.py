@@ -105,7 +105,7 @@ post_cache = rssit.util.Cache("ig_post", 36*60*60, 50)
 uid_to_username_cache = rssit.util.Cache("ig_uid_to_username", 48*60*60, 100)
 api_userinfo_cache = rssit.util.Cache("ig_api_userinfo", 24*60*60, 100)
 reelstray_cache = rssit.util.Cache("ig_reelstray_cache", 5*60, 0)
-stories_cache = rssit.util.Cache("ig_stories_cache", 10*60, 0)
+stories_cache = rssit.util.Cache("ig_stories_cache", 1*60, 0)
 _sharedData = None
 
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
@@ -162,6 +162,7 @@ def get_url(config, url):
 
 
 def normalize_image(url):
+    return url
     """url = url.replace(".com/l/", ".com/")
     url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
     url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
@@ -354,7 +355,8 @@ graphql_hash_api = rssit.rest.API({
         "tagged": {
             "base": "base",
             "query": {
-                "query_hash": "de71ba2f35e0b59023504cfeb5b9857e"
+                #"query_hash": "de71ba2f35e0b59023504cfeb5b9857e"
+                "query_hash": "ff260833edf142911047af6024eb634a"
             }
         },
 
@@ -1058,9 +1060,10 @@ def parse_story_entries(config, storiesjson, do_stories=True):
                         basepattern = "*_" + str(tray_user["id"])
                         pattern = str(tray_user["latest_reel_media"]) + "_" + basepattern
                         found = False
-                        for skey in stories_cache.scan(pattern):
-                            found = True
-                            break
+                        if True:
+                            for skey in stories_cache.scan(pattern):
+                                found = True
+                                break
                         if found:
                             for key in stories_cache.scan(basepattern):
                                 story_items.append(stories_cache.get(key))
@@ -1073,11 +1076,18 @@ def parse_story_entries(config, storiesjson, do_stories=True):
                                 user_stories = get_stories(config, tray_user["id"])
                                 user_stories = normalize_story_entries(config, user_stories)
                                 if "reel" in user_stories:
-                                    storiesjson["reel"]["items"].extend(user_stories["reel"]["items"])
-                                if "post_live_item" in user_stories:
-                                    storiesjson["post_live_item"]["broadcasts"].extend(user_stories["post_live_item"]["broadcasts"])
-                                if "broadcasts" in user_stories:
-                                    storiesjson["broadcasts"].extend(user_stories["broadcasts"])
+                                    for item in user_stories["reel"]["items"]:
+                                        found = False
+                                        for sitem in storiesjson["reel"]["items"]:
+                                            if sitem["id"] == item["id"]:
+                                                found = True
+                                                break
+                                        if not found:
+                                            storiesjson["reel"]["items"].append(item)
+                                #if "post_live_item" in user_stories:
+                                #    storiesjson["post_live_item"]["broadcasts"].extend(user_stories["post_live_item"]["broadcasts"])
+                                #if "broadcasts" in user_stories:
+                                #    storiesjson["broadcasts"].extend(user_stories["broadcasts"])
                             except Exception as e:
                                 sys.stderr.write(str(e) + " (HTTP: " + str(config["http_error"]) + ")\n")
                                 pass
@@ -1462,7 +1472,7 @@ def generate_user(config, *args, **kwargs):
         feed["entries"].append(ppentry)
 
     igtv = get_igtv(config, decoded_user)
-    if igtv:
+    if igtv and config["igtv"]:
         feed["entries"].extend(igtv)
 
     def paginate(f):
@@ -2406,6 +2416,12 @@ infos = [{
         "lives": {
             "name": "Process live videos",
             "description": "Process live videos, requires an extra call",
+            "value": True
+        },
+
+        "igtv": {
+            "name": "Process IGTV",
+            "description": "Process IGTV, doesn't require an extra call",
             "value": True
         },
 
