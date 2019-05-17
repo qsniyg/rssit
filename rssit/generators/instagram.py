@@ -1401,7 +1401,10 @@ def instagram_paginate(config, mediacount, f):
     console = False
     has_next_page = True
 
-    while (nodecount < total) and has_next_page:
+    while has_next_page:
+        if total >= 0 and nodecount >= total:
+            break
+
         output = f(maxid)
         if len(output[0]) == 0:
             sys.stderr.write("\rLoading media (%i/%i, skipping)... " % (len(nodes), total))
@@ -1422,8 +1425,8 @@ def instagram_paginate(config, mediacount, f):
                 continue
             nodes.append(item)
 
-        if nodecount < total:
-            sys.stderr.write("\rLoading media (%i/%i)... " % (nodecount, total))
+        if total < 0 or nodecount < total:
+            sys.stderr.write("\rLoading media (%i/%s)... " % (nodecount, str(total) if total >= 0 else "??"))
             sys.stderr.flush()
             console = True
         maxid = output[1]
