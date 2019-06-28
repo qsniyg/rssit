@@ -393,7 +393,8 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "c409f8bda63382c86db99f2a2ea4a9b2"
                 #"query_hash": "fcf12425b390947f4a9fc55c46b74dbf"
                 #"query_hash": "01b3ccff4136c4adf5e67e1dd7eab68d"
-                "query_hash": "3f01472fb28fb8aca9ad9dbc9d4578ff"
+                #"query_hash": "3f01472fb28fb8aca9ad9dbc9d4578ff"
+                "query_hash": "169431bf216e1c39bb58e999d5d5bfa6"
             }
         }
     }
@@ -829,6 +830,7 @@ def get_stories(config, userid):
             }
         else:
             stories = {"reel": None}
+    #pprint.pprint(stories)
     return stories
 
 
@@ -1038,6 +1040,7 @@ def parse_story_entries(config, storiesjson, do_stories=True):
 
         if "broadcast" in storiesjson and storiesjson["broadcast"]:
             storiesjson["broadcasts"].append(storiesjson["broadcast"])"""
+    #pprint.pprint(storiesjson)
     storiesjson = normalize_story_entries(config, storiesjson)
 
     entries = []
@@ -1264,6 +1267,10 @@ def get_author(config, userinfo):
     return author
 
 
+def cut_to_nearest(num, nearest):
+    return int(num / nearest) * nearest
+
+
 def get_feed(config, userinfo):
     username = userinfo["username"].lower()
 
@@ -1276,10 +1283,31 @@ def get_feed(config, userinfo):
     }
 
     if "description_uid" in config and config["description_uid"]:
+        followers = 0
+        if "edge_followed_by" in userinfo:
+            followers = int(userinfo["edge_followed_by"]["count"])
+        elif "follower_count" in userinfo:
+            followers = int(userinfo["follower_count"])
+
+        uid = 0
+        if "id" in userinfo:
+            uid = userinfo["id"]
+        elif "pk" in userinfo:
+            uid = userinfo["pk"]
+
+        # To reduce the amount of changed entries in webrssview
+        # TODO: make configurable
+        if True:
+            followers = cut_to_nearest(followers, 1000)
+
+            if followers > 100*1000:
+                followers = cut_to_nearest(followers, 10*1000)
+            if followers > 1000*1000:
+                followers = cut_to_nearest(followers, 100*1000)
         outobj["description"] = "%s\n---\nUID: %s\nFollowers: %s" % (
             outobj["description"],
-            str(userinfo["id"]),
-            str(userinfo["edge_followed_by"]["count"])
+            str(uid),
+            str(followers)
         )
         if "external_url" in userinfo:
             outobj["description"] += "\nLink: %s" % userinfo["external_url"]
@@ -1469,7 +1497,7 @@ def generate_user(config, *args, **kwargs):
         medianodes = []
 
     if config["fail_if_not_following"]:
-        if not decoded_user["followed_by_viewer"]:
+        if "followed_by_viewer" not in decoded_user or not decoded_user["followed_by_viewer"]:
             if "requested_by_viewer" not in decoded_user or not decoded_user["requested_by_viewer"]:
                 config["http_error"] = 490
                 return None
@@ -2467,7 +2495,7 @@ infos = [{
         "max_graphql_count": {
             "name": "Largest GraphQL Query",
             "description": "Maximum number of items a single GraphQL call will return",
-            "value": 24
+            "value": 12
         },
 
         "fail_if_not_following": {

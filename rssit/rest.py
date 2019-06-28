@@ -210,10 +210,10 @@ class API(object):
             #    sys.stderr.write(pprint.pformat(download_kw) + "\n")
             data = rssit.util.download(baseurl, **download_kw)
         except Exception as e:
-            rssit.status.remove_api(status_obj)
-
             if do_ratelimit:
                 self.lock.release()
+
+            rssit.status.remove_api(status_obj)
             if "http_error" in config:
                 orig_config["http_error"] = config["http_error"]
             if "http_resp" in config:

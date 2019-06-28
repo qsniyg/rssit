@@ -14,6 +14,7 @@ def generate_mariasarang_page(config, url):
     soup = bs4.BeautifulSoup(data, 'lxml')
 
     dates = soup.select("table > tr > td")
+    our_date_el = None
     title = None
     date = None
     if dates and len(dates) > 0:
@@ -23,6 +24,7 @@ def generate_mariasarang_page(config, url):
             if match:
                 title = match.group(0)
                 date = rssit.util.parse_date(match.group(0))
+                our_date_el = date_el
                 break
 
     if not date:
@@ -30,13 +32,16 @@ def generate_mariasarang_page(config, url):
         return None
 
     todaylecture = soup.select("div.todaylecture")
+    iternodes = our_date_el.children
     if not todaylecture or len(todaylecture) == 0:
         sys.stderr.write("Cannot find todaylecture\n")
-        return None
+    else:
+        iternodes = todaylecture[0].next_siblings
 
     text = ""
+    #pprint.pprint(list(iternodes))
 
-    for current_el in todaylecture[0].next_siblings:
+    for current_el in iternodes:
         if current_el.name == "script":
             break
 
