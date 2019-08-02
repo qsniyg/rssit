@@ -1296,8 +1296,7 @@ def get_feed(config, userinfo):
             uid = userinfo["pk"]
 
         # To reduce the amount of changed entries in webrssview
-        # TODO: make configurable
-        if True:
+        if config["round_followers"]:
             followers = cut_to_nearest(followers, 1000)
 
             if followers > 100*1000:
@@ -2532,6 +2531,12 @@ infos = [{
             "name": "Maximum extra story requests",
             "description": "The maximum amount of extra story requests to run for reels_tray",
             "value": 2
+        },
+
+        "round_followers": {
+            "name": "Round followers",
+            "description": "Rounds the follower count, helpful for less DB updates",
+            "value": True
         }
     },
 
