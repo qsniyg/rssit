@@ -116,6 +116,8 @@ _sharedData = None
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
 sharedDataregex2 = r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded"
 
+csrftoken = None
+
 
 def get_sharedData(config):
     do_website_request(config, "https://www.instagram.com")
@@ -145,6 +147,9 @@ def get_gis_generic(config, e):
 
 def set_gis_generic(config, e):
     config["httpheader_X-Instagram-GIS"] = get_gis_generic(config, e)
+
+    if csrftoken is not None:
+        config["httpheader_X-CSRFToken"] = csrftoken
 
 
 def set_gis_a1(config, url):
@@ -215,6 +220,10 @@ def parse_webpage_request(orig_config, config, data):
 
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
+
+    if "config" in decoded and "csrf_token" in decoded["config"]:
+        global csrftoken
+        csrftoken = decoded["config"]["csrf_token"]
 
     return decoded
 
@@ -383,6 +392,7 @@ graphql_hash_api = rssit.rest.API({
         },
 
         # {"fetch_media_item_count":12,"fetch_media_item_cursor":"...","fetch_comment_count":4,"fetch_like":10,"has_stories":false}
+        # {"cached_feed_item_ids":[],"fetch_media_item_count":12,"fetch_media_item_cursor":"...","fetch_comment_count":4,"fetch_like":3,"has_stories":false,"has_threaded_comments":true}
         "home": {
             "base": "base",
             "query": {
@@ -394,7 +404,8 @@ graphql_hash_api = rssit.rest.API({
                 #"query_hash": "fcf12425b390947f4a9fc55c46b74dbf"
                 #"query_hash": "01b3ccff4136c4adf5e67e1dd7eab68d"
                 #"query_hash": "3f01472fb28fb8aca9ad9dbc9d4578ff"
-                "query_hash": "169431bf216e1c39bb58e999d5d5bfa6"
+                #"query_hash": "169431bf216e1c39bb58e999d5d5bfa6"
+                "query_hash": "08574cc2c79c937fbb6da1c0972c7b39"
             }
         }
     }
@@ -1323,10 +1334,15 @@ def get_home_entries(config):
             origcount = count
 
     variables = {
-        "fetch_media_item_count": count
+        "fetch_media_item_count": count,
+        "cached_feed_item_ids": [],
+        "has_stories": False,
+        "fetch_like": 3,
+        "fetch_comment_count": 4,
+        "has_threaded_comments": True
     }
 
-    if count <= 12:
+    if count <= 12 and False:
         variables = {}
 
     def get_nodes(cursor):
@@ -1511,12 +1527,11 @@ def generate_user(config, *args, **kwargs):
     if igtv and config["igtv"]:
         feed["entries"].extend(igtv)
 
-    def paginate(f):
+    def paginate(f, maxid=None):
         total = config["count"]
         if config["count"] == -1:
             total = mediacount
 
-        maxid = None
         nodes = []
         nodecount = 0
         console = False
@@ -1570,6 +1585,14 @@ def generate_user(config, *args, **kwargs):
         elif count == 1:
             count = 20
 
+        cursor = None
+
+        try:
+            timeline_media = decoded_user["edge_owner_to_timeline_media"]
+            cursor = timeline_media["page_info"]["end_cursor"]
+        except Exception as e:
+            pass
+
         def get_nodes(cursor):
             media = get_nodes_from_uid_graphql(config, uid, first=count, after=cursor)
             edges = media["data"]["user"]["edge_owner_to_timeline_media"]["edges"]
@@ -1589,7 +1612,7 @@ def generate_user(config, *args, **kwargs):
 
             return (nodes, end_cursor, has_next_page)
 
-        nodes = paginate(get_nodes)
+        nodes = paginate(get_nodes, cursor)
     elif config["use_api_entries"] and count > len(medianodes):
         def get_nodes(cursor):
             media = get_nodes_from_uid_app(config, uid, max_id=cursor)
