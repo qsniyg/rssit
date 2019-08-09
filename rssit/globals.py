@@ -10,3 +10,8 @@ except NameError:
         "model": {},
         "config": {}
     }
+
+try:
+    wblist_cache
+except NameError:
+    wblist_cache = {}

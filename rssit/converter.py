@@ -4,6 +4,9 @@
 import rssit.converters.all
 import rssit.serializer
 import rssit.status
+import rssit.config
+import rssit.globals
+import os.path
 import copy
 import threading
 import subprocess
@@ -57,6 +60,35 @@ class runthread(threading.Thread):
         self.data = None
 
 
+def read_wblist(filename):
+    if filename in rssit.globals.wblist_cache:
+        return rssit.globals.wblist_cache[filename]
+
+    load_paths = rssit.config.get_config_paths(rssit.globals.appname, filename)
+    for path in load_paths:
+        if os.path.exists(path):
+            with open(path, 'r') as wbfile:
+                contents = wbfile.read()
+                rssit.globals.wblist_cache[path] = contents
+                return contents
+    return None
+
+
+def in_wblist(wblist, value):
+    contents = read_wblist(wblist)
+    if type(contents) is not str:
+        return False
+
+    lines = contents.split("\n")
+    for line in lines:
+        if type(value) == list:
+            if line in value:
+                return True
+        elif type(value) == str and line == value:
+            return True
+    return False
+
+
 def runhooks(config, data, format):
     if "nohooks" in config and config["nohooks"] is True:
         return
@@ -65,7 +97,7 @@ def runhooks(config, data, format):
 
     for key in config:
         if re.match("^" + format + "_hooks[0-9]*$", key):
-            hookslist.append(config[key])
+            hookslist.append((key, config[key]))
     #hooksname = format + "_hooks"
 
     #if hooksname not in config:
@@ -74,17 +106,77 @@ def runhooks(config, data, format):
         return
 
     #hookslist = config[hooksname].split(";")
+    hooksdata = []
 
-    processed = str(rssit.serializer.process(config, data, format))
+    if format == "social":
+        newdata = rssit.util.simple_copy(data)
+        newdata["entries"] = []
 
-    if type(processed) != str:
-        return
+        # TODO: optimize, this is horribly inefficient
+        for key, hook in hookslist:
+            currentdata = rssit.util.simple_copy(newdata)
 
-    for hook in hookslist:
+            for entry in data["entries"]:
+                can_add = True
+                has_whitelist = False
+
+                for ckey in config:
+                    if (not ckey.startswith(key)) or ckey == key:
+                        continue
+
+                    sckey = ckey[len(key):]
+                    whitelist = False
+                    if sckey.startswith(".whitelist."):
+                        whitelist = True
+
+                        if can_add and not has_whitelist:
+                            can_add = False
+                            has_whitelist = True
+                    elif not sckey.startswith(".blacklist."):
+                        continue
+
+                    # len("whitelist") == len("blacklist")
+                    sckey = sckey[len(".whitelist."):]
+
+                    if sckey not in entry:
+                        continue
+
+                    valin = in_wblist(config[ckey], entry[sckey])
+
+                    if valin:
+                        if whitelist:
+                            can_add = True
+                        else:
+                            can_add = False
+                            break
+
+                if can_add:
+                    currentdata["entries"].append(entry)
+            if len(currentdata["entries"]) == 0:
+                hooksdata.append(None)
+            else:
+                processed = str(rssit.serializer.process(config, currentdata, format))
+                if type(processed) != str:
+                    hooksdata.append(None)
+                else:
+                    hooksdata.append(processed)
+    else:
+        processed = str(rssit.serializer.process(config, data, format))
+        if type(processed) != str:
+            return
+
+        for key, hook in hookslist:
+            hooksdata.append(processed)
+
+    i = 0
+    for key, hook in hookslist:
+        if hooksdata[i] is None:
+            continue
+
         p = subprocess.Popen(hook, stdin=subprocess.PIPE,
                              stdout=None, stderr=None, close_fds=True,
                              shell=True)
-        rt = runthread(p, bytes(processed, "utf-8"), hook)
+        rt = runthread(p, bytes(hooksdata[i], "utf-8"), hook)
         rt.start()
 
 

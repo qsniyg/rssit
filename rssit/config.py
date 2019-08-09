@@ -10,15 +10,19 @@ import rssit.globals
 import re
 
 
-def get_load_paths(appname):
+def get_config_paths(appname, filename):
     paths = reversed(list(xdg.BaseDirectory.load_config_paths(appname)))
 
     config_paths = []
 
     for path in paths:
-        config_paths.append(os.path.join(path, "config.ini"))
+        config_paths.append(os.path.join(path, filename))
 
     return config_paths
+
+
+def get_load_paths(appname):
+    return get_config_paths(appname, "config.ini")
 
 
 def get_save_path(appname):
@@ -199,6 +203,7 @@ def get_section(section, profile=None):
 
 def load():
     rssit.globals.config["config"] = {}
+    rssit.globals.config["wblist_cache"] = {}
 
     config_paths = get_load_paths(rssit.globals.appname)
     save_path = get_save_path(rssit.globals.appname)
