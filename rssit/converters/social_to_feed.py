@@ -74,9 +74,15 @@ def process(result, config):
 
         basetitle = caption.replace("\n", " ")
 
+        ft = ""
+        if "coauthors" in entry and type(entry["coauthors"]) is list:
+            if len(entry["coauthors"]) > 0:
+                ft = "ft. " + ", ".join(entry["coauthors"])
+
         if entry["author"] != result["author"]:
-            content = "<p><em>%s</em></p><p>%s</p>" % (
+            content = "<p><em>%s %s</em></p><p>%s</p>" % (
                 entry["author"],
+                ft,
                 basecontent
             )
 
