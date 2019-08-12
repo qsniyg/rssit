@@ -95,21 +95,6 @@ def read_wblist(filename):
     return None
 
 
-def in_wblist_old(wblist, value):
-    contents = read_wblist(wblist)
-    if type(contents) is not str:
-        return False
-
-    lines = contents.split("\n")
-    for line in lines:
-        if type(value) == list:
-            if line in value:
-                return True
-        elif type(value) == str and line == value:
-            return True
-    return False
-
-
 def in_wblist(wblist, value):
     parsed = read_wblist(wblist)
     if type(parsed) is not dict:
