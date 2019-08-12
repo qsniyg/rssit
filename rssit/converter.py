@@ -8,6 +8,7 @@ import rssit.config
 import rssit.globals
 import os.path
 import copy
+import pprint
 import threading
 import subprocess
 import re
@@ -60,6 +61,25 @@ class runthread(threading.Thread):
         self.data = None
 
 
+def parse_wblist(contents):
+    lines = contents.split("\n")
+    basedict = {}
+    for line in lines:
+        line = line.strip()
+
+        if len(line) == 0 or line[0] == "#":
+            continue
+
+        current = basedict
+        for i in range(len(line)):
+            if line[i] not in current:
+                current[line[i]] = {}
+            current = current[line[i]]
+        current[" "] = True
+
+    return basedict
+
+
 def read_wblist(filename):
     if filename in rssit.globals.wblist_cache:
         return rssit.globals.wblist_cache[filename]
@@ -69,12 +89,13 @@ def read_wblist(filename):
         if os.path.exists(path):
             with open(path, 'r') as wbfile:
                 contents = wbfile.read()
-                rssit.globals.wblist_cache[path] = contents
-                return contents
+                #rssit.globals.wblist_cache[path] = contents
+                rssit.globals.wblist_cache[path] = parse_wblist(contents)
+                return rssit.globals.wblist_cache[path]
     return None
 
 
-def in_wblist(wblist, value):
+def in_wblist_old(wblist, value):
     contents = read_wblist(wblist)
     if type(contents) is not str:
         return False
@@ -87,6 +108,20 @@ def in_wblist(wblist, value):
         elif type(value) == str and line == value:
             return True
     return False
+
+
+def in_wblist(wblist, value):
+    parsed = read_wblist(wblist)
+    if type(parsed) is not dict:
+        return False
+
+    current = parsed
+    for i in range(len(value)):
+        if value[i] not in current:
+            return False
+        current = current[value[i]]
+
+    return " " in current
 
 
 def runhooks(config, data, format):
