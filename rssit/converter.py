@@ -100,13 +100,20 @@ def in_wblist(wblist, value):
     if type(parsed) is not dict:
         return False
 
-    current = parsed
-    for i in range(len(value)):
-        if value[i] not in current:
-            return False
-        current = current[value[i]]
+    if type(value) is not list:
+        value = [value]
 
-    return " " in current
+    for cvalue in value:
+        current = parsed
+        for i in range(len(cvalue)):
+            if cvalue[i] not in current:
+                return False
+            current = current[cvalue[i]]
+
+        if " " in current:
+            return True
+
+    return False
 
 
 def runhooks(config, data, format):

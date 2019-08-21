@@ -265,26 +265,28 @@ web_api = rssit.rest.API({
 
         "user": {
             "base": "webpage",
-            "ratelimit": 4
+            "ratelimit": 5
         },
 
         "user_a1": {
             "base": "a1",
-            "ratelimit": 4
+            "ratelimit": 5
         },
 
         "node": {
             "base": "webpage",
             "args": {
                 "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
-            }
+            },
+            "ratelimit": 2
         },
 
         "node_a1": {
             "base": "a1",
             "args": {
                 "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
-            }
+            },
+            "ratelimit": 2
         }
     }
 })
