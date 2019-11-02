@@ -228,10 +228,11 @@ def download(url, *args, **kwargs):
                         for cookie in C:
                             if "value" not in C[cookie]:
                                 continue
-                            if "max-age" in C[cookie] and C[cookie]["max-age"] != '' and C[cookie]["max-age"] != '0':
-                                rinstance.setex(cookieprefix + cookie, int(C[cookie]["max-age"]), C[cookie].value)
-                            else:
-                                rinstance.setex(cookieprefix + cookie, C[cookie].value)
+                            if rinstance:
+                                if "max-age" in C[cookie] and C[cookie]["max-age"] != '' and C[cookie]["max-age"] != '0':
+                                    rinstance.setex(cookieprefix + cookie, int(C[cookie]["max-age"]), C[cookie].value)
+                                else:
+                                    rinstance.setex(cookieprefix + cookie, C[cookie].value)
 
                 charset = response.headers.get_content_charset()
 

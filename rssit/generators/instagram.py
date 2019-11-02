@@ -115,6 +115,7 @@ _sharedData = None
 
 sharedDataregex1 = r"window._sharedData = *(?P<json>.*?);?</script>"
 sharedDataregex2 = r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__initialDataLoaded"
+additionalDataregex = r'''window.__additionalDataLoaded[(]["'].*?["'] *, *(?P<json>{.*?})[)];? *</script>'''
 
 csrftoken = None
 
@@ -211,9 +212,12 @@ def image_basename(url):
 
 
 def parse_webpage_request(orig_config, config, data):
-    jsondatare = re.search(sharedDataregex1, str(data))
+    sdata = str(data)
+    #print(sdata)
+
+    jsondatare = re.search(sharedDataregex1, sdata)
     if jsondatare is None:
-        jsondatare = re.search(sharedDataregex2, str(data))
+        jsondatare = re.search(sharedDataregex2, sdata)
         if jsondatare is None:
             sys.stderr.write("No sharedData!\n")
             return None
@@ -221,10 +225,21 @@ def parse_webpage_request(orig_config, config, data):
     jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
     decoded = rssit.util.json_loads(jsondata)
 
+    additionaldatare = re.search(additionalDataregex, sdata)
+    #pprint.pprint(additionaldatare)
+    if additionaldatare is not None:
+        additionaljson = bytes(additionaldatare.group("json"), 'utf-8').decode('unicode-escape')
+        additionaldecoded = rssit.util.json_loads(additionaljson)
+        for key in decoded["entry_data"]:
+            if type(decoded["entry_data"][key]) == list:
+                decoded["entry_data"][key][0] = additionaldecoded
+                break
+
     if "config" in decoded and "csrf_token" in decoded["config"]:
         global csrftoken
         csrftoken = decoded["config"]["csrf_token"]
 
+    #pprint.pprint(decoded)
     return decoded
 
 
@@ -265,12 +280,12 @@ web_api = rssit.rest.API({
 
         "user": {
             "base": "webpage",
-            "ratelimit": 5
+            "ratelimit": 60
         },
 
         "user_a1": {
             "base": "a1",
-            "ratelimit": 5
+            "ratelimit": 60
         },
 
         "node": {
@@ -278,7 +293,7 @@ web_api = rssit.rest.API({
             "args": {
                 "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
             },
-            "ratelimit": 2
+            "ratelimit": 5
         },
 
         "node_a1": {
@@ -286,7 +301,7 @@ web_api = rssit.rest.API({
             "args": {
                 "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
             },
-            "ratelimit": 2
+            "ratelimit": 5
         }
     }
 })
@@ -686,7 +701,11 @@ def get_user_info(config, userid, force=False):
             userinfo = userinfo["user"]
     if not userinfo:
         cached = False
-        userinfo = do_app_request(config, "user_info", uid=userid)["user"]
+        userinfo_app = do_app_request(config, "user_info", uid=userid)
+        if not userinfo_app:
+            sys.stderr.write("Unable to get app request!\n")
+            return (None, False)
+        userinfo = userinfo_app["user"]
         api_userinfo_cache.add(userid, userinfo)
     return (userinfo, cached)
     #return do_app_request(config, "https://i.instagram.com/api/v1/users/" + userid + "/info/")
@@ -1372,6 +1391,9 @@ def get_home_entries(config):
 
 
 def get_profilepic_entry_raw(config, userinfo):
+    if not userinfo:
+        return
+
     url = None
     # api
     if "hd_profile_pic_url_info" in userinfo:
@@ -1645,7 +1667,7 @@ def generate_user(config, *args, **kwargs):
             return (nodes, end_cursor, has_next_page)
         nodes = paginate(get_nodes)
 
-    for node in reversed(nodes):
+    for node in nodes:
         feed["entries"].append(get_entry_from_node(config, node, username))
 
     story_entries = get_story_entries(config, uid, username)
