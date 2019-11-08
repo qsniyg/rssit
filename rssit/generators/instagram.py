@@ -212,8 +212,7 @@ def image_basename(url):
 
 
 def parse_webpage_request(orig_config, config, data):
-    sdata = str(data)
-    #print(sdata)
+    sdata = data.decode('utf-8')
 
     jsondatare = re.search(sharedDataregex1, sdata)
     if jsondatare is None:
@@ -222,13 +221,15 @@ def parse_webpage_request(orig_config, config, data):
             sys.stderr.write("No sharedData!\n")
             return None
 
-    jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    #jsondata = bytes(jsondatare.group("json"), 'utf-8').decode('unicode-escape')
+    jsondata = jsondatare.group("json")
     decoded = rssit.util.json_loads(jsondata)
 
     additionaldatare = re.search(additionalDataregex, sdata)
     #pprint.pprint(additionaldatare)
     if additionaldatare is not None:
-        additionaljson = bytes(additionaldatare.group("json"), 'utf-8').decode('unicode-escape')
+        #additionaljson = bytes(additionaldatare.group("json"), 'utf-8').decode('unicode-escape')
+        additionaljson = additionaldatare.group("json")
         additionaldecoded = rssit.util.json_loads(additionaljson)
         for key in decoded["entry_data"]:
             if type(decoded["entry_data"][key]) == list:
@@ -239,7 +240,6 @@ def parse_webpage_request(orig_config, config, data):
         global csrftoken
         csrftoken = decoded["config"]["csrf_token"]
 
-    #pprint.pprint(decoded)
     return decoded
 
 
