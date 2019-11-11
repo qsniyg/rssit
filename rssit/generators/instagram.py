@@ -525,19 +525,20 @@ def get_node_info_raw(config, code, usecache=True):
     info = post_cache.get(code)
     usecache = check_cache(config, usecache)
     if info and usecache:
-        return info
-    else:
-        try:
-            if config["use_shortcode_a1"]:
-                req = get_node_info_a1(config, code)
-            else:
-                req = get_node_info_webpage(config, code)
-            post_cache.add(code, req)
-            return req
-        except Exception as e:
-            #print(e)
-            traceback.print_exc()
-            return {}
+        if "graphql" in info and "shortcode_media" in info["graphql"] and info["graphql"]["shortcode_media"]:
+            return info
+
+    try:
+        if config["use_shortcode_a1"]:
+            req = get_node_info_a1(config, code)
+        else:
+            req = get_node_info_webpage(config, code)
+        post_cache.add(code, req)
+        return req
+    except Exception as e:
+        #print(e)
+        traceback.print_exc()
+        return {}
 
 
 def get_node_info(config, code, usecache=True):
@@ -994,7 +995,7 @@ def get_entry_from_node(config, node, user):
 
     get_node_media(config, node, images, videos)
 
-    if "__typename" in node and node["__typename"] == "GraphSidecar" and False:
+    if False and "__typename" in node and node["__typename"] == "GraphSidecar":
         newnodes = get_node_info(config, node["code"])
 
         if len(newnodes) > 0:
