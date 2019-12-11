@@ -15,7 +15,8 @@ import hashlib
 import rssit.converters.social_to_feed
 
 
-instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
+#instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
+instagram_ua = "Instagram 10.26.0 Android (23/6.0.1; 640dpi; 1440x2560; samsung; SM-G930F; herolte; samsungexynos8890; en_US)"
 
 fbappid = "124024574287414"
 webfbappid = "1217981644879628"
@@ -226,7 +227,6 @@ def parse_webpage_request(orig_config, config, data):
     decoded = rssit.util.json_loads(jsondata)
 
     additionaldatare = re.search(additionalDataregex, sdata)
-    #pprint.pprint(additionaldatare)
     if additionaldatare is not None:
         #additionaljson = bytes(additionaldatare.group("json"), 'utf-8').decode('unicode-escape')
         additionaljson = additionaldatare.group("json")
@@ -525,7 +525,7 @@ def get_node_info_raw(config, code, usecache=True):
     info = post_cache.get(code)
     usecache = check_cache(config, usecache)
     if info and usecache:
-        if "graphql" in info and "shortcode_media" in info["graphql"] and info["graphql"]["shortcode_media"]:
+        if "graphql" in info and "shortcode_media" in info["graphql"] and info["graphql"]["shortcode_media"] is not None:
             return info
 
     try:
