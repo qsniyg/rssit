@@ -549,7 +549,7 @@ def get_node_info(config, code, usecache=True):
 
 
 def get_node_media(config, node, images, videos):
-    if len(node) == 0:
+    if node is None or len(node) == 0:
         return node
 
     node = normalize_node(node)
@@ -579,7 +579,7 @@ def get_node_media(config, node, images, videos):
                 get_node_media(config, i, images, videos)
         else:
             newnodes = get_node_info(config, node["code"])
-            if len(newnodes) > 0:
+            if newnodes is not None and len(newnodes) > 0:
                 get_node_media(config, newnodes, images, videos)
 
 
@@ -1614,7 +1614,7 @@ def generate_user(config, *args, **kwargs):
 
         try:
             timeline_media = decoded_user["edge_owner_to_timeline_media"]
-            cursor = timeline_media["page_info"]["end_cursor"]
+            #cursor = timeline_media["page_info"]["end_cursor"]
         except Exception as e:
             pass
 

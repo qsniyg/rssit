@@ -260,6 +260,7 @@ def download(url, *args, **kwargs):
 
                 return ourresponse
         except urllib.error.HTTPError as e:
+            #pprint.pprint(e.read())
             if e.code == 302:
                 # infinite loop
                 config["http_error"] = 500
