@@ -45,8 +45,12 @@ def questionmark(path):
     return (path[:firstidx], options)
 
 
+def do_normpath(path):
+    return re.sub("/+", "/", path)
+
+
 def process(server, path):
-    normpath = re.sub("^/*", "", os.path.normpath(path))
+    normpath = re.sub("^/*", "", do_normpath(path))
     newpath, options = questionmark(normpath)
     path_name = re.sub("@.*", "", newpath.split("/")[0].lower())
 
