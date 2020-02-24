@@ -175,7 +175,7 @@ def get_url(config, url):
 
 
 def normalize_image(url):
-    return url
+    return re.sub(r"&se=[^&]+", "", url)
     """url = url.replace(".com/l/", ".com/")
     url = re.sub(r"(cdninstagram\.com/[^/]*/)s[0-9]*x[0-9]*/", "\\1", url)
     url = re.sub(r"/sh[0-9]*\.[0-9]*/", "/", url)
@@ -871,6 +871,7 @@ def normalize_node(node):
     if "node" in node:
         node = node["node"]
     node = rssit.util.simple_copy(node)
+
     if "caption" not in node:
         if (("edge_media_to_caption" in node) and
             ("edges" in node["edge_media_to_caption"]) and
@@ -1074,6 +1075,9 @@ def parse_story_entries(config, storiesjson, do_stories=True):
         if "broadcast" in storiesjson and storiesjson["broadcast"]:
             storiesjson["broadcasts"].append(storiesjson["broadcast"])"""
     #pprint.pprint(storiesjson)
+    if "raw" in config and config["raw"]:
+        pprint.pprint(storiesjson)
+
     storiesjson = normalize_story_entries(config, storiesjson)
 
     entries = []
