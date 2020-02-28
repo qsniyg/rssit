@@ -1661,7 +1661,11 @@ def generate_user(config, *args, **kwargs):
         def get_nodes(cursor):
             media = get_nodes_from_uid_app(config, uid, max_id=cursor)
 
-            return (media["items"], media["next_max_id"], media["more_available"])
+            next_max_id = None
+            if "next_max_id" in media:
+                next_max_id = media["next_max_id"]
+
+            return (media["items"], next_max_id, media["more_available"])
         nodes = paginate(get_nodes)
     else:
         def get_nodes(max_id):
