@@ -510,7 +510,8 @@ def get_node_info_webpage(config, code):
 
 def get_normalized_array(config, norm, orig):
     if config["use_normalized"]:
-        return [norm, orig]
+        return norm
+        #return [norm, orig]
     else:
         return orig
 
@@ -813,7 +814,12 @@ def get_nodes_from_uid_app(config, uid, *args, **kwargs):
     if "max_id" in kwargs and kwargs["max_id"]:
         newargs["max_id"] = kwargs["max_id"]
 
-    return do_app_request(config, "user_feed", **newargs)
+    try:
+        value = do_app_request(config, "user_feed", **newargs)
+        return value
+    except Exception as e:
+        sys.stderr.write("Unable to fetch " + uid + "'s feed via app request, are you following them?\n")
+        return None
     #url = "https://i.instagram.com/api/v1/feed/user/" + uid + "/"
     #if "max_id" in kwargs and kwargs["max_id"]:
     #    url += "?max_id=" + kwargs["max_id"]
@@ -872,6 +878,9 @@ def normalize_node(node):
         node = node["node"]
     node = rssit.util.simple_copy(node)
 
+    if "caption" in node and node["caption"] is None:
+        node["caption"] = ""
+
     if "caption" not in node:
         if (("edge_media_to_caption" in node) and
             ("edges" in node["edge_media_to_caption"]) and
@@ -889,6 +898,10 @@ def normalize_node(node):
             node["date"] = int(node["created_time"])
         elif "taken_at" in node:
             node["date"] = node["taken_at"]
+
+    if "shortcode" not in node:
+        if "pk" in node:
+            node["shortcode"] = to_shortcode(node["pk"])
 
     if "code" not in node:
         if "shortcode" in node:
@@ -1540,8 +1553,10 @@ def generate_user(config, *args, **kwargs):
         mediacount = decoded_user["media_count"]
         medianodes = []
 
+    user_isnt_following = "followed_by_viewer" not in decoded_user or not decoded_user["followed_by_viewer"]
+
     if config["fail_if_not_following"]:
-        if "followed_by_viewer" not in decoded_user or not decoded_user["followed_by_viewer"]:
+        if user_isnt_following:
             if "requested_by_viewer" not in decoded_user or not decoded_user["requested_by_viewer"]:
                 config["http_error"] = 490
                 return None
@@ -1642,7 +1657,7 @@ def generate_user(config, *args, **kwargs):
             return (nodes, end_cursor, has_next_page)
 
         nodes = paginate(get_nodes, cursor)
-    elif config["use_api_entries"] and count > len(medianodes):
+    elif config["use_api_entries"] and not user_isnt_following:
         def get_nodes(cursor):
             media = get_nodes_from_uid_app(config, uid, max_id=cursor)
 
@@ -2533,8 +2548,8 @@ infos = [{
 
         "use_normalized": {
             "name": "Use normalized images",
-            "description": "Uses normalized images as well as the ones given by Instagram (useless for newer images)",
-            "value": False
+            "description": "Uses normalized images over the ones given by Instagram",
+            "value": True
         },
 
         "use_profilepic_api": {
