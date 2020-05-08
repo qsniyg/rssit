@@ -43,10 +43,19 @@ def get_string(element):
 def get_url(config, url):
     match = re.match(r"^(https?://)?(?:\w+\.)?twitter.com/(?P<user>[^?&/]*)", url)
 
-    if match == None:
+    if match is None:
         return
 
-    return "/u/" + match.group("user")
+    return "/u/" + match.group("user").lower()
+
+
+def get_orig_image(image_url):
+    if image_url.endswith(":large"):
+        image_url = image_url.replace(":large", ":orig")
+    elif not image_url.endswith(":orig"):
+        image_url += ":orig"
+
+    return image_url
 
 
 def generate_html(user, config):
@@ -122,10 +131,7 @@ def generate_html(user, config):
 
             for image in image_holder:
                 image_url = image["data-image-url"]
-                if image_url.endswith(":large"):
-                    image_url = image_url.replace(":large", ":orig")
-                elif not image_url.endswith(":orig"):
-                    image_url += ":orig"
+                image_url = get_orig_image(image_url)
                 images.append(image_url)
         else:
             images = None
@@ -266,10 +272,7 @@ def generate_api(user, config):
             for media in obj.__dict__["extended_entities"]["media"]:
                 if media["type"] == "photo":
                     url = media["media_url"]
-                    if url.endswith(":large"):
-                        url = url.replace(":large", ":orig")
-                    elif not url.endswith(":orig"):
-                        url += ":orig"
+                    url = get_orig_image(url)
                     entrydict["images"].append(url)
                     #entrydict["images"].append(media["media_url"])
                 elif media["type"] == "video" or media["type"] == "animated_gif":

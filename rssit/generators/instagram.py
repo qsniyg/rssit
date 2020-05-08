@@ -1548,8 +1548,10 @@ def generate_user(config, *args, **kwargs):
     elif "uid" in kwargs:
         uid = kwargs["uid"]
         decoded_user, decoded_user_cached = get_user_info(config, uid, True)
+        #pprint.pprint(decoded_user)
         username = decoded_user["username"]
 
+        # doesn't exist for private profiles
         mediacount = decoded_user["media_count"]
         medianodes = []
 

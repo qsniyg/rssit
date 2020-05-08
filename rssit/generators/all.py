@@ -23,6 +23,8 @@ import rssit.generators.youtube
 import rssit.generators.afreecatv
 import rssit.generators.goldlive
 import rssit.generators.misa
+import rssit.generators.likee
+import rssit.generators.snapchat
 
 have_notifications = False
 try:
@@ -57,7 +59,9 @@ generator_list = [
     rssit.generators.youtube,
     rssit.generators.afreecatv,
     rssit.generators.goldlive,
-    rssit.generators.misa
+    rssit.generators.misa,
+    rssit.generators.likee,
+    rssit.generators.snapchat
 ]
 
 if have_notifications:

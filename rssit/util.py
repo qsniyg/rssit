@@ -318,14 +318,19 @@ def paginate(config, mediacount, f):
         console = False
         has_next_page = True
 
-        while (len(nodes) < total) and (has_next_page is not False):
+        while (total is None or len(nodes) < total) and (has_next_page is not False):
             output = f(maxid)
             if not output or not output[0] or len(output[0]) == 0:
                 break
 
             nodes.extend(output[0])
-            if len(nodes) < total:
-                sys.stderr.write("\rLoading media (%i/%i)... " % (len(nodes), total))
+            if total is None or len(nodes) < total:
+                if total is not None:
+                    totalnum = str(total)
+                else:
+                    totalnum = "???"
+
+                sys.stderr.write("\rLoading media (%i/%s)... " % (len(nodes), totalnum))
                 sys.stderr.flush()
                 console = True
             maxid = output[1]
