@@ -16,7 +16,7 @@ import rssit.converters.social_to_feed
 
 
 #instagram_ua = "Instagram 10.26.0 (iPhone7,2; iOS 10_1_1; en_US; en-US; scale=2.00; gamut=normal; 750x1334) AppleWebKit/420+"
-instagram_ua = "Instagram 10.26.0 Android (23/6.0.1; 640dpi; 1440x2560; samsung; SM-G930F; herolte; samsungexynos8890; en_US)"
+instagram_ua = "Instagram 146.0.0.27.125 Android (23/6.0.1; 640dpi; 1440x2560; samsung; SM-G930F; herolte; samsungexynos8890; en_US)"
 
 fbappid = "124024574287414"
 webfbappid = "1217981644879628"
@@ -1898,6 +1898,9 @@ def uid_to_username(config, uid):
 
         if "uid" in uid:
             real_uid = uid["uid"]
+            do_cache = True
+        elif "pk" in uid:
+            real_uid = uid["pk"]
             do_cache = True
         elif "username" in uid:
             return uid["username"]
