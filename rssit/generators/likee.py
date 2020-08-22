@@ -54,7 +54,8 @@ def fetch_userinfo_webpage(config, username):
 
     userinfore = re.search(r"<script>var\s+userinfo\s*=\s*(?P<json>{.*})\s*;", sdata)
     if userinfore is None:
-        userinfore = re.search(r"<script>window\.data\s*=\s*(?P<json>{.*?})\s*;</script>", sdata)
+        userinfore = re.search(r"<script>window\.data\s*=\s*(?P<json>{.*?})\s*;(\s*window\..*?)?</script>", sdata)
+        need_check_userinfo = True
         if userinfore is None:
             return None
 
@@ -68,7 +69,7 @@ def fetch_userinfo_webpage(config, username):
 
 def userinfo_by_username(config, username):
     userinfo = userinfo_by_username_cache.get(username)
-    if not userinfo:
+    if userinfo is None:
         userinfo = fetch_userinfo_webpage(config, username)
         userinfo_by_username_cache.add(username, userinfo)
 
