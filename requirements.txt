@@ -1,7 +1,7 @@
 beautifulsoup4>=4.6.0
 demjson>=2.2.4
 facebook-sdk>=2.0.0
-feedgen==0.8.0
+feedgen==0.9.0
 idna>=2.6
 isodate>=0.6.0
 lxml>=3.0.0
