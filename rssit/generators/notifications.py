@@ -105,6 +105,8 @@ def run_gobject_thread():
 
 
 def init(config):
+    if rssit.cli.is_cli:
+        return
     if "notifications_server" not in config or not config["notifications_server"]:
         return
     gobject_thread = threading.Thread(target=run_gobject_thread)

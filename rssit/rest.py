@@ -195,11 +195,14 @@ class API(object):
 
         data = None
 
+        config["out_headers"] = {}
+        header_out = config["out_headers"]
         try:
             download_kw = {
                 "config": config,
                 "http_noextra": noextra,
-                "http_cookiejar": cookiejar
+                "http_cookiejar": cookiejar,
+                "header_out": header_out
             }
             if form is not None:
                 download_kw["post"] = form

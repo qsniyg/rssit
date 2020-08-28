@@ -218,6 +218,9 @@ def download(url, *args, **kwargs):
         try:
             with openf(request, timeout=int(config["timeout"])) as response:
                 for header in response.headers._headers:
+                    if "header_out" in kwargs:
+                        kwargs["header_out"][header[0].lower()] = header[1]
+
                     if header[0].lower() == "content-length":
                         content_length = int(header[1])
                     elif header[0].lower() == "content-encoding":

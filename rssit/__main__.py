@@ -115,12 +115,15 @@ def main():
 
     url = rssit.args.parse_args(sys.argv)
     if url:
-        return rssit.cli.serve(url)
+        rssit.cli.is_cli = True
 
     for path_name in rssit.paths.all.paths_dict:
         path = rssit.paths.all.paths_dict[path_name]
         if "init" in path:
             path["init"]()
+
+    if url:
+        return rssit.cli.serve(url)
 
     core = rssit.config.get_section("core")
     rssit.http.serve(core["port"])

@@ -119,6 +119,7 @@ sharedDataregex2 = r"window._sharedData *= *(?P<json>.*?}) *;\\n *window\.__init
 additionalDataregex = r'''window.__additionalDataLoaded[(]["'].*?["'] *, *(?P<json>{.*?})[)];? *</script>'''
 
 csrftoken = None
+wwwclaim = None
 
 
 def get_sharedData(config):
@@ -160,6 +161,13 @@ def set_gis_a1(config, url):
 
 def set_gis_graphql(config, url):
     set_gis_generic(config, re.sub(r".*[?&]variables=([^&]*).*", "\\1", url))
+
+
+def set_claim(config, url):
+    config["httpheader_x-ig-app-id"] = webdesktopfbappid
+
+    if wwwclaim is not None:
+        config["httpheader_x-ig-www-claim"] = wwwclaim
 
 
 def get_url(config, url):
@@ -212,7 +220,21 @@ def image_basename(url):
     return re.sub(r".*/([^.]*\.[^/?]*)(\?.*)?$", "\\1", base_image(url))
 
 
+def _parse_wwwclaim(orig_config, config, data):
+    global wwwclaim
+    if "out_headers" in config and "x-ig-set-www-claim" in config["out_headers"]:
+        wwwclaim = config["out_headers"]["x-ig-set-www-claim"]
+
+
+def parse_json_wwwclaim(orig_config, config, data):
+    _parse_wwwclaim(orig_config, config, data)
+
+    return data
+
+
 def parse_webpage_request(orig_config, config, data):
+    _parse_wwwclaim(orig_config, config, data)
+
     sdata = data.decode('utf-8')
 
     jsondatare = re.search(sharedDataregex1, sdata)
@@ -244,6 +266,8 @@ def parse_webpage_request(orig_config, config, data):
 
 
 def parse_a1_request(orig_config, config, data):
+    _parse_wwwclaim(orig_config, config, data)
+
     try:
         data = rssit.util.json_loads(data)
     except Exception as e:
@@ -258,8 +282,8 @@ web_api = rssit.rest.API({
     "name": "instagram_web",
     "type": "json",
     "headers": {
-        "User-Agent": rssit.util.get_random_user_agent(),
-        "X-Requested-With": "XMLHttpRequest"
+        "User-Agent": rssit.util.get_random_user_agent()
+        #"X-Requested-With": "XMLHttpRequest"
     },
     "endpoints": {
         "webpage": {
@@ -302,6 +326,22 @@ web_api = rssit.rest.API({
                 "path": rssit.rest.Format("p/%s", rssit.rest.Arg("node", 0))
             },
             "ratelimit": 5
+        },
+
+        "reels_tray": {
+            "url": "https://i.instagram.com/api/v1/live/reels_tray_broadcasts/",
+            "pre": set_claim,
+            "parse": parse_json_wwwclaim,
+            "headers": {
+                "Authority": "i.instagram.com",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept": "*/*",
+                "Referer": "https://www.instagram.com/",
+                "Origin": "https://www.instagram.com",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-site"
+            }
         }
     }
 })
@@ -692,6 +732,11 @@ def get_reelstray_app(config):
     return result
     #storiesurl = "https://i.instagram.com/api/v1/feed/reels_tray/"
     #return do_app_request(config, storiesurl)
+
+
+def get_reelstray_web(config):
+    result = web_api.run(config, "reels_tray")
+    return result
 
 
 def get_user_info(config, userid, force=False):
@@ -1298,7 +1343,10 @@ def get_story_entries(config, uid, username):
 
 
 def get_reels_entries(config):
-    storiesjson = get_reelstray_app(config)
+    if config["use_web_lives"]:
+        storiesjson = get_reelstray_web(config)
+    else:
+        storiesjson = get_reelstray_app(config)
 
     if not storiesjson:
         sys.stderr.write("Warning: not logged in, so no stories\n")
@@ -2529,6 +2577,12 @@ infos = [{
             "name": "Process live videos",
             "description": "Process live videos, requires an extra call",
             "value": True
+        },
+
+        "use_web_lives": {
+            "name": "Use web lives",
+            "description": "Uses the web API for livestreams instead of the app API.",
+            "value": False
         },
 
         "igtv": {

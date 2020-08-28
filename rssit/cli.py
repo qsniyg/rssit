@@ -7,6 +7,7 @@ import io
 
 
 returncode = 0
+is_cli = False
 
 
 class fakeserver():
@@ -31,6 +32,8 @@ class fakeserver():
 
 
 def serve(url):
+    is_cli = True
+
     myserver = fakeserver()
     rssit.path.process(myserver, url)
     if returncode == 0:
