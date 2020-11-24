@@ -500,7 +500,8 @@ app_api = rssit.rest.API({
                                      rssit.rest.Arg("uid", 0)),
             "query": {
                 "max_id": rssit.rest.Arg("max_id", 1)
-            }
+            },
+            "ratelimit": 4
         },
         "inbox": {
             "url": "https://i.instagram.com/api/v1/direct_v2/inbox/",
@@ -1665,6 +1666,10 @@ def generate_user(config, *args, **kwargs):
 
         return nodes
 
+    our_max_id = None
+    if "max_id" in config:
+        our_max_id = config["max_id"]
+
     count = config["count"]
 
     if count < 0:
@@ -1679,7 +1684,7 @@ def generate_user(config, *args, **kwargs):
         elif count == 1:
             count = 20
 
-        cursor = None
+        cursor = our_max_id
 
         try:
             timeline_media = decoded_user["edge_owner_to_timeline_media"]
@@ -1709,6 +1714,9 @@ def generate_user(config, *args, **kwargs):
         nodes = paginate(get_nodes, cursor)
     elif config["use_api_entries"] and not user_isnt_following:
         def get_nodes(cursor):
+            if not cursor and "after" in config:
+                cursor = config["after"]
+
             media = get_nodes_from_uid_app(config, uid, max_id=cursor)
 
             next_max_id = None
@@ -1716,7 +1724,8 @@ def generate_user(config, *args, **kwargs):
                 next_max_id = media["next_max_id"]
 
             return (media["items"], next_max_id, media["more_available"])
-        nodes = paginate(get_nodes)
+
+        nodes = paginate(get_nodes, our_max_id)
     else:
         def get_nodes(max_id):
             if max_id or "edge_owner_to_timeline_media" not in decoded_user:
@@ -1739,7 +1748,7 @@ def generate_user(config, *args, **kwargs):
                 has_next_page = None
 
             return (nodes, end_cursor, has_next_page)
-        nodes = paginate(get_nodes)
+        nodes = paginate(get_nodes, our_max_id)
 
     for node in nodes:
         feed["entries"].append(get_entry_from_node(config, node, username))
