@@ -639,10 +639,15 @@ def get_node_media(config, node, images, videos):
                 break
 
         if not found:
-            videos.append({
+            videoobj = {
                 "image": get_normalized_array(config, normalized, image_src),
                 "video": get_normalized_array(config, normalize_image(videourl), videourl)
-            })
+            }
+
+            if "video_dash_manifest" in node:
+                videoobj["video_dash"] = node["video_dash_manifest"]
+
+            videos.append(videoobj)
     else:
         ok = True
         for image in images:
@@ -1032,6 +1037,10 @@ def normalize_node(node):
     if "user" not in node:
         if "owner" in node:
             node["user"] = node["owner"]
+
+    if "video_dash_manifest" not in node:
+        if "dash_info" in node and "video_dash_manifest" in node["dash_info"]:
+            node["video_dash_manifest"] = node["dash_info"]["video_dash_manifest"]
 
     return node
 
