@@ -1627,10 +1627,6 @@ def generate_user(config, *args, **kwargs):
     if ppentry:
         feed["entries"].append(ppentry)
 
-    igtv = get_igtv(config, decoded_user)
-    if igtv and config["igtv"]:
-        feed["entries"].extend(igtv)
-
     def paginate(f, maxid=None):
         total = config["count"]
         if config["count"] == -1:
@@ -1765,6 +1761,11 @@ def generate_user(config, *args, **kwargs):
     story_entries = get_story_entries(config, uid, username)
     for entry in story_entries:
         feed["entries"].append(entry)
+
+    # get igtv after, in order to prefer the api-fetched igtv ones
+    igtv = get_igtv(config, decoded_user)
+    if igtv and config["igtv"]:
+        feed["entries"].extend(igtv)
 
     return ("social", feed)
 
