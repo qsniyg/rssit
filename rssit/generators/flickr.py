@@ -136,8 +136,8 @@ websiteapikey = None
 
 def update_api_key():
     global websiteapikey
-    data = rssit.util.download("https://www.flickr.com")
-    match = re.search(r"^root\.YUI_config\.flickr\.api\.site_key *= *['\"]([^['\"]*)['\"] *; *$", data, re.M)
+    data = rssit.util.download("https://www.flickr.com/")
+    match = re.search(r"root\.YUI_config\.flickr\.api\.site_key *= *['\"]([0-9a-f]+)['\"];", str(data))
     websiteapikey = match.group(1)
 
 
@@ -204,7 +204,7 @@ def generate_photos_api(config, user):
 
     mediacount = 0
     if config["count"] < 0:
-        mediacount = userinfo["photos"]["count"]
+        mediacount = userinfo["photos"]["count"]["_content"]
 
     count = config["count"]
 
@@ -219,7 +219,7 @@ def generate_photos_api(config, user):
                                  user_id = user,
                                  safe_search = 3,
                                  per_page = count,
-                                 page = 1,
+                                 page = page,
                                  extras = "original_format,date_upload,url_o,url_k,url_h,url_b,url_c,url_z,url_n,url_m,url_t")["photos"]
         if not photos_api:
             return None
