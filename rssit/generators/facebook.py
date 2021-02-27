@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-import facebook
+import sys
+try:
+    import facebook
+except ImportError as e:
+    facebook = None
+    sys.stderr.write("Unable to import facebook\n")
+
 import pprint
 from dateutil.parser import parse
 import re
