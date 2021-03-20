@@ -26,6 +26,7 @@ import rssit.generators.misa
 import rssit.generators.likee
 import rssit.generators.snapchat
 import rssit.generators.vsco
+import rssit.generators.cameo
 
 have_notifications = False
 try:
@@ -63,7 +64,8 @@ generator_list = [
     rssit.generators.misa,
     rssit.generators.likee,
     rssit.generators.snapchat,
-    rssit.generators.vsco
+    rssit.generators.vsco,
+    rssit.generators.cameo
 ]
 
 if have_notifications:

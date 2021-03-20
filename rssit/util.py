@@ -122,11 +122,13 @@ def download(url, *args, **kwargs):
         request = urllib.request.Request(url)
 
     httpheaders = {}
-    if "http_noextra" not in kwargs:
-        httpheaders['User-Agent'] = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36'
-        httpheaders['Pragma'] = 'no-cache'
-        httpheaders['Cache-Control'] = 'max-age=0'
-        httpheaders['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+    if "http_noextra" not in kwargs or kwargs["http_noextra"] is not True:
+        #httpheaders['httpheader_User-Agent'] = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36'
+        httpheaders['httpheader_User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+        httpheaders['httpheader_Pragma'] = 'no-cache'
+        httpheaders['httpheader_Cache-Control'] = 'max-age=0'
+        #httpheaders['httpheader_Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        httpheaders['httpheader_Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'
         #request.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36')
         #request.add_header('Pragma', 'no-cache')
         #request.add_header('Cache-Control', 'max-age=0')
@@ -158,7 +160,7 @@ def download(url, *args, **kwargs):
                 if headername[i] == '-':
                     shouldupper = True
 
-            headername = "".join(headername)
+            headername = "".join(headername).lower()
 
             headers[headername] = httpheaders[key]
 
@@ -188,6 +190,7 @@ def download(url, *args, **kwargs):
                 cookiestring.append(re.sub(r"^ *Cookie: *", "", C[cookie].output(header='Cookie: ')))
             headers["Cookie"] = "; ".join(cookiestring)
 
+    pprint.pprint(headers)
     for header in headers:
         request.add_header(header, headers[header])
 
