@@ -63,6 +63,16 @@ def image_to_entry(image):
     if base_image is None:
         base_image = image["responsive_url"]
 
+    image_url = normalize_image("https://" + base_image)
+
+    videos = []
+    video_url = image.get("videoUrl", None)
+    if video_url is None:
+        video_url = image.get("video_url", None)
+    if video_url is not None:
+        video_url = normalize_image("https://" + video_url)
+        videos.append({"image": image_url, "video": video_url})
+
     entry = {
         "url": image["permalink"],
         "author": author,
@@ -70,9 +80,9 @@ def image_to_entry(image):
         "date": rssit.util.localize_datetime(datetime.datetime.fromtimestamp(date / 1000.0)),
         "updated_date": rssit.util.localize_datetime(datetime.datetime.fromtimestamp(updated_date / 1000.0)),
         "images": [
-            normalize_image("https://" + base_image)
+            image_url
         ],
-        "videos": []
+        "videos": videos
     }
 
     return entry
