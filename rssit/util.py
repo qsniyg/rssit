@@ -190,7 +190,7 @@ def download(url, *args, **kwargs):
                 cookiestring.append(re.sub(r"^ *Cookie: *", "", C[cookie].output(header='Cookie: ')))
             headers["Cookie"] = "; ".join(cookiestring)
 
-    pprint.pprint(headers)
+    #pprint.pprint(headers)
     for header in headers:
         request.add_header(header, headers[header])
 
