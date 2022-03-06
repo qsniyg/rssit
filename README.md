@@ -55,34 +55,42 @@ You can also run rssit as a command-line application by submitting a URL path di
 
 Configuration is primarily done at `~/.config/rssit/config.ini`. Here is a sample configuration:
 
-    [core]
-    hostname = localhost
-    port = 8123
+```ini
+[core]
+hostname = localhost
+port = 8123
 
-    [default]
-    output = rss
+[default]
+output = rss
+```
 
 You can also add specific configurations for any generator and feed.
 
-    [twitter]
-    output = atom
+```ini
+[twitter]
+output = atom
 
-    [twitter/u/Support]
-    title = Support from Twitter
-    description = Twitter's Support User
+[twitter/u/Support]
+title = Support from Twitter
+description = Twitter's Support User
+```
 
 Since configuration is applied from parent folders to children,
 with the configuration above, http://localhost:8123/f/twitter/u/Support will result in this configuration:
 
-    title = Support from Twitter
-    description = Twitter's Support User
-    output = atom
+```ini
+title = Support from Twitter
+description = Twitter's Support User
+output = atom
+```
 
 Configuration is lazily applied, so the following entry is perfectly acceptable,
 and would modify the previous URL's configuration accordingly:
 
-    [twitter/u]
-    output = rss
+```ini
+[twitter/u]
+output = rss
+```
 
 If you only wish to modify the configuration per-request, you can do so via standard GET request parameters:
 
@@ -101,13 +109,17 @@ which uses data from the "social" output format to download media.
 To use download.py, clone the [dlscripts repo](https://github.com/qsniyg/dlscripts/) somewhere,
 and add the following to your configuration:
 
-    social_hooks = python path/to/download.py
+```ini
+social_hooks = python path/to/download.py
+```
 
 RSSit will then send the data to the program's stdin.
 
 To disable hooks entirely (useful for one-off usages):
 
-    nohooks = true
+```ini
+nohooks = true
+```
 
 ### Common options
 
